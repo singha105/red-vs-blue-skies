@@ -1,0 +1,78 @@
+{
+  "planes": {
+    "f4e": {
+      "file": "models/cold_war/f4e.glb",
+      "era": "cold_war",
+      "bytes": 13800,
+      "tris": 461
+    },
+    "f4u4": {
+      "file": "models/late_ww2/f4u4.glb",
+      "era": "late_ww2",
+      "bytes": 15112,
+      "tris": 375
+    },
+    "fokker_dr1": {
+      "file": "models/ww1/fokker_dr1.glb",
+      "era": "ww1",
+      "bytes": 12756,
+      "tris": 328
+    },
+    "mig15bis": {
+      "file": "models/early_jets/mig15bis.glb",
+      "era": "early_jets",
+      "bytes": 11332,
+      "tris": 307
+    },
+    "sopwith_camel": {
+      "file": "models/ww1/sopwith_camel.glb",
+      "era": "ww1",
+      "bytes": 12628,
+      "tris": 334
+    },
+    "spitfire_mk5": {
+      "file": "models/early_ww2/spitfire_mk5.glb",
+      "era": "early_ww2",
+      "bytes": 15052,
+      "tris": 347
+    }
+  },
+  "weapons": {
+    "bomb_250": {
+      "file": "models/weapons/bomb_250.glb",
+      "bytes": 4360,
+      "tris": 54
+    },
+    "drop_tank": {
+      "file": "models/weapons/drop_tank.glb",
+      "bytes": 4244,
+      "tris": 46
+    },
+    "missile_ir_large": {
+      "file": "models/weapons/missile_ir_large.glb",
+      "bytes": 4400,
+      "tris": 62
+    },
+    "missile_ir_small": {
+      "file": "models/weapons/missile_ir_small.glb",
+      "bytes": 4440,
+      "tris": 62
+    },
+    "missile_radar_long": {
+      "file": "models/weapons/missile_radar_long.glb",
+      "bytes": 4452,
+      "tris": 62
+    },
+    "missile_radar_medium": {
+      "file": "models/weapons/missile_radar_medium.glb",
+      "bytes": 4448,
+      "tris": 62
+    },
+    "rocket": {
+      "file": "models/weapons/rocket.glb",
+      "bytes": 4312,
+      "tris": 54
+    }
+  },
+  "totalBytes": 111336
+}
