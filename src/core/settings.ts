@@ -1,7 +1,7 @@
 // Player settings, persisted to localStorage. Unknown or broken saved values fall back to defaults.
 import { readStorage, writeStorage } from './storage';
 
-export type GraphicsLevel = 'auto' | 'low' | 'high';
+export type GraphicsLevel = 'auto' | 'low' | 'medium' | 'high';
 
 export interface Settings {
   graphics: GraphicsLevel;
@@ -31,7 +31,7 @@ export function sanitizeSettings(raw: unknown): Settings {
   const o = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
   const graphics = o['graphics'];
   return {
-    graphics: graphics === 'low' || graphics === 'high' || graphics === 'auto' ? graphics : DEFAULT_SETTINGS.graphics,
+    graphics: graphics === 'low' || graphics === 'medium' || graphics === 'high' || graphics === 'auto' ? graphics : DEFAULT_SETTINGS.graphics,
     sensitivity: clamp(o['sensitivity'], 0.2, 3, DEFAULT_SETTINGS.sensitivity),
     aimAssist: clamp(o['aimAssist'], 0, 1, DEFAULT_SETTINGS.aimAssist),
     volume: clamp(o['volume'], 0, 1, DEFAULT_SETTINGS.volume),
