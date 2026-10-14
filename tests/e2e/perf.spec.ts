@@ -7,7 +7,9 @@ async function measure(page: import('@playwright/test').Page, query: string, sec
   await page.goto(`./${query}`);
   await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
   await page.getByRole('button', { name: 'Play Solo' }).click();
-  await page.waitForTimeout(1000);
+  await page.getByRole('button', { name: 'Start match' }).click();
+  // Let the two teams meet so the measurement includes tracers and effects.
+  await page.waitForTimeout(25_000);
   return page.evaluate(async (s) => {
     const frames: number[] = [];
     const t0 = performance.now();
@@ -25,6 +27,7 @@ async function measure(page: import('@playwright/test').Page, query: string, sec
 }
 
 test.describe('fps budget', () => {
+  test.describe.configure({ timeout: 90_000 });
 
   test('laptop at high holds about 60 fps', async ({ page }) => {
     const r = await measure(page, '?debug=1&gfx=high', 5);

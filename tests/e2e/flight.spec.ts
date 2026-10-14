@@ -29,8 +29,9 @@ async function startSolo(page: Page, query = '?debug=1'): Promise<void> {
   await page.goto(`./${query}`);
   await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
   await page.getByRole('button', { name: 'Play Solo' }).click();
+  await page.getByRole('button', { name: 'Start match' }).click();
   await expect(page.locator('.hud')).toBeVisible();
-  expect(await hooks(page).get('mode')).toBe('flight');
+  expect(await hooks(page).get('mode')).toBe('match');
 }
 
 test('spawns in the air and flies with the keyboard', async ({ page, isMobile }, info) => {
@@ -62,8 +63,9 @@ test('diving into the sea crashes and respawns', async ({ page, isMobile }) => {
   await page.keyboard.down('ArrowDown');
   await expect.poll(async () => (await h.get('player'))?.alive, { timeout: 20_000, intervals: [200] }).toBe(false);
   await page.keyboard.up('ArrowDown');
-  await expect(page.locator('.hud__warn')).toContainText('Crashed');
-  await expect.poll(async () => (await h.get('player'))?.alive, { timeout: 6000 }).toBe(true);
+  // Killcam / respawn screen: crashed on our own, or a bot got us on the way down.
+  await expect(page.locator('.hud__death')).toContainText(/You crashed|Shot down by/);
+  await expect.poll(async () => (await h.get('player'))?.alive, { timeout: 9000 }).toBe(true);
   expect((await h.get('player'))!.pos[1]).toBeGreaterThan(1000);
 });
 
