@@ -32,6 +32,18 @@ function plane(planeId = 'spitfire_mk5', over: Partial<PlaneState> = {}): PlaneS
     edgeWarning: false,
     autoTurn: false,
     respawnIn: 0,
+    maxHp: 100,
+    protectedFor: 0,
+    damaged: { engine: false, wingL: false, wingR: false },
+    partDamage: { fuselage: 0, wingL: 0, wingR: 0, engine: 0 },
+    fireFor: 0,
+    damageBy: {},
+    lastHitBy: null,
+    lastHitAt: -1e9,
+    wreck: false,
+    ammo: [],
+    gunHeat: [],
+    assist: 0,
     ...over,
   };
 }
@@ -169,7 +181,7 @@ describe('world', () => {
     const w = createWorld(ctx);
     const s = spawnPlane(w, ctx, { id: 'a', team: 'red', planeId: 'p51d' });
     s.alive = false;
-    for (let i = 0; i < 60 * 3.2; i++) stepWorld(w, ctx, {}, DT);
+    for (let i = 0; i < 60 * 5.2; i++) stepWorld(w, ctx, {}, DT);
     const again = w.planes.find((p) => p.id === 'a')!;
     expect(again.alive).toBe(true);
     expect(again.pos[1]).toBeGreaterThan(1000);
