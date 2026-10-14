@@ -35,11 +35,13 @@ src/
                  quality presets + auto picker, settings (localStorage), env (URL flags)
   game/          simulation: plain serializable data, NO Three.js imports
                  math, terrain (seeded heightmap), flight (energy model), autopilot (mouse-aim PD),
-                 controls (ControlInput), world (planes, spawn, respawn, stepWorld)
+                 controls (ControlInput), ballistics (guns, bullets, hit spheres), world (planes,
+                 bullets, damage, kills, respawn, stepWorld), bots (AI → ControlInput), match (solo TDM)
   render/        Three.js only: renderer, mapScene (sky, ocean, terrain LOD chunks, clouds, sun),
-                 chaseCamera, planeMesh, titleShot
+                 chaseCamera, planeMesh (merged, 1 draw call), tracers + effects (instanced pools), titleShot
   net/           networking (Day 5): Transport interface, PeerJS adapter
-  ui/            HTML/CSS overlays: title, HUD, touch controls, rotate prompt, error overlay, FPS
+  ui/            HTML/CSS overlays: title, soloSetup, settingsPanel, HUD, results, touch controls,
+                 rotate prompt, error overlay, FPS
   data/          JSON data files + types.ts + validate.ts (checked at startup)
   styles.css     global styles; fonts.css declares the self-hosted fonts
 public/
@@ -61,7 +63,8 @@ docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md
 
 - TypeScript strict mode (plus `noUncheckedIndexedAccess`). No `any`; validate unknown data at the boundary.
 - `src/game` must never import Three.js or touch the DOM. Game state is plain JSON-serializable data, because Day 5 sends it over the network.
-- Bots and humans drive planes only through `ControlInput` (Day 2+); nothing edits plane state directly.
+- Bots and humans drive planes only through `ControlInput`; nothing edits plane state directly (a unit test enforces this for bots).
+- Simulation state must stay JSON-safe: no `Infinity`, `undefined` values, Maps or class instances (use `NEVER` / `NO_LIMIT` in world.ts). Randomness comes from `random(world)`, never `Math.random`, in src/game.
 - Everything tunable lives in `src/data/*.json`. Balancing means editing numbers, not code. Add new fields to `types.ts` and `validate.ts` at the same time.
 - Plane data: use real figures where easy to find (spec sheet or Wikipedia infobox); make sensible guesses for the rest (ammo, variant details, dimensions). Don't do deep historical research.
 - Units: meters, seconds, km/h only in data (`topSpeedKmh`), radians inside the simulation, degrees in data.
@@ -87,7 +90,9 @@ docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md
 - Keys: W/S throttle, A/D roll override, arrows fly directly, C free-look, Space fire, Q missile, F flare, L auto-level.
 - Touch: drag the right side to aim, throttle slider on the left, Fire/Missile/Flare by the left thumb, Level/Look top right.
 - Gamepad: left stick aim, right stick look, RT/LT throttle, A fire, B missile, X flare, Y level.
-- `?debug=1` FPS counter + `window.__rvbs` test hooks; `?gfx=low|medium|high` forces a quality level; `?plane=<id>` picks the plane.
+- Tab (or the Scores button) shows the scoreboard.
+- `?debug=1` FPS counter, all planes selectable, `window.__rvbs` test hooks; with debug, `?timescale=N` runs the sim N× faster and `?matchtime=S` shortens the match. `?gfx=low|medium|high` forces a quality level.
+- `FULL_MATCH=1 npx playwright test match.spec` plays a full 10-minute match at 10× speed on both viewports.
 
 ## Deploy
 

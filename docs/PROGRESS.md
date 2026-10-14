@@ -3,6 +3,45 @@
 Live: https://singha105.github.io/red-vs-blue-skies/ (`?debug=1` shows the FPS counter)
 Repo: https://github.com/singha105/red-vs-blue-skies
 
+## Day 3: Guns, damage, bots: playable solo (2026-10-14)
+
+### Done
+
+- **guns.json** (21 gun types): real rate of fire and muzzle velocity (Hispano 700 rpm / 850 m/s, M61 6,000 rpm / 1,050 m/s, etc.; sensible figures where sources were thin), game damage, spread, tracer colour. Validated at startup.
+- **Ballistics** (`src/game/ballistics.ts`): bullets with gravity drop and the shooter's velocity, guns converge at 300 m, real rate of fire and ammo use. Each simulated projectile carries several real rounds (max 20 projectiles/s per gun mount) so 20 planes stay cheap.
+- **Hit detection**: 4 spheres per plane (fuselage, left wing, right wing, engine; jets carry the engine at the tail), swept segment test per tick, distance broad-phase, friendly fire off.
+- **Damage**: engine knock-out = top speed −30% (thrust 0.49×) + smoke; wing knock-out = roll and turn −25%; fire chance up to 15% per heavy hit, burning drains 2.5 HP/s for 10 s; 0 HP → wreck tumbles down and explodes on impact. Kill to the last attacker (also if you crash within 20 s of being hit), assists to anyone with 25%+ of the victim's HP. Team score per kill.
+- **Respawn**: 5 s, line abreast at your team's side at 1,500 m, 3 s spawn protection (firing ends it early).
+- **Aim assist (touch only)**: bullets bend toward an enemy's lead point within 2° of the shot; strength from the new Settings panel (default 60%, 0% = off).
+- **Bots** (`src/game/bots.ts`) only output ControlInput (a unit test checks they never change world state) and steer with the same mouse-aim autopilot: terrain look-ahead, map edge, break turn or dive when shot from behind, target = nearest enemy weighted by threat and how far off the nose it is, pure pursuit far / lead pursuit in range, throttle back to avoid overshooting, trigger gated by miss distance at range. Easy / normal / hard differ in reaction time, aim wander, lead quality, range, trigger discipline and evasion.
+- **Solo mode**: Play Solo → setup (era, plane, difficulty; tiers 1–3, all with `?debug=1`) → 10 v 10 TDM (first to 50 or most kills after 10 minutes) → results (both scoreboards, Play again).
+- **HUD**: health bar, damaged parts, ammo per gun, score and clock, kill feed, scoreboard (Tab or Scores button), hit markers (bigger on kills), red damage-direction arrows, lead indicator (diamond) for the enemy nearest your aim, red/blue plane markers with range, minimap dots, spawn-protection notice, killcam (3 s watching your killer) then respawn countdown.
+- **Rendering**: placeholder plane merged into one draw call per plane, instanced tracers (1 draw call), pooled instanced particles for smoke, fire, sparks and explosions (1 draw call), camera shake on hits and nearby explosions.
+- **Settings panel** on the title screen: graphics, aim sensitivity, touch aim assist, volume.
+- **Tests**: 41 Vitest (adds swept hits, drop, lead hits a crossing target, convergence, rate of fire, engine/wing penalties, kill/assist credit, part knock-outs, fire, spawn protection, friendly fire, crash credit, bots-only-ControlInput, bots rarely crash, bot lethality by difficulty, full 10-minute headless TDM). Playwright: 20-second solo match on Desktop Chrome and iPhone 13 (setup, scoreboard, screenshots, no console errors); `FULL_MATCH=1` runs a full 10-minute match at 10× speed to the results screen on both viewports (passed); fps budget with combat on screen.
+
+### Balance numbers (measured)
+
+- Headless 10-minute 10 v 10 on normal: ~40 kills, ~18% of bullets hit.
+- One bot vs a weaving, non-shooting player, three 5-minute runs: easy 1 kill, normal 4, hard 8.
+- Gun damage was doubled from the first guess to get there; TTK is short and arcade-like.
+
+### Performance
+
+- High, laptop GPU: 60 fps, 42 draw calls in a 20-plane fight. Low at phone size with 4× CPU throttle: 60 fps, 37 draw calls. Bundle 169 KB gzip.
+
+### Known issues
+
+- Missile and Flare buttons do nothing yet (Day 7). Planes are still the box placeholder (Day 4).
+- Wrecks that are still falling when the 5 s respawn comes up explode in mid-air.
+- Bots don't use the player's spawn-protection rules beyond not shooting protected planes; no bot-to-bot formation or teamwork.
+- `?timescale=` and `?matchtime=` are debug-only test knobs.
+- Still not tried on a real phone.
+
+### Next steps (Day 4)
+
+- Blender plane kit and first six models, weapon models, `npm run models`, GLTF loading with team tint, hangar screen.
+
 ## Day 2: Flight model, controls, first map (2026-10-14)
 
 ### Done
@@ -29,10 +68,6 @@ Repo: https://github.com/singha105/red-vs-blue-skies
 - Mountain Valley and Desert Mesas use the island generator until Day 9; Carrier Strike is open ocean.
 - Not yet flown on a real phone; touch was tested with synthetic pointer events in WebKit.
 - Flight feel (turn rates, bleed, stall ratio) is a first pass; tune on Day 10 with the bot tournament.
-
-### Next steps (Day 3)
-
-- guns.json, ballistics, hit spheres, damage model, bots on ControlInput + the mouse-aim autopilot, solo 10 vs 10 Team Deathmatch, HUD additions, killcam.
 
 ## Day 1: Foundation and live deploy (2026-10-14)
 
