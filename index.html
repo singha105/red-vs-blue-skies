@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Red vs Blue Skies</title>
+    <meta name="description" content="Low-poly air combat for up to 20 friends, in the browser on phones and laptops." />
+    <meta name="theme-color" content="#16314f" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RvB Skies" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600&family=Big+Shoulders+Display:wght@700;900&display=swap"
+    />
+  </head>
+  <body>
+    <canvas id="game" aria-label="Game view"></canvas>
+    <div id="ui"></div>
+    <div id="rotate" class="rotate" role="alert">
+      <div class="rotate__phone" aria-hidden="true"></div>
+      <p>Turn your phone sideways to fly.</p>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
