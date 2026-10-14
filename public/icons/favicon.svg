@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100">
+  <rect x="-50" y="-50" width="100" height="100" rx="18" fill="rgb(22,49,79)"/>
+  <circle r="46" fill="rgb(244,247,251)"/>
+  <clipPath id="d"><circle r="39"/></clipPath>
+  <g clip-path="url(#d)">
+    <polygon points="-60,-60 2.1,-60 -2.1,60 -60,60" fill="rgb(224,68,58)" transform="rotate(-19.3)"/>
+    <polygon points="2.1,-60 60,-60 60,60 -2.1,60" fill="rgb(47,125,225)" transform="rotate(-19.3)"/>
+    <rect x="-2.25" y="-60" width="4.5" height="120" fill="rgb(244,247,251)" transform="rotate(-19.3)"/>
+  </g>
+  <circle r="10" fill="rgb(244,247,251)"/>
+</svg>
