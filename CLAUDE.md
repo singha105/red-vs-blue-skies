@@ -20,7 +20,8 @@ Always read docs/PROGRESS.md first. It says where the last session stopped.
 | `npm run build` | Type-check (`tsc --noEmit`) then build to `dist/` |
 | `npm run preview` | Serve `dist/` at http://localhost:4173/red-vs-blue-skies/ |
 | `npm test` | Vitest unit tests (data validation and pure game logic) |
-| `npx playwright test` | Builds, serves, and runs smoke tests on Desktop Chrome and iPhone 13 (WebKit); screenshots go to `tests/screenshots/` |
+| `npx playwright test` | Builds, serves (port 4187), and runs the browser tests: Desktop Chrome, iPhone 13 landscape (WebKit), and `perf` (GPU Chromium fps budget). Screenshots go to `tests/screenshots/` |
+| `npx playwright test --project perf` | Just the fps budget: high ≥ 55 fps, low ≥ 30 fps under 4× CPU throttling at phone size |
 | `npm run icons` | Regenerate the PWA roundel icons in `public/icons/` |
 
 The Mac has 8 GB RAM: don't leave dev servers running, and stop any server you start when you're done.
@@ -30,11 +31,15 @@ The Mac has 8 GB RAM: don't leave dev servers running, and stop any server you s
 ```
 src/
   main.ts        boot: settings → data validation → renderer → title screen
-  core/          loop (fixed-step), input, settings (localStorage), env (URL flags)
+  core/          loop (fixed 60 Hz), desktop input, playerControls (aim state → ControlInput),
+                 quality presets + auto picker, settings (localStorage), env (URL flags)
   game/          simulation: plain serializable data, NO Three.js imports
-  render/        Three.js only: renderer, scene, meshes, camera
+                 math, terrain (seeded heightmap), flight (energy model), autopilot (mouse-aim PD),
+                 controls (ControlInput), world (planes, spawn, respawn, stepWorld)
+  render/        Three.js only: renderer, mapScene (sky, ocean, terrain LOD chunks, clouds, sun),
+                 chaseCamera, planeMesh, titleShot
   net/           networking (Day 5): Transport interface, PeerJS adapter
-  ui/            HTML/CSS overlays: title, rotate prompt, error overlay, FPS
+  ui/            HTML/CSS overlays: title, HUD, touch controls, rotate prompt, error overlay, FPS
   data/          JSON data files + types.ts + validate.ts (checked at startup)
   styles.css     global styles; fonts.css declares the self-hosted fonts
 public/
@@ -75,6 +80,14 @@ docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md
 4. Performance budget: total download under 10 MB; 60 fps on a laptop, 30 fps on a mid-range phone.
 5. No copyrighted assets (nothing from War Thunder or other games). Make everything or use CC0.
 6. Finish by updating docs/PROGRESS.md, committing, pushing, and confirming the live deploy.
+
+## Controls and URL flags
+
+- Mouse aim: the mouse moves the aim circle, the autopilot (`src/game/autopilot.ts`) flies the nose (small circle) onto it. Click to capture the mouse; if the browser refuses pointer lock, the cursor's offset from screen centre steers instead.
+- Keys: W/S throttle, A/D roll override, arrows fly directly, C free-look, Space fire, Q missile, F flare, L auto-level.
+- Touch: drag the right side to aim, throttle slider on the left, Fire/Missile/Flare by the left thumb, Level/Look top right.
+- Gamepad: left stick aim, right stick look, RT/LT throttle, A fire, B missile, X flare, Y level.
+- `?debug=1` FPS counter + `window.__rvbs` test hooks; `?gfx=low|medium|high` forces a quality level; `?plane=<id>` picks the plane.
 
 ## Deploy
 
