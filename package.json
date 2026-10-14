@@ -11,12 +11,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "icons": "node tools/make-icons.mjs"
+    "icons": "node tools/make-icons.mjs",
+    "models": "node tools/build-models.mjs"
   },
   "dependencies": {
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@gltf-transform/cli": "^4.5.1",
     "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.5",
     "@types/three": "^0.186.0",

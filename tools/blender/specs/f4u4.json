@@ -1,0 +1,133 @@
+{
+  "id": "f4u4",
+  "era": "late_ww2",
+  "lengthM": 10.26,
+  "wingspanM": 12.5,
+  "fuselage": {
+    "sides": 8,
+    "sections": [
+      [
+        0.0,
+        1.22,
+        1.3,
+        0.0
+      ],
+      [
+        0.1,
+        1.32,
+        1.42,
+        0.0
+      ],
+      [
+        0.32,
+        1.24,
+        1.55,
+        0.06
+      ],
+      [
+        0.52,
+        1.06,
+        1.5,
+        0.12
+      ],
+      [
+        0.72,
+        0.72,
+        1.12,
+        0.18
+      ],
+      [
+        0.9,
+        0.36,
+        0.66,
+        0.26
+      ],
+      [
+        1.0,
+        0.1,
+        0.3,
+        0.3
+      ]
+    ]
+  },
+  "wing": {
+    "planform": "gull",
+    "rootChordM": 3.05,
+    "tipChordM": 1.8,
+    "positionAlongLength": 0.28,
+    "mount": "low",
+    "innerDihedralDeg": -21,
+    "dihedralDeg": 9,
+    "breakFraction": 0.32,
+    "sweepDeg": 0,
+    "thickness": 0.13
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 4.6,
+    "stab": {
+      "rootChordM": 1.5,
+      "tipChordM": 0.8,
+      "positionAlongLength": 0.85,
+      "sweepDeg": 6
+    },
+    "finHeightM": 1.75,
+    "fin": {
+      "rootChordM": 1.6,
+      "tipChordM": 0.8,
+      "sweepDeg": 22,
+      "positionAlongLength": 0.81
+    }
+  },
+  "engine": {
+    "type": "radial_cowl",
+    "cowlDiameterM": 1.36,
+    "cowlLengthM": 1.0,
+    "propBlades": 4,
+    "propDiameterM": 4.0,
+    "spinner": true,
+    "spinnerDiameterM": 0.5,
+    "spinnerLengthM": 0.45,
+    "propOffsetM": 0.15
+  },
+  "canopy": {
+    "type": "teardrop",
+    "positionAlongLength": 0.56,
+    "lengthM": 1.7,
+    "widthM": 0.72,
+    "heightM": 0.5
+  },
+  "guns": [
+    {
+      "at": "wing",
+      "spanFraction": 0.45,
+      "mount": 0
+    },
+    {
+      "at": "wing",
+      "spanFraction": 0.5,
+      "mount": 0
+    },
+    {
+      "at": "wing",
+      "spanFraction": 0.55,
+      "mount": 0
+    }
+  ],
+  "pylons": [
+    {
+      "at": "wing",
+      "spanFraction": 0.64
+    },
+    {
+      "at": "wing",
+      "spanFraction": 0.74
+    }
+  ],
+  "colors": {
+    "body": "#1d2c4c",
+    "camo": "#1d2c4c",
+    "underside": "#22355a",
+    "teamBand": "aft_fuselage_wingtips_fin"
+  }
+}

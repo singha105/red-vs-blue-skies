@@ -1,0 +1,18 @@
+{
+  "id": "mig15bis",
+  "era": "early_jets",
+  "lengthM": 10.1,
+  "wingspanM": 10.08,
+  "fuselage": { "sides": 10, "sections": [[0.0, 1.0, 1.0, 0.0], [0.05, 1.22, 1.28, 0.0], [0.24, 1.44, 1.6, 0.06], [0.48, 1.42, 1.52, 0.06], [0.74, 1.04, 1.12, 0.06], [0.94, 0.8, 0.82, 0.06], [1.0, 0.74, 0.76, 0.06]] },
+  "wing": { "planform": "tapered", "rootChordM": 2.75, "tipChordM": 1.35, "positionAlongLength": 0.33, "mount": "mid", "sweepDeg": 37, "dihedralDeg": -2, "thickness": 0.08 },
+  "tail": { "type": "conventional", "stabSpanM": 3.2, "stab": { "rootChordM": 1.25, "tipChordM": 0.65, "sweepDeg": 40, "positionAlongLength": 0.83, "yM": 1.65 }, "finHeightM": 2.05, "fin": { "rootChordM": 2.5, "tipChordM": 1.0, "sweepDeg": 52, "positionAlongLength": 0.7 } },
+  "engine": { "type": "jet_nose_intake" },
+  "exhausts": [{ "t": 1.0, "radiusM": 0.36, "lengthM": 0.25 }],
+  "canopy": { "type": "teardrop", "positionAlongLength": 0.29, "lengthM": 1.6, "widthM": 0.7, "heightM": 0.55 },
+  "guns": [
+    { "at": "fuselage", "t": 0.1, "xM": 0.0, "yOffsetM": -0.6, "mount": 0 },
+    { "at": "fuselage", "t": 0.12, "xM": 0.42, "yOffsetM": -0.52, "mount": 1 }
+  ],
+  "pylons": [{ "at": "wing", "spanFraction": 0.45 }],
+  "colors": { "body": "#b9bec4", "camo": "#adb3b9", "underside": "#c8cdd2", "teamBand": "aft_fuselage_wingtips_fin" }
+}
