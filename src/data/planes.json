@@ -13,7 +13,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/ww1/fokker_e3.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "airco_dh2",
@@ -29,7 +29,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/ww1/airco_dh2.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "nieuport_11",
@@ -45,7 +45,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/ww1/nieuport_11.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "sopwith_pup",
@@ -61,7 +61,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/ww1/sopwith_pup.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "albatros_d3",
@@ -77,7 +77,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/ww1/albatros_d3.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "fokker_dr1",
@@ -93,7 +93,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/ww1/fokker_dr1.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "sopwith_camel",
@@ -109,7 +109,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/ww1/sopwith_camel.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "se5a",
@@ -125,7 +125,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/ww1/se5a.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "spad_s13",
@@ -141,7 +141,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/ww1/spad_s13.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "fokker_d7",
@@ -157,7 +157,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/ww1/fokker_d7.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "p26",
@@ -174,7 +174,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_ww2/p26.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "gladiator",
@@ -190,7 +190,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_ww2/gladiator.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "cr42",
@@ -206,7 +206,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_ww2/cr42.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "i16",
@@ -222,7 +222,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_ww2/i16.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "p36",
@@ -239,7 +239,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_ww2/p36.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "hurricane_mk1",
@@ -255,7 +255,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_ww2/hurricane_mk1.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "a6m2",
@@ -289,7 +289,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_ww2/bf109e4.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "spitfire_mk5",
@@ -306,7 +306,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_ww2/spitfire_mk5.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "bf109f4",
@@ -323,7 +323,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_ww2/bf109f4.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "p40e",
@@ -339,7 +339,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/late_ww2/p40e.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "p39q",
@@ -348,7 +348,7 @@
     "tier": 2,
     "br": 1.3,
     "years": "1943",
-    "stats": { "topSpeedKmh": 626, "turnRateDegS": 19, "climbMs": 15, "rollRateDegS": 110, "hp": 110 },
+    "stats": { "topSpeedKmh": 605, "turnRateDegS": 19, "climbMs": 15, "rollRateDegS": 110, "hp": 110 },
     "guns": [
       { "type": "cannon_37mm", "count": 1, "ammoPerGun": 30 },
       { "type": "mg_50", "count": 4, "ammoPerGun": 250 }
@@ -356,7 +356,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/late_ww2/p39q.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "f6f5",
@@ -389,7 +389,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/late_ww2/fw190a8.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "p47d",
@@ -405,7 +405,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/late_ww2/p47d.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "f4u4",
@@ -432,13 +432,13 @@
     "years": "1944",
     "stats": { "topSpeedKmh": 646, "turnRateDegS": 25, "climbMs": 17, "rollRateDegS": 125, "hp": 100 },
     "guns": [
-      { "type": "cannon_20mm", "count": 1, "ammoPerGun": 120 },
-      { "type": "mg_127", "count": 2, "ammoPerGun": 250 }
+      { "type": "cannon_20mm", "count": 1, "ammoPerGun": 150 },
+      { "type": "mg_127", "count": 2, "ammoPerGun": 170 }
     ],
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/late_ww2/yak3.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "p51d",
@@ -472,7 +472,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/late_ww2/spitfire_mk14.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "me262",
@@ -489,7 +489,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/late_ww2/me262.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "p80",
@@ -505,7 +505,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_jets/p80.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "vampire",
@@ -521,7 +521,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_jets/vampire.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "meteor_f8",
@@ -537,7 +537,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_jets/meteor_f8.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "f84g",
@@ -603,7 +603,7 @@
     "missiles": [],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_jets/mig17f.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "hunter_f6",
@@ -638,7 +638,7 @@
     ],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_jets/mig19s.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "f8",
@@ -656,7 +656,7 @@
     ],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_jets/f8.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "mig21f13",
@@ -674,7 +674,7 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/mig21f13.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "f104g",
@@ -728,7 +728,7 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/f5e.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "f4e",
@@ -747,7 +747,7 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/f4e.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "mig23mld",
@@ -766,7 +766,7 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/mig23mld.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "mirage_f1c",
@@ -785,7 +785,7 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/mirage_f1c.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "f14a",
@@ -804,7 +804,7 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/f14a.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "f16a",
@@ -822,7 +822,7 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/f16a.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "f15a",
@@ -841,7 +841,7 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/f15a.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "mig29a",
@@ -879,7 +879,7 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/mirage2000_5.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "fa18c",
@@ -898,7 +898,7 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/fa18c.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "f16c_b50",
@@ -917,7 +917,7 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/f16c_b50.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "jas39c",
@@ -936,7 +936,7 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/jas39c.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "su27s",
@@ -974,7 +974,7 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/f15c.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "rafale_c",
@@ -993,7 +993,7 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/rafale_c.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "typhoon",
@@ -1012,7 +1012,7 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/typhoon.glb",
-    "verify": true
+    "verify": false
   },
   {
     "id": "f22a",
@@ -1031,7 +1031,7 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/f22a.glb",
-    "verify": true,
+    "verify": false,
     "radarSignature": 0.5
   }
 ]

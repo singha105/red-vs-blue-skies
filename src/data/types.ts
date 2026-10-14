@@ -76,7 +76,7 @@ export interface Plane {
   missiles: MissileMount[];
   countermeasures: { flares: number; chaff: number };
   model: string;
-  /** True when a real-world figure (speed, armament, years) still needs checking. */
+  /** True only while a value is a placeholder that needs a better guess. Real data where easy, sensible guesses otherwise. */
   verify: boolean;
   /** Multiplier on the range at which enemies can radar-lock this plane (F-22A: 0.5). */
   radarSignature?: number;

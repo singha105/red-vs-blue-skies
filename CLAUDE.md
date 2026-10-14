@@ -58,6 +58,7 @@ docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md
 - `src/game` must never import Three.js or touch the DOM. Game state is plain JSON-serializable data, because Day 5 sends it over the network.
 - Bots and humans drive planes only through `ControlInput` (Day 2+); nothing edits plane state directly.
 - Everything tunable lives in `src/data/*.json`. Balancing means editing numbers, not code. Add new fields to `types.ts` and `validate.ts` at the same time.
+- Plane data: use real figures where easy to find (spec sheet or Wikipedia infobox); make sensible guesses for the rest (ammo, variant details, dimensions). Don't do deep historical research.
 - Units: meters, seconds, km/h only in data (`topSpeedKmh`), radians inside the simulation, degrees in data.
 - Coordinates follow Three.js: +Y up. Models face +Z (glTF convention).
 - Every touch target is at least 56 px and respects `env(safe-area-inset-*)`.

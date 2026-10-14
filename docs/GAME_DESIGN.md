@@ -43,19 +43,21 @@ Tier 1 = weakest, tier 10 = best. Data: `src/data/planes.json`.
 | 9 | SPAD S.XIII | Spitfire Mk V | Spitfire Mk XIV | MiG-19 | F-16A | Eurofighter Typhoon |
 | 10 | Fokker D.VII | Bf 109 F-4 | Me 262 A-1 | F-8 Crusader | F-15A Eagle | F-22A Raptor |
 
-The order is a starting point for balance, not a historical ranking. Before building a plane's model, verify its years, speed and armament online; a plane may be swapped if a better fit for the tier exists.
+The order is a starting point for balance, not a historical ranking. A plane may be swapped if a better fit for the tier exists.
+
+**Data policy:** use real figures where they are easy to find (a spec sheet or Wikipedia infobox), and sensible guesses for everything else (ammo counts, exact variant figures, loadouts). Don't spend time on deep historical verification; this is an arcade game.
 
 ### Plane stats
 
 | Field | Real or game value | Notes |
 | --- | --- | --- |
 | `stats.topSpeedKmh` | Real | From the plane's spec sheet (usually at best altitude) |
-| `guns` | Real | Gun type, count, rounds per gun |
+| `guns` | Real, guessed where unknown | Gun type and count are real; rounds per gun are real where easy to find, otherwise a sensible guess |
 | `missiles` | Plausible | Historically plausible loadout, 2–6 missiles total |
 | `stats.turnRateDegS`, `climbMs`, `rollRateDegS`, `hp` | Game | Balance values; Day 10's bot tournament tunes them |
 | `countermeasures` | Game | Flares and chaff per life |
 | `br` | Derived | Battle Rating = 1.0 + 0.3 × (tier − 1): tier 1 is 1.0, tier 10 is 3.7 |
-| `verify` | Flag | `true` while any real-world figure still needs checking |
+| `verify` | Flag | `true` only for a value that is a placeholder and clearly needs a better guess; normally `false` |
 | `radarSignature` | Game | Optional; the F-22A has 0.5 (enemies radar-lock it at half range) |
 
 Gun-type ids (`mg_303`, `cannon_20mm`, …) are listed in `src/data/types.ts`. Day 3 adds `guns.json` with rate of fire, muzzle velocity, damage and tracer colour for each.
