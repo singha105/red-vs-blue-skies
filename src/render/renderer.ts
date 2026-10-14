@@ -1,42 +1,30 @@
 // WebGL renderer setup: full-window canvas, capped pixel ratio, resize handling.
-import { PerspectiveCamera, SRGBColorSpace, WebGLRenderer } from 'three';
-import type { GraphicsLevel } from '../core/settings';
+import { PCFSoftShadowMap, PerspectiveCamera, SRGBColorSpace, WebGLRenderer } from 'three';
 
 export const MAX_PIXEL_RATIO = 2;
-
-export function pixelRatioFor(level: GraphicsLevel, devicePixelRatio: number): number {
-  if (level === 'low') return 1;
-  if (level === 'high') return Math.min(devicePixelRatio, MAX_PIXEL_RATIO);
-  // auto: Day 2 measures fps and may drop this. Start at up to 1.5 so phones with DPR 3 stay fast.
-  return Math.min(devicePixelRatio, 1.5);
-}
 
 export interface View {
   renderer: WebGLRenderer;
   camera: PerspectiveCamera;
-  setGraphics(level: GraphicsLevel): void;
+  /** Cap devicePixelRatio (quality presets use 1, 1.5 or 2). */
+  setMaxPixelRatio(max: number): void;
   dispose(): void;
 }
 
-export function createView(canvas: HTMLCanvasElement, level: GraphicsLevel): View {
-  const renderer = new WebGLRenderer({
-    canvas,
-    antialias: level !== 'low',
-    powerPreference: 'high-performance',
-  });
+export function createView(canvas: HTMLCanvasElement, opts: { antialias: boolean }): View {
+  const renderer = new WebGLRenderer({ canvas, antialias: opts.antialias, powerPreference: 'high-performance' });
   renderer.outputColorSpace = SRGBColorSpace;
+  renderer.shadowMap.type = PCFSoftShadowMap;
 
-  const camera = new PerspectiveCamera(60, 1, 1, 14000);
+  const camera = new PerspectiveCamera(62, 1, 1, 10000);
 
-  let currentLevel = level;
+  let maxRatio = 1.5;
   const resize = (): void => {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    renderer.setPixelRatio(pixelRatioFor(currentLevel, window.devicePixelRatio || 1));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxRatio, MAX_PIXEL_RATIO));
     renderer.setSize(w, h, false);
     camera.aspect = w / Math.max(1, h);
-    // Keep the horizontal view similar on tall and wide screens.
-    camera.fov = camera.aspect < 1 ? 75 : 60;
     camera.updateProjectionMatrix();
   };
 
@@ -52,8 +40,8 @@ export function createView(canvas: HTMLCanvasElement, level: GraphicsLevel): Vie
   return {
     renderer,
     camera,
-    setGraphics(next) {
-      currentLevel = next;
+    setMaxPixelRatio(max) {
+      maxRatio = max;
       resize();
     },
     dispose() {
