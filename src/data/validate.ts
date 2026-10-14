@@ -7,7 +7,7 @@ import {
   type GameData,
 } from './types';
 
-export const DATA_FILES = ['eras.json', 'planes.json', 'missiles.json', 'maps.json', 'modes.json'] as const;
+export const DATA_FILES = ['guns.json', 'eras.json', 'planes.json', 'missiles.json', 'maps.json', 'modes.json'] as const;
 export type DataFileName = (typeof DATA_FILES)[number];
 
 export interface DataError {
@@ -132,7 +132,30 @@ function describe(v: unknown): string {
 }
 
 export function validateGameData(raw: RawData): ValidationResult {
-  const c = new Checker('eras.json');
+  const c = new Checker('guns.json');
+
+  // guns.json
+  const guns = c.arr(raw['guns.json'], 'guns') ?? [];
+  const gunIds = new Set<string>();
+  guns.forEach((g, i) => {
+    const p = `guns[${i}]`;
+    const o = c.obj(g, p);
+    if (!o) return;
+    const id = c.oneOf(o, 'id', p, GUN_TYPES);
+    c.str(o, 'name', p);
+    c.num(o, 'rpm', p, 60, 7000, true);
+    c.num(o, 'muzzleVelocityMs', p, 200, 1500);
+    c.num(o, 'damage', p, 0.1, 100);
+    c.num(o, 'spreadDeg', p, 0, 5);
+    c.str(o, 'tracerColor', p, HEX);
+    if (id) gunIds.add(id);
+  });
+  c.uniqueIds(guns, 'guns');
+  for (const id of GUN_TYPES) {
+    if (!gunIds.has(id)) c.fail('guns', `missing gun type "${id}"`);
+  }
+
+  c.at('eras.json');
 
   // eras.json
   const eras = c.arr(raw['eras.json'], 'eras') ?? [];
@@ -357,6 +380,7 @@ export function validateGameData(raw: RawData): ValidationResult {
   return {
     ok: true,
     data: {
+      guns: raw['guns.json'],
       eras: raw['eras.json'],
       planes: raw['planes.json'],
       missiles: raw['missiles.json'],

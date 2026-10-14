@@ -1,0 +1,23 @@
+[
+  { "id": "mg_792", "name": "7.92 mm LMG 08/15 / MG 17", "rpm": 850, "muzzleVelocityMs": 880, "damage": 2.6, "spreadDeg": 0.3, "tracerColor": "#fff1b8" },
+  { "id": "mg_303", "name": ".303 Vickers / Browning", "rpm": 900, "muzzleVelocityMs": 745, "damage": 2.4, "spreadDeg": 0.3, "tracerColor": "#fff1b8" },
+  { "id": "mg_30", "name": ".30 M1919 Browning", "rpm": 1100, "muzzleVelocityMs": 850, "damage": 2.4, "spreadDeg": 0.3, "tracerColor": "#fff1b8" },
+  { "id": "mg_762", "name": "7.62 mm ShKAS", "rpm": 1800, "muzzleVelocityMs": 825, "damage": 2, "spreadDeg": 0.35, "tracerColor": "#d6ffb0" },
+  { "id": "mg_127", "name": "12.7 mm Breda-SAFAT / UBS", "rpm": 900, "muzzleVelocityMs": 820, "damage": 4.8, "spreadDeg": 0.3, "tracerColor": "#d6ffb0" },
+  { "id": "mg_13", "name": "13 mm MG 131", "rpm": 900, "muzzleVelocityMs": 750, "damage": 5, "spreadDeg": 0.3, "tracerColor": "#ffe08a" },
+  { "id": "mg_50", "name": ".50 M2 Browning", "rpm": 800, "muzzleVelocityMs": 870, "damage": 5.2, "spreadDeg": 0.3, "tracerColor": "#ffe08a" },
+  { "id": "cannon_20mm", "name": "20 mm Hispano / MG 151/20 / ShVAK", "rpm": 700, "muzzleVelocityMs": 850, "damage": 18, "spreadDeg": 0.35, "tracerColor": "#ffb347" },
+  { "id": "cannon_20mm_mgff", "name": "20 mm MG FF / Type 99-1", "rpm": 520, "muzzleVelocityMs": 650, "damage": 16, "spreadDeg": 0.45, "tracerColor": "#ffb347" },
+  { "id": "cannon_20mm_colt", "name": "20 mm Colt Mk 12", "rpm": 1000, "muzzleVelocityMs": 1010, "damage": 18, "spreadDeg": 0.35, "tracerColor": "#ffb347" },
+  { "id": "cannon_20mm_m39", "name": "20 mm M39 revolver", "rpm": 1500, "muzzleVelocityMs": 1030, "damage": 16, "spreadDeg": 0.35, "tracerColor": "#ffb347" },
+  { "id": "cannon_20mm_m61", "name": "20 mm M61 Vulcan", "rpm": 6000, "muzzleVelocityMs": 1050, "damage": 5.2, "spreadDeg": 0.4, "tracerColor": "#ffb347" },
+  { "id": "cannon_23mm", "name": "23 mm NR-23", "rpm": 850, "muzzleVelocityMs": 690, "damage": 22, "spreadDeg": 0.4, "tracerColor": "#9cff8a" },
+  { "id": "cannon_23mm_gsh23", "name": "23 mm GSh-23L", "rpm": 3400, "muzzleVelocityMs": 715, "damage": 10, "spreadDeg": 0.45, "tracerColor": "#9cff8a" },
+  { "id": "cannon_27mm", "name": "27 mm Mauser BK-27", "rpm": 1700, "muzzleVelocityMs": 1025, "damage": 22, "spreadDeg": 0.35, "tracerColor": "#ff9d5c" },
+  { "id": "cannon_30mm_mk108", "name": "30 mm MK 108", "rpm": 650, "muzzleVelocityMs": 540, "damage": 48, "spreadDeg": 0.5, "tracerColor": "#ff7a3d" },
+  { "id": "cannon_30mm_nr30", "name": "30 mm NR-30", "rpm": 850, "muzzleVelocityMs": 780, "damage": 36, "spreadDeg": 0.45, "tracerColor": "#9cff8a" },
+  { "id": "cannon_30mm_aden_defa", "name": "30 mm ADEN / DEFA", "rpm": 1300, "muzzleVelocityMs": 790, "damage": 30, "spreadDeg": 0.4, "tracerColor": "#ff7a3d" },
+  { "id": "cannon_30mm_gsh301", "name": "30 mm GSh-30-1", "rpm": 1650, "muzzleVelocityMs": 860, "damage": 30, "spreadDeg": 0.4, "tracerColor": "#9cff8a" },
+  { "id": "cannon_30mm_giat", "name": "30 mm GIAT 30M791", "rpm": 2500, "muzzleVelocityMs": 1025, "damage": 24, "spreadDeg": 0.4, "tracerColor": "#ff7a3d" },
+  { "id": "cannon_37mm", "name": "37 mm M4 / N-37", "rpm": 300, "muzzleVelocityMs": 650, "damage": 70, "spreadDeg": 0.5, "tracerColor": "#ff7a3d" }
+]

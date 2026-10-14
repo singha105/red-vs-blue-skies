@@ -1,5 +1,6 @@
 // Loads and validates every data file. Call loadGameData() once at startup.
 import eras from './eras.json';
+import guns from './guns.json';
 import maps from './maps.json';
 import missiles from './missiles.json';
 import modes from './modes.json';
@@ -7,6 +8,7 @@ import planes from './planes.json';
 import { validateGameData, type RawData, type ValidationResult } from './validate';
 
 export const RAW_DATA: RawData = {
+  'guns.json': guns,
   'eras.json': eras,
   'planes.json': planes,
   'missiles.json': missiles,

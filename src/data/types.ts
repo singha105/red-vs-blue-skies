@@ -6,7 +6,7 @@ export type EraId = (typeof ERA_IDS)[number];
 export const MISSILE_CLASS_IDS = ['ir_rear', 'ir_all_aspect', 'ir_hobs', 'radar_semi_active', 'radar_active'] as const;
 export type MissileClassId = (typeof MISSILE_CLASS_IDS)[number];
 
-// Gun types used in planes.json. Day 3 adds guns.json with rate of fire, velocity and damage for each.
+// Gun types used in planes.json; each has an entry in guns.json with rate of fire, velocity and damage.
 export const GUN_TYPES = [
   'mg_792', // 7.92 mm LMG 08/15, MG 17
   'mg_303', // .303 Vickers / Lewis / Browning, 7.7 mm Type 97
@@ -147,7 +147,21 @@ export interface GameMode {
   tickets?: number;
 }
 
+export interface Gun {
+  id: GunType;
+  name: string;
+  /** Real rate of fire, rounds per minute. */
+  rpm: number;
+  /** Real muzzle velocity, m/s. */
+  muzzleVelocityMs: number;
+  /** HP removed per round that hits (game value). */
+  damage: number;
+  spreadDeg: number;
+  tracerColor: string;
+}
+
 export interface GameData {
+  guns: Gun[];
   eras: Era[];
   planes: Plane[];
   missiles: MissilesFile;
