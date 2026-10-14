@@ -1,5 +1,28 @@
-// Flight HUD as an HTML/CSS overlay: speed, altitude, throttle, G, warnings, aim reticle, nose marker, minimap.
-// Text only changes the DOM when the shown value changes, to keep layout work low on phones.
+// Flight HUD as an HTML/CSS overlay: flight readouts, health and damaged parts, ammo, score and clock,
+// kill feed, scoreboard, hit markers, damage-direction arrows, lead indicator, plane markers, minimap,
+// and the killcam / respawn screen. DOM writes only happen when a shown value changes.
+import type { Team } from '../game/flight';
+
+export type ScreenPoint = { x: number; y: number } | null;
+
+export interface Marker {
+  x: number;
+  y: number;
+  team: Team;
+  enemy: boolean;
+  distM: number;
+}
+
+export interface ScoreRow {
+  name: string;
+  team: Team;
+  plane: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  damage: number;
+  you: boolean;
+}
 
 export interface HudFrame {
   speedKmh: number;
@@ -10,78 +33,196 @@ export interface HudFrame {
   edgeWarning: boolean;
   autoTurn: boolean;
   alive: boolean;
-  respawnIn: number;
-  /** Screen positions in CSS pixels, or null when behind the camera. */
-  aim: { x: number; y: number } | null;
-  nose: { x: number; y: number } | null;
-  /** Position on the map, −1..1 on each axis, and heading in radians (0 = +Z, positive = right). */
+  hp: number;
+  maxHp: number;
+  damaged: { engine: boolean; wingL: boolean; wingR: boolean };
+  onFire: boolean;
+  protectedFor: number;
+  ammo: { label: string; rounds: number }[];
+  aim: ScreenPoint;
+  nose: ScreenPoint;
+  lead: ScreenPoint;
+  markers: Marker[];
   map: { x: number; z: number; heading: number };
+  mapDots: { x: number; z: number; team: Team }[];
+  score: Record<Team, number>;
+  timeLeftS: number;
+  killLimit: number;
   freeLook: boolean;
   hint: string;
+  death: null | { phase: 'killcam' | 'respawn'; killer: string | null; respawnIn: number };
 }
 
 export interface Hud {
   readonly el: HTMLElement;
   update(f: HudFrame): void;
+  hitMarker(kill: boolean): void;
+  /** Screen angle (radians, 0 = up, clockwise) toward whoever just hit you. */
+  damageFrom(angle: number): void;
+  killFeed(html: string, mine: boolean): void;
+  setScoreboard(rows: ScoreRow[] | null): void;
+  readonly scoreboardOpen: boolean;
   dispose(): void;
 }
 
-export function createHud(parent: HTMLElement, onMenu: () => void): Hud {
+const MAX_MARKERS = 24;
+const MAX_DOTS = 24;
+
+const esc = (s: string): string => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] ?? ch);
+export { esc as escapeHtml };
+
+export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onScores(open: boolean): void }): Hud {
   const el = document.createElement('div');
   el.className = 'hud';
   el.innerHTML = `
-    <button type="button" class="hud__menu" aria-label="Back to title">Menu</button>
+    <div class="hud__markers" aria-hidden="true">${'<div class="mk"><span></span></div>'.repeat(MAX_MARKERS)}</div>
+    <button type="button" class="hud__menu" aria-label="Leave the match">Menu</button>
+    <button type="button" class="hud__scores-btn" aria-label="Scoreboard" aria-pressed="false">Scores</button>
+    <div class="hud__top" aria-live="off">
+      <span class="hud__team hud__team--blue" data-k="blue">0</span>
+      <span class="hud__clock" data-k="clock">10:00</span>
+      <span class="hud__team hud__team--red" data-k="red">0</span>
+    </div>
     <div class="hud__reticle" data-testid="reticle" aria-hidden="true"></div>
     <div class="hud__nose" data-testid="nose" aria-hidden="true"></div>
+    <div class="hud__lead" data-testid="lead" aria-hidden="true"></div>
+    <div class="hud__hitmark" aria-hidden="true"></div>
+    <div class="hud__arrows" aria-hidden="true">${'<div class="hud__arrow"></div>'.repeat(4)}</div>
     <div class="hud__readout">
       <div><span class="hud__value" data-k="speed">0</span><span class="hud__unit">km/h</span></div>
       <div><span class="hud__value" data-k="alt">0</span><span class="hud__unit">m</span></div>
       <div class="hud__small"><span data-k="thr">80</span>% throttle · <span data-k="g">1.0</span> G</div>
     </div>
+    <div class="hud__status">
+      <div class="hud__hp" role="meter" aria-label="Health" aria-valuemin="0" aria-valuemax="100"><div class="hud__hp-fill"></div></div>
+      <div class="hud__parts">
+        <span class="part" data-part="engine">Engine</span>
+        <span class="part" data-part="wingL">L wing</span>
+        <span class="part" data-part="wingR">R wing</span>
+        <span class="part part--fire" data-part="fire">Fire</span>
+      </div>
+      <div class="hud__ammo" data-k="ammo"></div>
+    </div>
     <div class="hud__warn" role="status" aria-live="assertive"></div>
+    <div class="hud__feed" aria-live="polite"></div>
     <div class="hud__hint"></div>
-    <div class="hud__map" aria-label="Minimap"><div class="hud__map-dot"></div></div>
+    <div class="hud__map" aria-label="Minimap">${'<i class="dot"></i>'.repeat(MAX_DOTS)}<div class="hud__map-dot"></div></div>
+    <div class="hud__death" hidden><div class="hud__death-title"></div><div class="hud__death-sub"></div></div>
+    <div class="hud__board" hidden><table><thead><tr><th>Pilot</th><th>Plane</th><th>K</th><th>D</th><th>A</th><th>Dmg</th></tr></thead><tbody></tbody></table></div>
   `;
   parent.appendChild(el);
-  el.querySelector('.hud__menu')!.addEventListener('click', onMenu);
 
   const q = <T extends HTMLElement>(sel: string): T => el.querySelector<T>(sel)!;
+  const qa = (sel: string): HTMLElement[] => [...el.querySelectorAll<HTMLElement>(sel)];
+  q('.hud__menu').addEventListener('click', handlers.onMenu);
+  const scoresBtn = q<HTMLButtonElement>('.hud__scores-btn');
+  let boardOpen = false;
+  scoresBtn.addEventListener('click', () => handlers.onScores(!boardOpen));
+
   const reticle = q('.hud__reticle');
   const nose = q('.hud__nose');
-  const speed = q('[data-k="speed"]');
-  const alt = q('[data-k="alt"]');
-  const thr = q('[data-k="thr"]');
-  const gEl = q('[data-k="g"]');
+  const lead = q('.hud__lead');
+  const hitmark = q('.hud__hitmark');
+  const arrows = qa('.hud__arrow');
+  const markers = qa('.mk');
+  const dots = qa('.hud__map .dot');
+  const playerDot = q('.hud__map-dot');
+  const hpFill = q('.hud__hp-fill');
+  const hpBar = q('.hud__hp');
+  const parts = Object.fromEntries(qa('.part').map((p) => [p.dataset['part']!, p]));
   const warn = q('.hud__warn');
   const hint = q('.hud__hint');
-  const dot = q('.hud__map-dot');
+  const feed = q('.hud__feed');
+  const death = q('.hud__death');
+  const deathTitle = q('.hud__death-title');
+  const deathSub = q('.hud__death-sub');
+  const board = q('.hud__board');
+  const boardBody = q('.hud__board tbody');
+  const fields = Object.fromEntries(qa('[data-k]').map((n) => [n.dataset['k']!, n]));
 
   const last: Record<string, string> = {};
-  const text = (key: string, node: HTMLElement, value: string): void => {
+  const text = (key: string, value: string): void => {
     if (last[key] === value) return;
     last[key] = value;
-    node.textContent = value;
+    const node = fields[key];
+    if (node) node.textContent = value;
   };
-  const place = (node: HTMLElement, p: { x: number; y: number } | null): void => {
-    node.style.visibility = p ? 'visible' : 'hidden';
-    if (p) node.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%)`;
+  const place = (node: HTMLElement, p: ScreenPoint, show = true): void => {
+    const visible = show && p !== null;
+    node.style.visibility = visible ? 'visible' : 'hidden';
+    if (visible) node.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%)`;
   };
+  let arrowNext = 0;
+  let hitTimer = 0;
 
   return {
     el,
+    get scoreboardOpen() {
+      return boardOpen;
+    },
     update(f) {
-      text('speed', speed, String(Math.round(f.speedKmh)));
-      text('alt', alt, String(Math.round(f.altitudeM)));
-      text('thr', thr, String(Math.round(f.throttle * 100)));
-      text('g', gEl, f.g.toFixed(1));
-      place(reticle, f.alive && !f.freeLook ? f.aim : null);
-      place(nose, f.alive ? f.nose : null);
+      text('speed', String(Math.round(f.speedKmh)));
+      text('alt', String(Math.round(f.altitudeM)));
+      text('thr', String(Math.round(f.throttle * 100)));
+      text('g', f.g.toFixed(1));
+      text('blue', String(f.score.blue));
+      text('red', String(f.score.red));
+      const t = Math.ceil(f.timeLeftS);
+      text('clock', f.timeLeftS > 1e8 ? 'Free flight' : `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`);
+      text('ammo', f.ammo.map((a) => `${a.label} ${a.rounds}`).join('   '));
+
+      const hpPct = Math.max(0, Math.round((f.hp / f.maxHp) * 100));
+      if (last['hp'] !== String(hpPct)) {
+        last['hp'] = String(hpPct);
+        hpFill.style.transform = `scaleX(${hpPct / 100})`;
+        hpBar.setAttribute('aria-valuenow', String(hpPct));
+        hpBar.classList.toggle('is-low', hpPct < 35);
+      }
+      for (const [k, on] of [['engine', f.damaged.engine], ['wingL', f.damaged.wingL], ['wingR', f.damaged.wingR], ['fire', f.onFire]] as const) {
+        parts[k]?.classList.toggle('is-hit', on && f.alive);
+      }
+
+      const flying = f.alive && f.death === null;
+      place(reticle, f.aim, flying && !f.freeLook);
+      place(nose, f.nose, flying);
+      place(lead, f.lead, flying);
+
+      for (let i = 0; i < MAX_MARKERS; i++) {
+        const node = markers[i]!;
+        const m = f.markers[i];
+        if (!m) {
+          if (node.style.display !== 'none') node.style.display = 'none';
+          continue;
+        }
+        node.style.display = '';
+        node.className = `mk ${m.enemy ? 'mk--enemy' : 'mk--friend'} mk--${m.team}`;
+        node.style.transform = `translate(${m.x.toFixed(0)}px, ${m.y.toFixed(0)}px)`;
+        const label = m.enemy ? (m.distM < 1000 ? `${Math.round(m.distM / 10) * 10} m` : `${(m.distM / 1000).toFixed(1)} km`) : '';
+        const span = node.firstElementChild as HTMLElement;
+        if (span.textContent !== label) span.textContent = label;
+      }
+
+      for (let i = 0; i < MAX_DOTS; i++) {
+        const node = dots[i]!;
+        const d = f.mapDots[i];
+        if (!d) {
+          node.style.display = 'none';
+          continue;
+        }
+        node.style.display = '';
+        node.className = `dot dot--${d.team}`;
+        node.style.left = `${((1 - d.x) * 50).toFixed(1)}%`;
+        node.style.top = `${((1 - d.z) * 50).toFixed(1)}%`;
+      }
+      // Seen from above with +Z up the map, world +X points left.
+      playerDot.style.left = `${((1 - f.map.x) * 50).toFixed(1)}%`;
+      playerDot.style.top = `${((1 - f.map.z) * 50).toFixed(1)}%`;
+      playerDot.style.transform = `translate(-50%, -50%) rotate(${f.map.heading.toFixed(2)}rad)`;
 
       let w = '';
       let cls = '';
       if (!f.alive) {
-        w = `Crashed. Back in the air in ${Math.max(1, Math.ceil(f.respawnIn))}`;
-        cls = 'is-crash';
+        w = '';
       } else if (f.autoTurn) {
         w = 'Leaving the battle area. Turning back';
         cls = 'is-edge';
@@ -91,18 +232,69 @@ export function createHud(parent: HTMLElement, onMenu: () => void): Hud {
       } else if (f.edgeWarning) {
         w = 'Battle area edge ahead';
         cls = 'is-edge';
+      } else if (f.protectedFor > 0) {
+        w = 'Spawn protection';
+        cls = 'is-protect';
       }
-      text('warn', warn, w);
-      if (last['warnCls'] !== cls) {
-        last['warnCls'] = cls;
+      if (last['warn'] !== w) {
+        last['warn'] = w;
+        warn.textContent = w;
         warn.className = `hud__warn ${cls}`;
       }
-      text('hint', hint, f.hint);
+      if (last['hint'] !== f.hint) {
+        last['hint'] = f.hint;
+        hint.textContent = f.hint;
+      }
 
-      // Seen from above with +Z up the map, world +X points left.
-      dot.style.left = `${((1 - f.map.x) * 50).toFixed(1)}%`;
-      dot.style.top = `${((1 - f.map.z) * 50).toFixed(1)}%`;
-      dot.style.transform = `translate(-50%, -50%) rotate(${f.map.heading.toFixed(2)}rad)`;
+      const deathKey = f.death ? `${f.death.phase}|${f.death.killer}|${Math.ceil(f.death.respawnIn)}` : '';
+      if (last['death'] !== deathKey) {
+        last['death'] = deathKey;
+        death.hidden = f.death === null;
+        if (f.death) {
+          deathTitle.textContent = f.death.killer ? `Shot down by ${f.death.killer}` : 'You crashed';
+          deathSub.textContent = f.death.phase === 'killcam' ? '' : `Back in the air in ${Math.max(1, Math.ceil(f.death.respawnIn))}`;
+          death.classList.toggle('is-killcam', f.death.phase === 'killcam');
+        }
+      }
+
+      if (hitTimer > 0) {
+        hitTimer -= 1 / 60;
+        if (hitTimer <= 0) hitmark.classList.remove('is-on', 'is-kill');
+      }
+    },
+    hitMarker(kill) {
+      hitmark.classList.remove('is-on');
+      void hitmark.offsetWidth; // restart the animation
+      hitmark.classList.add('is-on');
+      hitmark.classList.toggle('is-kill', kill);
+      hitTimer = kill ? 0.6 : 0.25;
+    },
+    damageFrom(angle) {
+      const a = arrows[arrowNext++ % arrows.length]!;
+      a.style.transform = `translate(-50%, -50%) rotate(${angle.toFixed(2)}rad) translateY(-90px)`;
+      a.classList.remove('is-on');
+      void a.offsetWidth;
+      a.classList.add('is-on');
+    },
+    killFeed(html, mine) {
+      const row = document.createElement('div');
+      row.className = mine ? 'feed feed--mine' : 'feed';
+      row.innerHTML = html;
+      feed.prepend(row);
+      while (feed.children.length > 5) feed.lastElementChild?.remove();
+      window.setTimeout(() => row.remove(), 7000);
+    },
+    setScoreboard(rows) {
+      boardOpen = rows !== null;
+      board.hidden = !boardOpen;
+      scoresBtn.setAttribute('aria-pressed', String(boardOpen));
+      if (!rows) return;
+      boardBody.innerHTML = rows
+        .map(
+          (r) =>
+            `<tr class="row--${r.team}${r.you ? ' row--you' : ''}"><td>${esc(r.name)}</td><td>${esc(r.plane)}</td><td>${r.kills}</td><td>${r.deaths}</td><td>${r.assists}</td><td>${Math.round(r.damage)}</td></tr>`,
+        )
+        .join('');
     },
     dispose() {
       el.remove();

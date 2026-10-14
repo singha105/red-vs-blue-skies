@@ -3,6 +3,7 @@
 export interface TitleHandlers {
   onSolo(): void;
   onHostJoin(): void;
+  onSettings(): void;
 }
 
 export interface TitleScreen {
@@ -29,6 +30,7 @@ export function createTitleScreen(parent: HTMLElement, version: string, handlers
       <div class="title__buttons">
         <button type="button" class="btn btn--primary" data-action="solo">Play Solo</button>
         <button type="button" class="btn btn--secondary" data-action="host">Host / Join</button>
+        <button type="button" class="btn btn--secondary btn--small" data-action="settings">Settings</button>
       </div>
       <p class="title__note" role="status" aria-live="polite"></p>
     </div>
@@ -40,7 +42,9 @@ export function createTitleScreen(parent: HTMLElement, version: string, handlers
   const onClick = (e: Event): void => {
     const target = e.target instanceof Element ? e.target.closest<HTMLButtonElement>('[data-action]') : null;
     if (!target) return;
-    if (target.dataset['action'] === 'solo') handlers.onSolo();
+    const action = target.dataset['action'];
+    if (action === 'solo') handlers.onSolo();
+    else if (action === 'settings') handlers.onSettings();
     else handlers.onHostJoin();
   };
   el.addEventListener('click', onClick);
