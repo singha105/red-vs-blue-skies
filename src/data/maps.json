@@ -1,0 +1,78 @@
+[
+  {
+    "id": "island_chain",
+    "name": "Island Chain",
+    "default": true,
+    "sizeM": 16000,
+    "seed": 1337,
+    "terrain": "islands",
+    "description": "Open ocean and green islands.",
+    "colors": { "skyTop": "#2f6fb5", "skyHorizon": "#bfe0f5", "water": "#1f6f8b", "sand": "#e8d8a8", "grass": "#5f9a4a", "rock": "#7d7468" },
+    "spawns": {
+      "red": [-6500, 1500, 0],
+      "blue": [6500, 1500, 0]
+    },
+    "zones": [
+      [-3000, 2500],
+      [0, -1500],
+      [3000, 2500]
+    ]
+  },
+  {
+    "id": "mountain_valley",
+    "name": "Mountain Valley",
+    "default": false,
+    "sizeM": 16000,
+    "seed": 4242,
+    "terrain": "canyon",
+    "description": "A canyon you can fly through to escape missiles.",
+    "colors": { "skyTop": "#3a6ea5", "skyHorizon": "#d6e6ef", "water": "#3c6e71", "sand": "#b9a77f", "grass": "#4f7a3a", "rock": "#8a8178" },
+    "spawns": {
+      "red": [-6500, 2200, 0],
+      "blue": [6500, 2200, 0]
+    },
+    "zones": [
+      [-3500, 0],
+      [0, 0],
+      [3500, 0]
+    ]
+  },
+  {
+    "id": "desert_mesas",
+    "name": "Desert Mesas",
+    "default": false,
+    "sizeM": 16000,
+    "seed": 9001,
+    "terrain": "mesas",
+    "description": "Flat-topped plateaus with great visibility.",
+    "colors": { "skyTop": "#4a86c5", "skyHorizon": "#f2dcb3", "water": "#2e7f8f", "sand": "#e0b27a", "grass": "#b58a55", "rock": "#a0583a" },
+    "spawns": {
+      "red": [-6500, 1800, 0],
+      "blue": [6500, 1800, 0]
+    },
+    "zones": [
+      [-3000, -3000],
+      [0, 0],
+      [3000, 3000]
+    ]
+  },
+  {
+    "id": "carrier_strike",
+    "name": "Carrier Strike",
+    "default": false,
+    "sizeM": 16000,
+    "seed": 777,
+    "terrain": "ocean",
+    "description": "Open ocean with one aircraft carrier per team as the ground target.",
+    "colors": { "skyTop": "#2a5f9e", "skyHorizon": "#c9e3f0", "water": "#1a5a7a", "sand": "#e8d8a8", "grass": "#5f9a4a", "rock": "#7d7468" },
+    "spawns": {
+      "red": [-6500, 1500, 0],
+      "blue": [6500, 1500, 0]
+    },
+    "zones": [
+      [-4000, 0],
+      [0, 0],
+      [4000, 0]
+    ]
+  }
+]

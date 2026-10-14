@@ -1,0 +1,76 @@
+{
+  "classes": [
+    {
+      "id": "ir_rear",
+      "name": "Rear-aspect IR",
+      "seeker": "ir",
+      "aspect": "rear",
+      "guidance": "passive",
+      "coneDeg": 20,
+      "lockTimeS": 2,
+      "maxRangeM": 2500,
+      "beatenBy": ["flares", "sun"]
+    },
+    {
+      "id": "ir_all_aspect",
+      "name": "All-aspect IR",
+      "seeker": "ir",
+      "aspect": "all",
+      "guidance": "passive",
+      "coneDeg": 30,
+      "lockTimeS": 1.5,
+      "maxRangeM": 3500,
+      "beatenBy": ["flares"]
+    },
+    {
+      "id": "ir_hobs",
+      "name": "High off-boresight IR",
+      "seeker": "ir",
+      "aspect": "all",
+      "guidance": "passive",
+      "coneDeg": 75,
+      "lockTimeS": 1,
+      "maxRangeM": 4000,
+      "beatenBy": ["flares", "hard_turn"]
+    },
+    {
+      "id": "radar_semi_active",
+      "name": "Semi-active radar",
+      "seeker": "radar",
+      "aspect": "all",
+      "guidance": "semi_active",
+      "coneDeg": 60,
+      "lockTimeS": 2,
+      "maxRangeM": 6000,
+      "beatenBy": ["chaff", "notching", "break_shooter_lock"]
+    },
+    {
+      "id": "radar_active",
+      "name": "Active radar",
+      "seeker": "radar",
+      "aspect": "all",
+      "guidance": "active",
+      "coneDeg": 60,
+      "lockTimeS": 2,
+      "maxRangeM": 8000,
+      "beatenBy": ["chaff", "notching", "outrun"]
+    }
+  ],
+  "missiles": [
+    { "id": "aim9b", "name": "AIM-9B Sidewinder", "class": "ir_rear", "coneDeg": 20, "lockTimeS": 2, "minRangeM": 300, "maxRangeM": 2500, "speedMs": 600, "maxG": 12, "burnTimeS": 2.2, "flareResistance": 0.4, "chaffResistance": 1, "damage": 75 },
+    { "id": "k13", "name": "K-13 (R-3S)", "class": "ir_rear", "coneDeg": 20, "lockTimeS": 2, "minRangeM": 300, "maxRangeM": 2300, "speedMs": 580, "maxG": 11, "burnTimeS": 2.2, "flareResistance": 0.4, "chaffResistance": 1, "damage": 75 },
+    { "id": "r550_magic", "name": "R.550 Magic", "class": "ir_rear", "coneDeg": 22, "lockTimeS": 2, "minRangeM": 300, "maxRangeM": 2600, "speedMs": 620, "maxG": 18, "burnTimeS": 2, "flareResistance": 0.42, "chaffResistance": 1, "damage": 75 },
+    { "id": "aim9l", "name": "AIM-9L Sidewinder", "class": "ir_all_aspect", "coneDeg": 30, "lockTimeS": 1.5, "minRangeM": 300, "maxRangeM": 3500, "speedMs": 750, "maxG": 30, "burnTimeS": 5, "flareResistance": 0.6, "chaffResistance": 1, "damage": 85 },
+    { "id": "r60", "name": "R-60", "class": "ir_all_aspect", "coneDeg": 30, "lockTimeS": 1.5, "minRangeM": 250, "maxRangeM": 3000, "speedMs": 720, "maxG": 35, "burnTimeS": 3, "flareResistance": 0.55, "chaffResistance": 1, "damage": 75 },
+    { "id": "magic2", "name": "R.550 Magic 2", "class": "ir_all_aspect", "coneDeg": 30, "lockTimeS": 1.5, "minRangeM": 300, "maxRangeM": 3400, "speedMs": 740, "maxG": 32, "burnTimeS": 4, "flareResistance": 0.6, "chaffResistance": 1, "damage": 80 },
+    { "id": "r73", "name": "R-73", "class": "ir_hobs", "coneDeg": 75, "lockTimeS": 1, "minRangeM": 300, "maxRangeM": 4000, "speedMs": 780, "maxG": 40, "burnTimeS": 5, "flareResistance": 0.75, "chaffResistance": 1, "damage": 90 },
+    { "id": "aim9x", "name": "AIM-9X Sidewinder", "class": "ir_hobs", "coneDeg": 75, "lockTimeS": 1, "minRangeM": 300, "maxRangeM": 4000, "speedMs": 800, "maxG": 45, "burnTimeS": 5, "flareResistance": 0.78, "chaffResistance": 1, "damage": 90 },
+    { "id": "mica_ir", "name": "MICA IR", "class": "ir_hobs", "coneDeg": 70, "lockTimeS": 1, "minRangeM": 300, "maxRangeM": 3900, "speedMs": 820, "maxG": 45, "burnTimeS": 5, "flareResistance": 0.72, "chaffResistance": 1, "damage": 85 },
+    { "id": "aim7f", "name": "AIM-7F Sparrow", "class": "radar_semi_active", "coneDeg": 60, "lockTimeS": 2, "minRangeM": 800, "maxRangeM": 6000, "speedMs": 850, "maxG": 25, "burnTimeS": 4.5, "flareResistance": 1, "chaffResistance": 0.5, "damage": 95 },
+    { "id": "r27r", "name": "R-27R", "class": "radar_semi_active", "coneDeg": 60, "lockTimeS": 2, "minRangeM": 800, "maxRangeM": 6000, "speedMs": 830, "maxG": 24, "burnTimeS": 4.5, "flareResistance": 1, "chaffResistance": 0.5, "damage": 95 },
+    { "id": "super530f", "name": "Super 530F", "class": "radar_semi_active", "coneDeg": 60, "lockTimeS": 2, "minRangeM": 800, "maxRangeM": 5500, "speedMs": 860, "maxG": 22, "burnTimeS": 4, "flareResistance": 1, "chaffResistance": 0.45, "damage": 95 },
+    { "id": "aim120b", "name": "AIM-120B AMRAAM", "class": "radar_active", "coneDeg": 60, "lockTimeS": 2, "minRangeM": 1000, "maxRangeM": 8000, "speedMs": 900, "maxG": 30, "burnTimeS": 6, "flareResistance": 1, "chaffResistance": 0.6, "damage": 90 },
+    { "id": "r77", "name": "R-77", "class": "radar_active", "coneDeg": 60, "lockTimeS": 2, "minRangeM": 1000, "maxRangeM": 7800, "speedMs": 880, "maxG": 32, "burnTimeS": 6, "flareResistance": 1, "chaffResistance": 0.58, "damage": 90 },
+    { "id": "mica_em", "name": "MICA EM", "class": "radar_active", "coneDeg": 60, "lockTimeS": 2, "minRangeM": 1000, "maxRangeM": 7500, "speedMs": 900, "maxG": 35, "burnTimeS": 5.5, "flareResistance": 1, "chaffResistance": 0.62, "damage": 85 }
+  ]
+}

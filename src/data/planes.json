@@ -1,0 +1,1037 @@
+[
+  {
+    "id": "fokker_e3",
+    "name": "Fokker E.III",
+    "era": "ww1",
+    "tier": 1,
+    "br": 1,
+    "years": "1915",
+    "stats": { "topSpeedKmh": 140, "turnRateDegS": 27, "climbMs": 4, "rollRateDegS": 80, "hp": 80 },
+    "guns": [
+      { "type": "mg_792", "count": 1, "ammoPerGun": 500 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/ww1/fokker_e3.glb",
+    "verify": true
+  },
+  {
+    "id": "airco_dh2",
+    "name": "Airco DH.2",
+    "era": "ww1",
+    "tier": 2,
+    "br": 1.3,
+    "years": "1916",
+    "stats": { "topSpeedKmh": 150, "turnRateDegS": 28, "climbMs": 4, "rollRateDegS": 85, "hp": 80 },
+    "guns": [
+      { "type": "mg_303", "count": 1, "ammoPerGun": 291 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/ww1/airco_dh2.glb",
+    "verify": true
+  },
+  {
+    "id": "nieuport_11",
+    "name": "Nieuport 11 Bébé",
+    "era": "ww1",
+    "tier": 3,
+    "br": 1.6,
+    "years": "1916",
+    "stats": { "topSpeedKmh": 162, "turnRateDegS": 30, "climbMs": 4, "rollRateDegS": 85, "hp": 80 },
+    "guns": [
+      { "type": "mg_303", "count": 1, "ammoPerGun": 291 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/ww1/nieuport_11.glb",
+    "verify": true
+  },
+  {
+    "id": "sopwith_pup",
+    "name": "Sopwith Pup",
+    "era": "ww1",
+    "tier": 4,
+    "br": 1.9,
+    "years": "1916",
+    "stats": { "topSpeedKmh": 180, "turnRateDegS": 31, "climbMs": 4, "rollRateDegS": 90, "hp": 80 },
+    "guns": [
+      { "type": "mg_303", "count": 1, "ammoPerGun": 500 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/ww1/sopwith_pup.glb",
+    "verify": true
+  },
+  {
+    "id": "albatros_d3",
+    "name": "Albatros D.III",
+    "era": "ww1",
+    "tier": 5,
+    "br": 2.2,
+    "years": "1917",
+    "stats": { "topSpeedKmh": 175, "turnRateDegS": 30, "climbMs": 4, "rollRateDegS": 90, "hp": 80 },
+    "guns": [
+      { "type": "mg_792", "count": 2, "ammoPerGun": 500 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/ww1/albatros_d3.glb",
+    "verify": true
+  },
+  {
+    "id": "fokker_dr1",
+    "name": "Fokker Dr.I",
+    "era": "ww1",
+    "tier": 6,
+    "br": 2.5,
+    "years": "1917",
+    "stats": { "topSpeedKmh": 180, "turnRateDegS": 35, "climbMs": 5, "rollRateDegS": 90, "hp": 80 },
+    "guns": [
+      { "type": "mg_792", "count": 2, "ammoPerGun": 500 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/ww1/fokker_dr1.glb",
+    "verify": true
+  },
+  {
+    "id": "sopwith_camel",
+    "name": "Sopwith Camel F.1",
+    "era": "ww1",
+    "tier": 7,
+    "br": 2.8,
+    "years": "1917",
+    "stats": { "topSpeedKmh": 182, "turnRateDegS": 36, "climbMs": 4, "rollRateDegS": 95, "hp": 80 },
+    "guns": [
+      { "type": "mg_303", "count": 2, "ammoPerGun": 500 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/ww1/sopwith_camel.glb",
+    "verify": true
+  },
+  {
+    "id": "se5a",
+    "name": "Royal Aircraft Factory S.E.5a",
+    "era": "ww1",
+    "tier": 8,
+    "br": 3.1,
+    "years": "1917",
+    "stats": { "topSpeedKmh": 222, "turnRateDegS": 31, "climbMs": 4, "rollRateDegS": 95, "hp": 90 },
+    "guns": [
+      { "type": "mg_303", "count": 2, "ammoPerGun": 400 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/ww1/se5a.glb",
+    "verify": true
+  },
+  {
+    "id": "spad_s13",
+    "name": "SPAD S.XIII",
+    "era": "ww1",
+    "tier": 9,
+    "br": 3.4,
+    "years": "1917",
+    "stats": { "topSpeedKmh": 211, "turnRateDegS": 30, "climbMs": 4, "rollRateDegS": 100, "hp": 90 },
+    "guns": [
+      { "type": "mg_303", "count": 2, "ammoPerGun": 400 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/ww1/spad_s13.glb",
+    "verify": true
+  },
+  {
+    "id": "fokker_d7",
+    "name": "Fokker D.VII",
+    "era": "ww1",
+    "tier": 10,
+    "br": 3.7,
+    "years": "1918",
+    "stats": { "topSpeedKmh": 189, "turnRateDegS": 34, "climbMs": 5, "rollRateDegS": 100, "hp": 80 },
+    "guns": [
+      { "type": "mg_792", "count": 2, "ammoPerGun": 500 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/ww1/fokker_d7.glb",
+    "verify": true
+  },
+  {
+    "id": "p26",
+    "name": "Boeing P-26 Peashooter",
+    "era": "early_ww2",
+    "tier": 1,
+    "br": 1,
+    "years": "1934",
+    "stats": { "topSpeedKmh": 377, "turnRateDegS": 22, "climbMs": 11, "rollRateDegS": 100, "hp": 100 },
+    "guns": [
+      { "type": "mg_30", "count": 1, "ammoPerGun": 500 },
+      { "type": "mg_50", "count": 1, "ammoPerGun": 200 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_ww2/p26.glb",
+    "verify": true
+  },
+  {
+    "id": "gladiator",
+    "name": "Gloster Gladiator Mk I",
+    "era": "early_ww2",
+    "tier": 2,
+    "br": 1.3,
+    "years": "1937",
+    "stats": { "topSpeedKmh": 407, "turnRateDegS": 24, "climbMs": 11, "rollRateDegS": 100, "hp": 100 },
+    "guns": [
+      { "type": "mg_303", "count": 4, "ammoPerGun": 500 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_ww2/gladiator.glb",
+    "verify": true
+  },
+  {
+    "id": "cr42",
+    "name": "Fiat CR.42 Falco",
+    "era": "early_ww2",
+    "tier": 3,
+    "br": 1.6,
+    "years": "1939",
+    "stats": { "topSpeedKmh": 441, "turnRateDegS": 26, "climbMs": 11, "rollRateDegS": 105, "hp": 100 },
+    "guns": [
+      { "type": "mg_127", "count": 2, "ammoPerGun": 400 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_ww2/cr42.glb",
+    "verify": true
+  },
+  {
+    "id": "i16",
+    "name": "Polikarpov I-16 Type 24",
+    "era": "early_ww2",
+    "tier": 4,
+    "br": 1.9,
+    "years": "1939",
+    "stats": { "topSpeedKmh": 489, "turnRateDegS": 25, "climbMs": 12, "rollRateDegS": 130, "hp": 100 },
+    "guns": [
+      { "type": "mg_762", "count": 4, "ammoPerGun": 650 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_ww2/i16.glb",
+    "verify": true
+  },
+  {
+    "id": "p36",
+    "name": "Curtiss P-36A Hawk",
+    "era": "early_ww2",
+    "tier": 5,
+    "br": 2.2,
+    "years": "1938",
+    "stats": { "topSpeedKmh": 504, "turnRateDegS": 24, "climbMs": 12, "rollRateDegS": 110, "hp": 100 },
+    "guns": [
+      { "type": "mg_50", "count": 1, "ammoPerGun": 200 },
+      { "type": "mg_30", "count": 1, "ammoPerGun": 500 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_ww2/p36.glb",
+    "verify": true
+  },
+  {
+    "id": "hurricane_mk1",
+    "name": "Hawker Hurricane Mk I",
+    "era": "early_ww2",
+    "tier": 6,
+    "br": 2.5,
+    "years": "1937",
+    "stats": { "topSpeedKmh": 529, "turnRateDegS": 25, "climbMs": 12, "rollRateDegS": 115, "hp": 110 },
+    "guns": [
+      { "type": "mg_303", "count": 8, "ammoPerGun": 334 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_ww2/hurricane_mk1.glb",
+    "verify": true
+  },
+  {
+    "id": "a6m2",
+    "name": "Mitsubishi A6M2 Zero",
+    "era": "early_ww2",
+    "tier": 7,
+    "br": 2.8,
+    "years": "1940",
+    "stats": { "topSpeedKmh": 533, "turnRateDegS": 29, "climbMs": 13, "rollRateDegS": 115, "hp": 75 },
+    "guns": [
+      { "type": "cannon_20mm_mgff", "count": 2, "ammoPerGun": 60 },
+      { "type": "mg_303", "count": 2, "ammoPerGun": 500 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_ww2/a6m2.glb",
+    "verify": false
+  },
+  {
+    "id": "bf109e4",
+    "name": "Messerschmitt Bf 109 E-4",
+    "era": "early_ww2",
+    "tier": 8,
+    "br": 3.1,
+    "years": "1940",
+    "stats": { "topSpeedKmh": 560, "turnRateDegS": 26, "climbMs": 13, "rollRateDegS": 120, "hp": 100 },
+    "guns": [
+      { "type": "cannon_20mm_mgff", "count": 2, "ammoPerGun": 60 },
+      { "type": "mg_792", "count": 2, "ammoPerGun": 1000 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_ww2/bf109e4.glb",
+    "verify": true
+  },
+  {
+    "id": "spitfire_mk5",
+    "name": "Supermarine Spitfire Mk V",
+    "era": "early_ww2",
+    "tier": 9,
+    "br": 3.4,
+    "years": "1941",
+    "stats": { "topSpeedKmh": 594, "turnRateDegS": 26, "climbMs": 13, "rollRateDegS": 120, "hp": 100 },
+    "guns": [
+      { "type": "cannon_20mm", "count": 2, "ammoPerGun": 60 },
+      { "type": "mg_303", "count": 4, "ammoPerGun": 350 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_ww2/spitfire_mk5.glb",
+    "verify": true
+  },
+  {
+    "id": "bf109f4",
+    "name": "Messerschmitt Bf 109 F-4",
+    "era": "early_ww2",
+    "tier": 10,
+    "br": 3.7,
+    "years": "1941",
+    "stats": { "topSpeedKmh": 635, "turnRateDegS": 27, "climbMs": 14, "rollRateDegS": 125, "hp": 100 },
+    "guns": [
+      { "type": "cannon_20mm", "count": 1, "ammoPerGun": 200 },
+      { "type": "mg_792", "count": 2, "ammoPerGun": 500 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_ww2/bf109f4.glb",
+    "verify": true
+  },
+  {
+    "id": "p40e",
+    "name": "Curtiss P-40E Warhawk",
+    "era": "late_ww2",
+    "tier": 1,
+    "br": 1,
+    "years": "1941",
+    "stats": { "topSpeedKmh": 581, "turnRateDegS": 19, "climbMs": 14, "rollRateDegS": 110, "hp": 120 },
+    "guns": [
+      { "type": "mg_50", "count": 6, "ammoPerGun": 281 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/late_ww2/p40e.glb",
+    "verify": true
+  },
+  {
+    "id": "p39q",
+    "name": "Bell P-39Q Airacobra",
+    "era": "late_ww2",
+    "tier": 2,
+    "br": 1.3,
+    "years": "1943",
+    "stats": { "topSpeedKmh": 626, "turnRateDegS": 19, "climbMs": 15, "rollRateDegS": 110, "hp": 110 },
+    "guns": [
+      { "type": "cannon_37mm", "count": 1, "ammoPerGun": 30 },
+      { "type": "mg_50", "count": 4, "ammoPerGun": 250 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/late_ww2/p39q.glb",
+    "verify": true
+  },
+  {
+    "id": "f6f5",
+    "name": "Grumman F6F-5 Hellcat",
+    "era": "late_ww2",
+    "tier": 3,
+    "br": 1.6,
+    "years": "1944",
+    "stats": { "topSpeedKmh": 629, "turnRateDegS": 20, "climbMs": 15, "rollRateDegS": 115, "hp": 130 },
+    "guns": [
+      { "type": "mg_50", "count": 6, "ammoPerGun": 400 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/late_ww2/f6f5.glb",
+    "verify": false
+  },
+  {
+    "id": "fw190a8",
+    "name": "Focke-Wulf Fw 190 A-8",
+    "era": "late_ww2",
+    "tier": 4,
+    "br": 1.9,
+    "years": "1944",
+    "stats": { "topSpeedKmh": 652, "turnRateDegS": 19, "climbMs": 16, "rollRateDegS": 145, "hp": 125 },
+    "guns": [
+      { "type": "cannon_20mm", "count": 4, "ammoPerGun": 200 },
+      { "type": "mg_13", "count": 2, "ammoPerGun": 475 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/late_ww2/fw190a8.glb",
+    "verify": true
+  },
+  {
+    "id": "p47d",
+    "name": "Republic P-47D Thunderbolt",
+    "era": "late_ww2",
+    "tier": 5,
+    "br": 2.2,
+    "years": "1943",
+    "stats": { "topSpeedKmh": 715, "turnRateDegS": 18, "climbMs": 16, "rollRateDegS": 120, "hp": 150 },
+    "guns": [
+      { "type": "mg_50", "count": 8, "ammoPerGun": 425 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/late_ww2/p47d.glb",
+    "verify": true
+  },
+  {
+    "id": "f4u4",
+    "name": "Vought F4U-4 Corsair",
+    "era": "late_ww2",
+    "tier": 6,
+    "br": 2.5,
+    "years": "1945",
+    "stats": { "topSpeedKmh": 717, "turnRateDegS": 22, "climbMs": 16, "rollRateDegS": 125, "hp": 125 },
+    "guns": [
+      { "type": "mg_50", "count": 6, "ammoPerGun": 400 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/late_ww2/f4u4.glb",
+    "verify": false
+  },
+  {
+    "id": "yak3",
+    "name": "Yakovlev Yak-3",
+    "era": "late_ww2",
+    "tier": 7,
+    "br": 2.8,
+    "years": "1944",
+    "stats": { "topSpeedKmh": 646, "turnRateDegS": 25, "climbMs": 17, "rollRateDegS": 125, "hp": 100 },
+    "guns": [
+      { "type": "cannon_20mm", "count": 1, "ammoPerGun": 120 },
+      { "type": "mg_127", "count": 2, "ammoPerGun": 250 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/late_ww2/yak3.glb",
+    "verify": true
+  },
+  {
+    "id": "p51d",
+    "name": "North American P-51D Mustang",
+    "era": "late_ww2",
+    "tier": 8,
+    "br": 3.1,
+    "years": "1944",
+    "stats": { "topSpeedKmh": 708, "turnRateDegS": 23, "climbMs": 17, "rollRateDegS": 130, "hp": 110 },
+    "guns": [
+      { "type": "mg_50", "count": 2, "ammoPerGun": 380 },
+      { "type": "mg_50", "count": 4, "ammoPerGun": 270 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/late_ww2/p51d.glb",
+    "verify": false
+  },
+  {
+    "id": "spitfire_mk14",
+    "name": "Supermarine Spitfire Mk XIV",
+    "era": "late_ww2",
+    "tier": 9,
+    "br": 3.4,
+    "years": "1944",
+    "stats": { "topSpeedKmh": 710, "turnRateDegS": 24, "climbMs": 18, "rollRateDegS": 130, "hp": 110 },
+    "guns": [
+      { "type": "cannon_20mm", "count": 2, "ammoPerGun": 120 },
+      { "type": "mg_50", "count": 2, "ammoPerGun": 250 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/late_ww2/spitfire_mk14.glb",
+    "verify": true
+  },
+  {
+    "id": "me262",
+    "name": "Messerschmitt Me 262 A-1a",
+    "era": "late_ww2",
+    "tier": 10,
+    "br": 3.7,
+    "years": "1944",
+    "stats": { "topSpeedKmh": 900, "turnRateDegS": 19, "climbMs": 18, "rollRateDegS": 135, "hp": 120 },
+    "guns": [
+      { "type": "cannon_30mm_mk108", "count": 2, "ammoPerGun": 100 },
+      { "type": "cannon_30mm_mk108", "count": 2, "ammoPerGun": 80 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/late_ww2/me262.glb",
+    "verify": true
+  },
+  {
+    "id": "p80",
+    "name": "Lockheed P-80 Shooting Star",
+    "era": "early_jets",
+    "tier": 1,
+    "br": 1,
+    "years": "1945",
+    "stats": { "topSpeedKmh": 956, "turnRateDegS": 15, "climbMs": 32, "rollRateDegS": 125, "hp": 110 },
+    "guns": [
+      { "type": "mg_50", "count": 6, "ammoPerGun": 300 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_jets/p80.glb",
+    "verify": true
+  },
+  {
+    "id": "vampire",
+    "name": "de Havilland Vampire FB.5",
+    "era": "early_jets",
+    "tier": 2,
+    "br": 1.3,
+    "years": "1949",
+    "stats": { "topSpeedKmh": 882, "turnRateDegS": 17, "climbMs": 32, "rollRateDegS": 130, "hp": 110 },
+    "guns": [
+      { "type": "cannon_20mm", "count": 4, "ammoPerGun": 150 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_jets/vampire.glb",
+    "verify": true
+  },
+  {
+    "id": "meteor_f8",
+    "name": "Gloster Meteor F.8",
+    "era": "early_jets",
+    "tier": 3,
+    "br": 1.6,
+    "years": "1950",
+    "stats": { "topSpeedKmh": 965, "turnRateDegS": 16, "climbMs": 33, "rollRateDegS": 135, "hp": 125 },
+    "guns": [
+      { "type": "cannon_20mm", "count": 4, "ammoPerGun": 195 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_jets/meteor_f8.glb",
+    "verify": true
+  },
+  {
+    "id": "f84g",
+    "name": "Republic F-84G Thunderjet",
+    "era": "early_jets",
+    "tier": 4,
+    "br": 1.9,
+    "years": "1951",
+    "stats": { "topSpeedKmh": 1001, "turnRateDegS": 15, "climbMs": 34, "rollRateDegS": 135, "hp": 125 },
+    "guns": [
+      { "type": "mg_50", "count": 6, "ammoPerGun": 300 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_jets/f84g.glb",
+    "verify": false
+  },
+  {
+    "id": "mig15bis",
+    "name": "Mikoyan-Gurevich MiG-15bis",
+    "era": "early_jets",
+    "tier": 5,
+    "br": 2.2,
+    "years": "1950",
+    "stats": { "topSpeedKmh": 1076, "turnRateDegS": 17, "climbMs": 35, "rollRateDegS": 140, "hp": 110 },
+    "guns": [
+      { "type": "cannon_37mm", "count": 1, "ammoPerGun": 40 },
+      { "type": "cannon_23mm", "count": 2, "ammoPerGun": 80 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_jets/mig15bis.glb",
+    "verify": false
+  },
+  {
+    "id": "f86f",
+    "name": "North American F-86F Sabre",
+    "era": "early_jets",
+    "tier": 6,
+    "br": 2.5,
+    "years": "1952",
+    "stats": { "topSpeedKmh": 1106, "turnRateDegS": 17, "climbMs": 36, "rollRateDegS": 160, "hp": 110 },
+    "guns": [
+      { "type": "mg_50", "count": 6, "ammoPerGun": 300 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_jets/f86f.glb",
+    "verify": false
+  },
+  {
+    "id": "mig17f",
+    "name": "Mikoyan-Gurevich MiG-17F",
+    "era": "early_jets",
+    "tier": 7,
+    "br": 2.8,
+    "years": "1953",
+    "stats": { "topSpeedKmh": 1145, "turnRateDegS": 19, "climbMs": 37, "rollRateDegS": 145, "hp": 110 },
+    "guns": [
+      { "type": "cannon_37mm", "count": 1, "ammoPerGun": 40 },
+      { "type": "cannon_23mm", "count": 2, "ammoPerGun": 80 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_jets/mig17f.glb",
+    "verify": true
+  },
+  {
+    "id": "hunter_f6",
+    "name": "Hawker Hunter F.6",
+    "era": "early_jets",
+    "tier": 8,
+    "br": 3.1,
+    "years": "1956",
+    "stats": { "topSpeedKmh": 1002, "turnRateDegS": 18, "climbMs": 38, "rollRateDegS": 150, "hp": 110 },
+    "guns": [
+      { "type": "cannon_30mm_aden_defa", "count": 4, "ammoPerGun": 150 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_jets/hunter_f6.glb",
+    "verify": false
+  },
+  {
+    "id": "mig19s",
+    "name": "Mikoyan-Gurevich MiG-19S",
+    "era": "early_jets",
+    "tier": 9,
+    "br": 3.4,
+    "years": "1955",
+    "stats": { "topSpeedKmh": 1452, "turnRateDegS": 19, "climbMs": 39, "rollRateDegS": 155, "hp": 110 },
+    "guns": [
+      { "type": "cannon_30mm_nr30", "count": 2, "ammoPerGun": 75 },
+      { "type": "cannon_30mm_nr30", "count": 1, "ammoPerGun": 55 }
+    ],
+    "missiles": [
+      { "type": "k13", "count": 2 }
+    ],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_jets/mig19s.glb",
+    "verify": true
+  },
+  {
+    "id": "f8",
+    "name": "Vought F-8 Crusader",
+    "era": "early_jets",
+    "tier": 10,
+    "br": 3.7,
+    "years": "1957",
+    "stats": { "topSpeedKmh": 1974, "turnRateDegS": 19, "climbMs": 39, "rollRateDegS": 160, "hp": 110 },
+    "guns": [
+      { "type": "cannon_20mm_colt", "count": 4, "ammoPerGun": 125 }
+    ],
+    "missiles": [
+      { "type": "aim9b", "count": 4 }
+    ],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_jets/f8.glb",
+    "verify": true
+  },
+  {
+    "id": "mig21f13",
+    "name": "Mikoyan-Gurevich MiG-21F-13",
+    "era": "cold_war",
+    "tier": 1,
+    "br": 1,
+    "years": "1960",
+    "stats": { "topSpeedKmh": 2125, "turnRateDegS": 13, "climbMs": 108, "rollRateDegS": 155, "hp": 110 },
+    "guns": [
+      { "type": "cannon_30mm_nr30", "count": 1, "ammoPerGun": 30 }
+    ],
+    "missiles": [
+      { "type": "k13", "count": 2 }
+    ],
+    "countermeasures": { "flares": 12, "chaff": 12 },
+    "model": "models/cold_war/mig21f13.glb",
+    "verify": true
+  },
+  {
+    "id": "f104g",
+    "name": "Lockheed F-104G Starfighter",
+    "era": "cold_war",
+    "tier": 2,
+    "br": 1.3,
+    "years": "1960",
+    "stats": { "topSpeedKmh": 2459, "turnRateDegS": 10, "climbMs": 111, "rollRateDegS": 155, "hp": 120 },
+    "guns": [
+      { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 725 }
+    ],
+    "missiles": [
+      { "type": "aim9b", "count": 2 }
+    ],
+    "countermeasures": { "flares": 12, "chaff": 12 },
+    "model": "models/cold_war/f104g.glb",
+    "verify": false
+  },
+  {
+    "id": "mirage3e",
+    "name": "Dassault Mirage IIIE",
+    "era": "cold_war",
+    "tier": 3,
+    "br": 1.6,
+    "years": "1964",
+    "stats": { "topSpeedKmh": 2350, "turnRateDegS": 13, "climbMs": 114, "rollRateDegS": 160, "hp": 120 },
+    "guns": [
+      { "type": "cannon_30mm_aden_defa", "count": 2, "ammoPerGun": 125 }
+    ],
+    "missiles": [
+      { "type": "aim9b", "count": 2 }
+    ],
+    "countermeasures": { "flares": 12, "chaff": 12 },
+    "model": "models/cold_war/mirage3e.glb",
+    "verify": false
+  },
+  {
+    "id": "f5e",
+    "name": "Northrop F-5E Tiger II",
+    "era": "cold_war",
+    "tier": 4,
+    "br": 1.9,
+    "years": "1972",
+    "stats": { "topSpeedKmh": 1700, "turnRateDegS": 16, "climbMs": 117, "rollRateDegS": 165, "hp": 110 },
+    "guns": [
+      { "type": "cannon_20mm_m39", "count": 2, "ammoPerGun": 280 }
+    ],
+    "missiles": [
+      { "type": "aim9b", "count": 2 }
+    ],
+    "countermeasures": { "flares": 12, "chaff": 12 },
+    "model": "models/cold_war/f5e.glb",
+    "verify": true
+  },
+  {
+    "id": "f4e",
+    "name": "McDonnell Douglas F-4E Phantom II",
+    "era": "cold_war",
+    "tier": 5,
+    "br": 2.2,
+    "years": "1967",
+    "stats": { "topSpeedKmh": 2370, "turnRateDegS": 12, "climbMs": 120, "rollRateDegS": 170, "hp": 140 },
+    "guns": [
+      { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 640 }
+    ],
+    "missiles": [
+      { "type": "aim7f", "count": 4 },
+      { "type": "aim9b", "count": 2 }
+    ],
+    "countermeasures": { "flares": 12, "chaff": 12 },
+    "model": "models/cold_war/f4e.glb",
+    "verify": true
+  },
+  {
+    "id": "mig23mld",
+    "name": "Mikoyan-Gurevich MiG-23MLD",
+    "era": "cold_war",
+    "tier": 6,
+    "br": 2.5,
+    "years": "1982",
+    "stats": { "topSpeedKmh": 2500, "turnRateDegS": 13, "climbMs": 123, "rollRateDegS": 175, "hp": 120 },
+    "guns": [
+      { "type": "cannon_23mm_gsh23", "count": 1, "ammoPerGun": 200 }
+    ],
+    "missiles": [
+      { "type": "r27r", "count": 2 },
+      { "type": "r60", "count": 2 }
+    ],
+    "countermeasures": { "flares": 12, "chaff": 12 },
+    "model": "models/cold_war/mig23mld.glb",
+    "verify": true
+  },
+  {
+    "id": "mirage_f1c",
+    "name": "Dassault Mirage F1C",
+    "era": "cold_war",
+    "tier": 7,
+    "br": 2.8,
+    "years": "1973",
+    "stats": { "topSpeedKmh": 2338, "turnRateDegS": 15, "climbMs": 126, "rollRateDegS": 180, "hp": 120 },
+    "guns": [
+      { "type": "cannon_30mm_aden_defa", "count": 2, "ammoPerGun": 150 }
+    ],
+    "missiles": [
+      { "type": "super530f", "count": 2 },
+      { "type": "r550_magic", "count": 2 }
+    ],
+    "countermeasures": { "flares": 12, "chaff": 12 },
+    "model": "models/cold_war/mirage_f1c.glb",
+    "verify": true
+  },
+  {
+    "id": "f14a",
+    "name": "Grumman F-14A Tomcat",
+    "era": "cold_war",
+    "tier": 8,
+    "br": 3.1,
+    "years": "1974",
+    "stats": { "topSpeedKmh": 2485, "turnRateDegS": 15, "climbMs": 129, "rollRateDegS": 185, "hp": 140 },
+    "guns": [
+      { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 675 }
+    ],
+    "missiles": [
+      { "type": "aim7f", "count": 4 },
+      { "type": "aim9l", "count": 2 }
+    ],
+    "countermeasures": { "flares": 12, "chaff": 12 },
+    "model": "models/cold_war/f14a.glb",
+    "verify": true
+  },
+  {
+    "id": "f16a",
+    "name": "General Dynamics F-16A Fighting Falcon",
+    "era": "cold_war",
+    "tier": 9,
+    "br": 3.4,
+    "years": "1978",
+    "stats": { "topSpeedKmh": 2178, "turnRateDegS": 18, "climbMs": 132, "rollRateDegS": 185, "hp": 120 },
+    "guns": [
+      { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 500 }
+    ],
+    "missiles": [
+      { "type": "aim9l", "count": 4 }
+    ],
+    "countermeasures": { "flares": 12, "chaff": 12 },
+    "model": "models/cold_war/f16a.glb",
+    "verify": true
+  },
+  {
+    "id": "f15a",
+    "name": "McDonnell Douglas F-15A Eagle",
+    "era": "cold_war",
+    "tier": 10,
+    "br": 3.7,
+    "years": "1976",
+    "stats": { "topSpeedKmh": 2655, "turnRateDegS": 16, "climbMs": 135, "rollRateDegS": 190, "hp": 130 },
+    "guns": [
+      { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 940 }
+    ],
+    "missiles": [
+      { "type": "aim7f", "count": 4 },
+      { "type": "aim9l", "count": 2 }
+    ],
+    "countermeasures": { "flares": 12, "chaff": 12 },
+    "model": "models/cold_war/f15a.glb",
+    "verify": true
+  },
+  {
+    "id": "mig29a",
+    "name": "Mikoyan MiG-29A",
+    "era": "modern",
+    "tier": 1,
+    "br": 1,
+    "years": "1983",
+    "stats": { "topSpeedKmh": 2400, "turnRateDegS": 18, "climbMs": 225, "rollRateDegS": 200, "hp": 120 },
+    "guns": [
+      { "type": "cannon_30mm_gsh301", "count": 1, "ammoPerGun": 150 }
+    ],
+    "missiles": [
+      { "type": "r27r", "count": 2 },
+      { "type": "r73", "count": 4 }
+    ],
+    "countermeasures": { "flares": 24, "chaff": 24 },
+    "model": "models/modern/mig29a.glb",
+    "verify": false
+  },
+  {
+    "id": "mirage2000_5",
+    "name": "Dassault Mirage 2000-5",
+    "era": "modern",
+    "tier": 2,
+    "br": 1.3,
+    "years": "1997",
+    "stats": { "topSpeedKmh": 2336, "turnRateDegS": 19, "climbMs": 231, "rollRateDegS": 205, "hp": 120 },
+    "guns": [
+      { "type": "cannon_30mm_aden_defa", "count": 2, "ammoPerGun": 125 }
+    ],
+    "missiles": [
+      { "type": "mica_em", "count": 4 },
+      { "type": "magic2", "count": 2 }
+    ],
+    "countermeasures": { "flares": 24, "chaff": 24 },
+    "model": "models/modern/mirage2000_5.glb",
+    "verify": true
+  },
+  {
+    "id": "fa18c",
+    "name": "McDonnell Douglas F/A-18C Hornet",
+    "era": "modern",
+    "tier": 3,
+    "br": 1.6,
+    "years": "1987",
+    "stats": { "topSpeedKmh": 1915, "turnRateDegS": 20, "climbMs": 238, "rollRateDegS": 210, "hp": 120 },
+    "guns": [
+      { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 578 }
+    ],
+    "missiles": [
+      { "type": "aim7f", "count": 2 },
+      { "type": "aim9l", "count": 2 }
+    ],
+    "countermeasures": { "flares": 24, "chaff": 24 },
+    "model": "models/modern/fa18c.glb",
+    "verify": true
+  },
+  {
+    "id": "f16c_b50",
+    "name": "General Dynamics F-16C Block 50",
+    "era": "modern",
+    "tier": 4,
+    "br": 1.9,
+    "years": "1991",
+    "stats": { "topSpeedKmh": 2120, "turnRateDegS": 20, "climbMs": 244, "rollRateDegS": 215, "hp": 120 },
+    "guns": [
+      { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 511 }
+    ],
+    "missiles": [
+      { "type": "aim120b", "count": 2 },
+      { "type": "aim9l", "count": 2 }
+    ],
+    "countermeasures": { "flares": 24, "chaff": 24 },
+    "model": "models/modern/f16c_b50.glb",
+    "verify": true
+  },
+  {
+    "id": "jas39c",
+    "name": "Saab JAS 39C Gripen",
+    "era": "modern",
+    "tier": 5,
+    "br": 2.2,
+    "years": "2002",
+    "stats": { "topSpeedKmh": 2100, "turnRateDegS": 20, "climbMs": 250, "rollRateDegS": 220, "hp": 110 },
+    "guns": [
+      { "type": "cannon_27mm", "count": 1, "ammoPerGun": 120 }
+    ],
+    "missiles": [
+      { "type": "aim120b", "count": 2 },
+      { "type": "aim9l", "count": 2 }
+    ],
+    "countermeasures": { "flares": 24, "chaff": 24 },
+    "model": "models/modern/jas39c.glb",
+    "verify": true
+  },
+  {
+    "id": "su27s",
+    "name": "Sukhoi Su-27S",
+    "era": "modern",
+    "tier": 6,
+    "br": 2.5,
+    "years": "1985",
+    "stats": { "topSpeedKmh": 2500, "turnRateDegS": 22, "climbMs": 256, "rollRateDegS": 225, "hp": 130 },
+    "guns": [
+      { "type": "cannon_30mm_gsh301", "count": 1, "ammoPerGun": 150 }
+    ],
+    "missiles": [
+      { "type": "r27r", "count": 4 },
+      { "type": "r73", "count": 2 }
+    ],
+    "countermeasures": { "flares": 24, "chaff": 24 },
+    "model": "models/modern/su27s.glb",
+    "verify": false
+  },
+  {
+    "id": "f15c",
+    "name": "McDonnell Douglas F-15C Eagle",
+    "era": "modern",
+    "tier": 7,
+    "br": 2.8,
+    "years": "1979",
+    "stats": { "topSpeedKmh": 2655, "turnRateDegS": 21, "climbMs": 263, "rollRateDegS": 230, "hp": 130 },
+    "guns": [
+      { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 940 }
+    ],
+    "missiles": [
+      { "type": "aim120b", "count": 4 },
+      { "type": "aim9l", "count": 2 }
+    ],
+    "countermeasures": { "flares": 24, "chaff": 24 },
+    "model": "models/modern/f15c.glb",
+    "verify": true
+  },
+  {
+    "id": "rafale_c",
+    "name": "Dassault Rafale C",
+    "era": "modern",
+    "tier": 8,
+    "br": 3.1,
+    "years": "2001",
+    "stats": { "topSpeedKmh": 1912, "turnRateDegS": 23, "climbMs": 269, "rollRateDegS": 235, "hp": 120 },
+    "guns": [
+      { "type": "cannon_30mm_giat", "count": 1, "ammoPerGun": 125 }
+    ],
+    "missiles": [
+      { "type": "mica_em", "count": 4 },
+      { "type": "mica_ir", "count": 2 }
+    ],
+    "countermeasures": { "flares": 24, "chaff": 24 },
+    "model": "models/modern/rafale_c.glb",
+    "verify": true
+  },
+  {
+    "id": "typhoon",
+    "name": "Eurofighter Typhoon",
+    "era": "modern",
+    "tier": 9,
+    "br": 3.4,
+    "years": "2003",
+    "stats": { "topSpeedKmh": 2495, "turnRateDegS": 22, "climbMs": 275, "rollRateDegS": 240, "hp": 120 },
+    "guns": [
+      { "type": "cannon_27mm", "count": 1, "ammoPerGun": 150 }
+    ],
+    "missiles": [
+      { "type": "aim120b", "count": 4 },
+      { "type": "aim9x", "count": 2 }
+    ],
+    "countermeasures": { "flares": 24, "chaff": 24 },
+    "model": "models/modern/typhoon.glb",
+    "verify": true
+  },
+  {
+    "id": "f22a",
+    "name": "Lockheed Martin F-22A Raptor",
+    "era": "modern",
+    "tier": 10,
+    "br": 3.7,
+    "years": "2005",
+    "stats": { "topSpeedKmh": 2414, "turnRateDegS": 24, "climbMs": 281, "rollRateDegS": 250, "hp": 130 },
+    "guns": [
+      { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 480 }
+    ],
+    "missiles": [
+      { "type": "aim120b", "count": 4 },
+      { "type": "aim9x", "count": 2 }
+    ],
+    "countermeasures": { "flares": 24, "chaff": 24 },
+    "model": "models/modern/f22a.glb",
+    "verify": true,
+    "radarSignature": 0.5
+  }
+]

@@ -1,0 +1,56 @@
+[
+  {
+    "id": "ww1",
+    "name": "WW1",
+    "yearFrom": 1914,
+    "yearTo": 1918,
+    "weapons": "1–2 machine guns",
+    "missileClasses": [],
+    "missileMinTier": null
+  },
+  {
+    "id": "early_ww2",
+    "name": "Early WW2",
+    "yearFrom": 1930,
+    "yearTo": 1941,
+    "weapons": "Machine guns, some 20 mm cannons",
+    "missileClasses": [],
+    "missileMinTier": null
+  },
+  {
+    "id": "late_ww2",
+    "name": "Late WW2",
+    "yearFrom": 1942,
+    "yearTo": 1945,
+    "weapons": "Heavy MGs, 20–30 mm cannons, unguided rockets",
+    "missileClasses": [],
+    "missileMinTier": null
+  },
+  {
+    "id": "early_jets",
+    "name": "Early Jets",
+    "yearFrom": 1946,
+    "yearTo": 1958,
+    "weapons": "Cannons",
+    "missileClasses": ["ir_rear"],
+    "missileMinTier": 9
+  },
+  {
+    "id": "cold_war",
+    "name": "Cold War",
+    "yearFrom": 1959,
+    "yearTo": 1984,
+    "weapons": "Cannons",
+    "missileClasses": ["ir_rear", "ir_all_aspect", "radar_semi_active"],
+    "missileMinTier": 1
+  },
+  {
+    "id": "modern",
+    "name": "Modern",
+    "yearFrom": 1985,
+    "yearTo": 2010,
+    "weapons": "Cannons",
+    "missileClasses": ["ir_all_aspect", "ir_hobs", "radar_semi_active", "radar_active"],
+    "missileMinTier": 1
+  }
+]
