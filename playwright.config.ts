@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 4187; // not 4173: other local tools use the Vite default
+// BASE_URL=https://singha105.github.io/red-vs-blue-skies/ npx playwright test  → test the live site instead.
+const REMOTE = process.env['BASE_URL'];
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -10,7 +12,7 @@ export default defineConfig({
   retries: process.env['CI'] ? 1 : 0,
   reporter: [['list']],
   use: {
-    baseURL: `http://localhost:${PORT}/red-vs-blue-skies/`,
+    baseURL: REMOTE ?? `http://localhost:${PORT}/red-vs-blue-skies/`,
     trace: 'retain-on-failure',
   },
   projects: [
@@ -28,10 +30,12 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: `npm run build && npx vite preview --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}/red-vs-blue-skies/`,
-    reuseExistingServer: !process.env['CI'],
-    timeout: 120_000,
-  },
+  webServer: REMOTE
+    ? undefined
+    : {
+        command: `npm run build && npx vite preview --port ${PORT} --strictPort`,
+        url: `http://localhost:${PORT}/red-vs-blue-skies/`,
+        reuseExistingServer: !process.env['CI'],
+        timeout: 120_000,
+      },
 });
