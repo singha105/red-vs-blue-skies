@@ -19,15 +19,13 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-  // Only our own files (plus Google Fonts) are cached; signaling and Firebase traffic pass straight through.
-  const cacheable =
-    url.origin === self.location.origin || url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
-  if (!cacheable) return;
+  // Only our own files are cached; signaling and Firebase traffic pass straight through.
+  if (url.origin !== self.location.origin) return;
 
   event.respondWith(
     fetch(request)
       .then((response) => {
-        if (response.ok || response.type === 'opaque') {
+        if (response.ok) {
           const copy = response.clone();
           caches.open(CACHE).then((cache) => cache.put(request, copy));
         }

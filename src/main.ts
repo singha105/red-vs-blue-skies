@@ -1,4 +1,5 @@
 // Boot: settings → data validation → renderer → title screen with the test scene behind it.
+import './fonts.css';
 import './styles.css';
 import { env } from './core/env';
 import { createInput } from './core/input';

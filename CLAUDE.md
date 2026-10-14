@@ -36,10 +36,11 @@ src/
   net/           networking (Day 5): Transport interface, PeerJS adapter
   ui/            HTML/CSS overlays: title, rotate prompt, error overlay, FPS
   data/          JSON data files + types.ts + validate.ts (checked at startup)
-  styles.css     global styles
+  styles.css     global styles; fonts.css declares the self-hosted fonts
 public/
   models/        generated .glb files (Day 4+), never hand-edited
   icons/         generated PWA icons
+  fonts/         self-hosted OFL fonts (no third-party font requests)
   manifest.webmanifest, sw.js
 tools/
   blender/       headless Blender scripts and plane specs (Day 4+)
