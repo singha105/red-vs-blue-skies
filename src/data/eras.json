@@ -6,7 +6,9 @@
     "yearTo": 1918,
     "weapons": "1–2 machine guns",
     "missileClasses": [],
-    "missileMinTier": null
+    "missileMinTier": null,
+    "ceilingM": 6500,
+    "stallSpeedRatio": 0.45
   },
   {
     "id": "early_ww2",
@@ -15,7 +17,9 @@
     "yearTo": 1941,
     "weapons": "Machine guns, some 20 mm cannons",
     "missileClasses": [],
-    "missileMinTier": null
+    "missileMinTier": null,
+    "ceilingM": 10000,
+    "stallSpeedRatio": 0.3
   },
   {
     "id": "late_ww2",
@@ -24,7 +28,9 @@
     "yearTo": 1945,
     "weapons": "Heavy MGs, 20–30 mm cannons, unguided rockets",
     "missileClasses": [],
-    "missileMinTier": null
+    "missileMinTier": null,
+    "ceilingM": 12500,
+    "stallSpeedRatio": 0.28
   },
   {
     "id": "early_jets",
@@ -33,7 +39,9 @@
     "yearTo": 1958,
     "weapons": "Cannons",
     "missileClasses": ["ir_rear"],
-    "missileMinTier": 9
+    "missileMinTier": 9,
+    "ceilingM": 15000,
+    "stallSpeedRatio": 0.22
   },
   {
     "id": "cold_war",
@@ -42,7 +50,9 @@
     "yearTo": 1984,
     "weapons": "Cannons",
     "missileClasses": ["ir_rear", "ir_all_aspect", "radar_semi_active"],
-    "missileMinTier": 1
+    "missileMinTier": 1,
+    "ceilingM": 17500,
+    "stallSpeedRatio": 0.17
   },
   {
     "id": "modern",
@@ -51,6 +61,8 @@
     "yearTo": 2010,
     "weapons": "Cannons",
     "missileClasses": ["ir_all_aspect", "ir_hobs", "radar_semi_active", "radar_active"],
-    "missileMinTier": 1
+    "missileMinTier": 1,
+    "ceilingM": 18000,
+    "stallSpeedRatio": 0.15
   }
 ]

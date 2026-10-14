@@ -148,6 +148,8 @@ export function validateGameData(raw: RawData): ValidationResult {
     const from = c.num(o, 'yearFrom', p, 1900, 2100, true);
     const to = c.num(o, 'yearTo', p, 1900, 2100, true);
     if (from !== null && to !== null && from > to) c.fail(p, `yearFrom ${from} is after yearTo ${to}`);
+    c.num(o, 'ceilingM', p, 2000, 25000, true);
+    c.num(o, 'stallSpeedRatio', p, 0.05, 0.8);
     const classes = c.arr(o['missileClasses'], `${p}.missileClasses`) ?? [];
     classes.forEach((cls, j) => {
       if (typeof cls !== 'string' || !(MISSILE_CLASS_IDS as readonly string[]).includes(cls)) {

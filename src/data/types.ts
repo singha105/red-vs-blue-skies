@@ -43,6 +43,10 @@ export interface Era {
   missileClasses: MissileClassId[];
   /** Lowest tier allowed to carry missiles, or null if the era has none. */
   missileMinTier: number | null;
+  /** Altitude where engines run out of air; thrust fades over the last 30%. */
+  ceilingM: number;
+  /** Stall speed as a fraction of the plane's (game) top speed. */
+  stallSpeedRatio: number;
 }
 
 export interface PlaneStats {
