@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 4173;
+const PORT = 4187; // not 4173: other local tools use the Vite default
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -14,9 +14,19 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'desktop-chrome', use: { ...devices['Desktop Chrome'] } },
+    { name: 'desktop-chrome', testIgnore: /perf\.spec/, use: { ...devices['Desktop Chrome'] } },
     // Landscape is how the game is played; the portrait rotate prompt is covered by its own test.
-    { name: 'iphone-13', use: { ...devices['iPhone 13 landscape'] } },
+    { name: 'iphone-13', testIgnore: /perf\.spec/, use: { ...devices['iPhone 13 landscape'] } },
+    // Frame-rate budget needs the real GPU: full Chromium (not the software-rendered headless shell).
+    {
+      name: 'perf',
+      testMatch: /perf\.spec/,
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: 'chromium',
+        launchOptions: { args: ['--enable-gpu', '--ignore-gpu-blocklist', '--use-angle=metal', '--enable-features=Vulkan'] },
+      },
+    },
   ],
   webServer: {
     command: `npm run build && npx vite preview --port ${PORT} --strictPort`,

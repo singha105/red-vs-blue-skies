@@ -63,8 +63,8 @@ test('title screen and test scene load without errors', async ({ page }, info) =
   expect(size.dpr).toBeLessThanOrEqual(2);
   await expect.poll(() => canvasHasPixels(page), { timeout: 10_000 }).toBe(true);
 
-  // Stub buttons answer with a note instead of doing nothing.
-  await solo.click();
+  // Host / Join is still a stub and answers with a note instead of doing nothing.
+  await host.click();
   await expect(page.getByRole('status')).toContainText('coming soon');
 
   // No FPS counter without ?debug=1.
