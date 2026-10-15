@@ -178,6 +178,7 @@ export function spawnPlane(
     ammo: def.guns.map((g) => g.count * g.ammoPerGun),
     gunHeat: def.guns.map(() => 0),
     assist: opts.assist ?? 0,
+    firing: false,
   };
   const existing = world.planes.findIndex((p) => p.id === opts.id);
   if (existing >= 0) world.planes[existing] = state;
@@ -210,6 +211,7 @@ export function applyDamage(world: WorldState, victim: PlaneState, shooter: stri
 /** Death by damage (wreck falls) or by crashing (explodes where it hit). Credits kill and assists. */
 function killPlane(world: WorldState, victim: PlaneState, weapon: string, shotDown: boolean): void {
   victim.alive = false;
+  victim.firing = false;
   victim.hp = Math.max(0, victim.hp);
   victim.wreck = shotDown;
   victim.fireFor = 0;
@@ -279,10 +281,12 @@ export function stepWorld(world: WorldState, ctx: WorldContext, inputs: Record<s
       applyDamage(world, plane, plane.lastHitBy, FIRE_DPS * dt, null, 'fire');
       if (!plane.alive) continue;
     }
+    plane.firing = false;
     if (input.fire) {
       fc.enemies = plane.assist > 0 ? world.planes.filter((p) => p.alive && p.team !== plane.team) : [];
       // Firing gives up spawn protection.
       if (fireGuns(plane, def, fc, dt, world.bullets) > 0) plane.protectedFor = 0;
+      plane.firing = plane.ammo.some((a) => a > 0);
     }
   }
 

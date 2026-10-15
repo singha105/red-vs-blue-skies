@@ -68,6 +68,8 @@ export interface PlaneState {
   gunHeat: number[];
   /** Touch aim-assist strength 0–1 (bullet magnetism within 2°); 0 for mouse players and bots. */
   assist: number;
+  /** Guns firing this tick (drives muzzle flashes). */
+  firing: boolean;
 }
 
 /** Derived flight numbers for one plane type. Computed once from planes.json + eras.json. */

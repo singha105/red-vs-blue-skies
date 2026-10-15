@@ -7,6 +7,7 @@ import type { Gun, GunMount, Plane } from '../data/types';
 import type { PlaneState, Team } from './flight';
 import { G } from './flight';
 import { add, clamp, cross, dot, FORWARD, len, normalize, quatFromAxisAngle, rotate, scale, UP, type Vec3 } from './math';
+import { isProp, muzzlesFor, planeSize } from './planeModels';
 
 export const CONVERGENCE_M = 300;
 export const BULLET_RANGE_M = 1300;
@@ -28,23 +29,34 @@ export interface Bullet {
   life: number;
 }
 
-/** Four hit spheres per plane in local metres (+Z forward, +X left wing). Jets carry the engine at the tail. */
-// Slightly generous (arcade): a plane is about 9 m long and 12 m across.
-const SPHERES_PROP: Record<Part, { c: Vec3; r: number }> = {
-  fuselage: { c: [0, 0, -0.5], r: 2.8 },
-  wingL: { c: [4.4, -0.2, 0.6], r: 3.0 },
-  wingR: { c: [-4.4, -0.2, 0.6], r: 3.0 },
-  engine: { c: [0, 0, 3.8], r: 1.9 },
-};
-const SPHERES_JET: Record<Part, { c: Vec3; r: number }> = {
-  ...SPHERES_PROP,
-  engine: { c: [0, 0.2, -3.8], r: 2.0 },
-};
-export const BOUNDING_RADIUS = 8;
+export type HitSpheres = Record<Part, { c: Vec3; r: number }> & { bound: number };
 
-export function hitSpheres(plane: Plane): Record<Part, { c: Vec3; r: number }> {
-  return plane.era === 'ww1' || plane.era === 'early_ww2' || plane.era === 'late_ww2' ? SPHERES_PROP : SPHERES_JET;
+const sphereCache = new Map<string, HitSpheres>();
+const clampR = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+
+/**
+ * Four hit spheres per plane in local metres (+Z forward, +X left wing), scaled to the plane's real
+ * length and span. Slightly generous (arcade). Jets carry the engine at the tail, props at the nose.
+ */
+export function hitSpheres(plane: Plane): HitSpheres {
+  const cached = sphereCache.get(plane.id);
+  if (cached) return cached;
+  const { lengthM: L, wingspanM: S } = planeSize(plane);
+  const wingR = clampR(S * 0.26, 2.2, 3.4);
+  const wingX = S * 0.37;
+  const spheres: HitSpheres = {
+    fuselage: { c: [0, 0, -0.05 * L], r: clampR(L * 0.3, 2.2, 4.2) },
+    wingL: { c: [wingX, -0.2, 0.05 * L], r: wingR },
+    wingR: { c: [-wingX, -0.2, 0.05 * L], r: wingR },
+    engine: isProp(plane.era) ? { c: [0, 0, 0.42 * L], r: clampR(L * 0.2, 1.5, 2.2) } : { c: [0, 0.2, -0.4 * L], r: clampR(L * 0.14, 1.6, 2.4) },
+    bound: Math.max(L * 0.5 + 4.5, wingX + wingR) + 0.5,
+  };
+  sphereCache.set(plane.id, spheres);
+  return spheres;
 }
+
+/** Largest bound of any plane, for the bullet broad-phase. */
+export const BOUNDING_RADIUS = 15;
 
 /**
  * First time t in [0, 1] at which the segment p0→p1 enters the sphere (c, r), or −1.
@@ -78,6 +90,8 @@ export function leadPoint(shooterPos: Vec3, shooterVel: Vec3, targetPos: Vec3, t
 
 /** Muzzle position for mount `index`, alternating sides shot by shot. Jets keep their guns near the nose. */
 function muzzleOffset(plane: Plane, mount: GunMount, index: number, shot: number): Vec3 {
+  const fromModel = muzzlesFor(plane.id, index);
+  if (fromModel) return fromModel[shot % fromModel.length]!;
   const jet = !(plane.era === 'ww1' || plane.era === 'early_ww2' || plane.era === 'late_ww2');
   if (jet || mount.count === 1) return [shot % 2 ? 0.5 : -0.5, -0.3, 3];
   const side = shot % 2 ? 1 : -1;
@@ -175,7 +189,7 @@ export interface BulletHit {
 export function stepBullets(
   bullets: Bullet[],
   planes: PlaneState[],
-  spheresFor: (p: PlaneState) => Record<Part, { c: Vec3; r: number }>,
+  spheresFor: (p: PlaneState) => Record<Part, { c: Vec3; r: number }> & { bound?: number },
   surfaceAt: (x: number, z: number) => number,
   dt: number,
 ): BulletHit[] {
@@ -197,9 +211,9 @@ export function stepBullets(
       for (const plane of planes) {
         if (!plane.alive || plane.team === b.team || plane.id === b.owner) continue;
         const dx = plane.pos[0] - mid[0], dy = plane.pos[1] - mid[1], dz = plane.pos[2] - mid[2];
-        const reach = half + BOUNDING_RADIUS;
-        if (dx * dx + dy * dy + dz * dz > reach * reach) continue;
         const spheres = spheresFor(plane);
+        const reach = half + (spheres.bound ?? BOUNDING_RADIUS);
+        if (dx * dx + dy * dy + dz * dz > reach * reach) continue;
         for (const part of PARTS) {
           const sph = spheres[part];
           const c = add(plane.pos, rotate(plane.quat, sph.c));
