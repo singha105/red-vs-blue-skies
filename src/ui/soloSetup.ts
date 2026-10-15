@@ -40,7 +40,7 @@ function gunsSummary(plane: Plane, data: GameData): string {
 export function createSoloSetup(
   parent: HTMLElement,
   data: GameData,
-  opts: { allUnlocked: boolean },
+  opts: { allUnlocked: boolean; title?: string; intro?: string; startLabel?: string; hangar?: boolean },
   handlers: { onStart(choice: SoloChoice): void; onBack(): void; onHangar(choice: SoloChoice): void },
 ): { dispose(): void } {
   const choice = loadChoice(data);
@@ -56,8 +56,8 @@ export function createSoloSetup(
     el.innerHTML = `
       <header class="setup__head">
         <button type="button" class="btn btn--secondary btn--small" data-act="back">Back</button>
-        <h2>Solo match</h2>
-        <p>Team Deathmatch, 10 vs 10 with bots. First to 50 kills, or most kills after 10 minutes.</p>
+        <h2>${esc(opts.title ?? 'Solo match')}</h2>
+        <p>${esc(opts.intro ?? 'Team Deathmatch, 10 vs 10 with bots. First to 50 kills, or most kills after 10 minutes.')}</p>
       </header>
       <div class="setup__eras" role="radiogroup" aria-label="Era">
         ${data.eras
@@ -84,8 +84,8 @@ export function createSoloSetup(
             .join('')}
         </div>
         <div class="setup__go">
-          <button type="button" class="btn btn--secondary" data-act="hangar">Hangar</button>
-          <button type="button" class="btn btn--primary" data-act="start">Start match</button>
+          ${opts.hangar === false ? '' : '<button type="button" class="btn btn--secondary" data-act="hangar">Hangar</button>'}
+          <button type="button" class="btn btn--primary" data-act="start">${esc(opts.startLabel ?? 'Start match')}</button>
         </div>
       </footer>
     `;

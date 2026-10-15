@@ -4,14 +4,14 @@ import { escapeHtml as esc, type ScoreRow } from './hud';
 
 export function showResults(
   parent: HTMLElement,
-  r: { winner: Team | 'draw' | null; score: Record<Team, number>; rows: ScoreRow[]; yourTeam: Team },
+  r: { winner: Team | 'draw' | null; score: Record<Team, number>; rows: ScoreRow[]; yourTeam: Team; title?: string; againLabel?: string },
   handlers: { onAgain(): void; onTitle(): void },
 ): { dispose(): void } {
   const el = document.createElement('section');
   el.className = 'results';
   el.setAttribute('aria-label', 'Match results');
-  const headline =
-    r.winner === 'draw' ? 'Draw' : r.winner === r.yourTeam ? 'Victory' : r.winner ? `${r.winner === 'red' ? 'Red' : 'Blue'} team wins` : 'Match over';
+  const headline = r.title ??
+    (r.winner === 'draw' ? 'Draw' : r.winner === r.yourTeam ? 'Victory' : r.winner ? `${r.winner === 'red' ? 'Red' : 'Blue'} team wins` : 'Match over');
   const table = (team: Team): string => `
     <table class="results__table results__table--${team}">
       <caption>${team === 'blue' ? 'Blue' : 'Red'} · ${r.score[team]}</caption>
@@ -23,11 +23,11 @@ export function showResults(
         .join('')}</tbody>
     </table>`;
   el.innerHTML = `
-    <h2 class="results__title results__title--${r.winner === r.yourTeam ? 'win' : 'loss'}">${headline}</h2>
+    <h2 class="results__title results__title--${r.winner === r.yourTeam ? "win" : "loss"}">${esc(headline)}</h2>
     <p class="results__score"><span class="t-blue">${r.score.blue}</span> – <span class="t-red">${r.score.red}</span></p>
     <div class="results__tables">${table('blue')}${table('red')}</div>
     <div class="results__actions">
-      <button type="button" class="btn btn--primary" data-act="again">Play again</button>
+      <button type="button" class="btn btn--primary" data-act="again">${esc(r.againLabel ?? 'Play again')}</button>
       <button type="button" class="btn btn--secondary" data-act="title">Title screen</button>
     </div>
   `;
