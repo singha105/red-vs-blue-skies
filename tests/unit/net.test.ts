@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { loadGameData } from '../../src/data';
+import { freshUnlocks } from '../../src/game/unlocks';
 import type { ControlInput } from '../../src/game/controls';
 import { neutralInput } from '../../src/game/controls';
 import { createRng } from '../../src/game/rng';
 import { createClientSession, type ClientSession } from '../../src/net/clientSession';
 import { createFakeNetwork, type FakeNetwork } from '../../src/net/fakeTransport';
-import { createHostServer, type HostServer } from '../../src/net/hostServer';
+import { createHostServer, type HostServer, type MatchRecorder } from '../../src/net/hostServer';
 import {
   decodeInput,
   decodeSnapshot,
@@ -55,14 +56,25 @@ interface Rig {
   step(n?: number): void;
 }
 
-async function rig(opts: { clients: number; delayMs?: number; loss?: number; jitterMs?: number; version?: string[]; matchTimeS?: number }): Promise<Rig> {
+async function rig(opts: {
+  clients: number;
+  delayMs?: number;
+  loss?: number;
+  jitterMs?: number;
+  version?: string[];
+  matchTimeS?: number;
+  record?: MatchRecorder;
+  uids?: (string | null)[];
+  allUnlocked?: boolean;
+}): Promise<Rig> {
   const rng = createRng(5);
   const net = createFakeNetwork({ delayMs: opts.delayMs ?? 0, loss: opts.loss ?? 0, jitterMs: opts.jitterMs ?? 0, random: rng });
   const ht = await net.host('ABCD');
   const server = createHostServer(data, ht, {
     version: 'test',
     settings: SETTINGS,
-    allUnlocked: true,
+    allUnlocked: opts.allUnlocked ?? true,
+    ...(opts.record ? { record: opts.record } : {}),
     now: () => net.now,
     random: rng,
     ...(opts.matchTimeS ? { matchTimeS: opts.matchTimeS } : {}),
@@ -70,7 +82,15 @@ async function rig(opts: { clients: number; delayMs?: number; loss?: number; jit
   const clients: ClientSession[] = [];
   for (let i = 0; i < opts.clients; i++) {
     const ct = await net.join('ABCD');
-    clients.push(createClientSession(ct, data, { version: opts.version?.[i] ?? 'test', callsign: `P${i + 1}`, device: { touch: i === 2, connection: null }, now: () => net.now }));
+    clients.push(
+      createClientSession(ct, data, {
+        version: opts.version?.[i] ?? 'test',
+        callsign: `P${i + 1}`,
+        device: { touch: i === 2, connection: null },
+        uid: opts.uids?.[i] ?? null,
+        now: () => net.now,
+      }),
+    );
   }
   const inputs: (ControlInput | null)[] = clients.map(() => neutralInput(0.9));
   const r: Rig = {
@@ -423,8 +443,9 @@ describe('room (host-owned lobby state)', () => {
     expect(room.choice).toEqual({ era: 'late_ww2', mapId: 'desert_mesas', mode: 'tdm' });
   });
 
-  it('parties hold at most 3 and stay on one team; plane picks are checked', () => {
+  it('parties hold at most 3 and stay on one team; plane picks are checked against each player\'s unlocks', () => {
     const room = make();
+    room.setProgress('h2', 1000, { ...freshUnlocks(), early_ww2: 3 });
     expect(room.party('h2', 'h1')).toBe(true);
     expect(room.party('h3', 'h1')).toBe(true);
     expect(room.party('h4', 'h1')).toBe(false); // PARTY_MAX
@@ -440,10 +461,16 @@ describe('room (host-owned lobby state)', () => {
     expect(room.pick('h2', 'bf109f4', true)).toBe(false); // tier 10: locked without debug
     expect(room.pick('h2', 'sopwith_camel', true)).toBe(false); // wrong era
     expect(room.pick('h2', 'cr42', true)).toBe(true);
+    // h3 has only tier 1 researched: the tier-3 CR.42 is locked, and their default is the era's tier 1.
+    expect(room.pick('h3', 'cr42', true)).toBe(false);
+    const tier1 = data.planes.find((p) => p.era === 'early_ww2' && p.tier === 1)!.id;
+    expect(room.get('h3')!.planeId).toBe(tier1);
+    expect(room.defaultPlane('h2', 'early_ww2')).toBe('cr42');
     for (const p of room.players()) room.pick(p.id, room.get(p.id)!.planeId!, true);
     expect(room.tick(30_000)).toBe('start');
     expect(room.phase).toBe('playing');
     expect(room.get('h2')!.planeId).toBe('cr42');
+    expect(room.state(0).players.find((p) => p.id === 'h2')!.unlocked.early_ww2).toBe(3);
   });
 
   it('two full rounds on the same connections: vote → play → results → lobby, BR within 10% each time', async () => {
@@ -493,5 +520,56 @@ describe('room (host-owned lobby state)', () => {
     expect(after.alive).toBe(true);
     expect(after.planeId).toBe('p26');
     expect(c.world.planes.find((p) => p.id === c.playerId)!.planeId).toBe('p26');
+  });
+});
+
+describe('progress (Day 8)', () => {
+  it('the host records each match with every human uid; players get the match id; late joiners are added', async () => {
+    const calls: string[] = [];
+    const record: MatchRecorder = {
+      start: (uids) => {
+        calls.push(`start ${uids.join(',')}`);
+        return 'm-test';
+      },
+      join: (id, uid) => calls.push(`join ${id} ${uid}`),
+    };
+    const r = await rig({ clients: 3, record, uids: ['uA', null, 'not a uid!'] });
+    r.step(5);
+    start(r);
+    // The client without an account and the one sending junk aren't listed (their results can't be saved).
+    expect(calls).toEqual(['start uA']);
+    expect(r.clients.map((c) => c.matchId)).toEqual(['m-test', 'm-test', 'm-test']);
+    expect(r.clients[0]!.participants).toEqual(['uA']);
+    const ct = await r.net.join('ABCD');
+    const late = createClientSession(ct, data, { version: 'test', callsign: 'Late', device: { touch: false, connection: null }, uid: 'uLate', now: () => r.net.now });
+    for (let i = 0; i < 30 && late.phase !== 'playing'; i++) {
+      late.idle(DT);
+      r.step();
+    }
+    expect(late.phase).toBe('playing');
+    expect(calls).toEqual(['start uA', 'join m-test uLate']);
+    expect(late.matchId).toBe('m-test');
+    expect(late.participants).toEqual(['uA', 'uLate']);
+  });
+
+  it('plane select follows what each player has researched, and a profile update between rounds counts', async () => {
+    const r = await rig({ clients: 2, allUnlocked: false });
+    r.step(5);
+    r.clients[0]!.request({ t: 'profile', rp: 5000, unlocked: { ...freshUnlocks(), early_ww2: 9 } });
+    r.step(5);
+    const p1 = r.server.room().players.find((p) => p.id === r.clients[0]!.playerId)!;
+    expect(p1.unlocked.early_ww2).toBe(9);
+    expect(p1.rp).toBe(5000);
+    // Both ask for the tier-9 Spitfire: only the one who researched it gets it (the other one's pick is
+    // refused, so plane select runs to its timer and they fly their best open plane).
+    expect(r.server.startVote()).toBe(true);
+    for (const c of r.clients) for (const [cat, id] of [['era', 'early_ww2'], ['map', 'island_chain'], ['mode', 'tdm']] as const) c.request({ t: 'vote', cat, id });
+    for (let i = 0; i < 60 * 10 && r.server.phase !== 'select'; i++) r.step();
+    for (const c of r.clients) c.request({ t: 'pick', planeId: 'spitfire_mk5', lock: true });
+    for (let i = 0; i < 60 * 30 && r.server.phase !== 'playing'; i++) r.step();
+    expect(r.server.phase).toBe('playing');
+    const planeOf = (c: ClientSession) => r.server.match!.world.planes.find((p) => p.id === c.playerId)!.planeId;
+    expect(planeOf(r.clients[0]!)).toBe('spitfire_mk5');
+    expect(data.planes.find((p) => p.id === planeOf(r.clients[1]!))!.tier).toBe(1);
   });
 });

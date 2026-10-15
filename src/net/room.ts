@@ -4,7 +4,7 @@
 import type { EraId, GameData } from '../data/types';
 import type { Team } from '../game/flight';
 import { splitTeams, TEAM_SIZE } from '../game/teams';
-import { isUnlocked, OPEN_TIERS } from '../game/unlocks';
+import { cleanUnlocks, isUnlocked, type UnlockMap } from '../game/unlocks';
 import type { DeviceInfo, RoomPhase, RoomPlayer, RoomSettings, RoomState, VoteCategory } from './protocol';
 
 export const VOTE_S = 20;
@@ -20,7 +20,9 @@ export interface Room {
   readonly choice: RoomState['choice'];
   players(): RoomPlayer[];
   get(id: string): RoomPlayer | undefined;
-  add(p: { id: string; name: string; host: boolean; device: DeviceInfo; rp: number }): RoomPlayer;
+  add(p: { id: string; name: string; host: boolean; device: DeviceInfo; rp: number; unlocked?: UnlockMap }): RoomPlayer;
+  /** A player's progress changed between rounds (bought an unlock, saved RP). */
+  setProgress(id: string, rp: number, unlocked: UnlockMap): void;
   remove(id: string): void;
   setPing(id: string, ms: number | null): void;
   ready(id: string, ready: boolean): boolean;
@@ -28,9 +30,10 @@ export interface Room {
   vote(id: string, cat: VoteCategory, option: string): boolean;
   override(cat: VoteCategory, option: string | null): boolean;
   pick(id: string, planeId: string, lock: boolean): boolean;
-  /** Is this plane one this room lets anyone fly in the chosen era? */
-  allowedPlane(planeId: string): boolean;
-  defaultPlane(era: EraId): string;
+  /** May this player fly this plane in the chosen era (their unlocks, or everything with debug)? */
+  allowedPlane(playerId: string, planeId: string): boolean;
+  /** For anyone who doesn't pick: the best plane this player has unlocked in the era. */
+  defaultPlane(playerId: string, era: EraId): string;
   setSettings(s: Partial<RoomSettings>): void;
   startVote(now: number): boolean;
   /** Advance timers. Returns 'start' when plane select is over and the host should create the match. */
@@ -67,13 +70,14 @@ export function createRoom(data: GameData, opts: { allUnlocked: boolean; setting
     cat === 'era' ? data.eras.map((e) => e.id) : cat === 'map' ? data.maps.map((m) => m.id) : data.modes.filter((m) => m.playable).map((m) => m.id);
 
   const planeById = new Map(data.planes.map((p) => [p.id, p]));
-  const allowedPlane = (planeId: string): boolean => {
+  const unlocksOf = (playerId: string): UnlockMap | 'all' => (opts.allUnlocked ? 'all' : (list.find((p) => p.id === playerId)?.unlocked ?? cleanUnlocks(null)));
+  const allowedPlane = (playerId: string, planeId: string): boolean => {
     const p = planeById.get(planeId);
-    return Boolean(p && choice && p.era === choice.era && isUnlocked(p, opts.allUnlocked));
+    return Boolean(p && choice && p.era === choice.era && isUnlocked(p, unlocksOf(playerId)));
   };
-  /** For anyone who doesn't pick: the best plane open to everyone (tier 3 until Day 8's unlocks). */
-  const defaultPlane = (era: EraId): string => {
-    const pool = data.planes.filter((p) => p.era === era && p.tier <= OPEN_TIERS).sort((a, b) => b.tier - a.tier);
+  const defaultPlane = (playerId: string, era: EraId): string => {
+    const open = unlocksOf(playerId);
+    const pool = data.planes.filter((p) => p.era === era && isUnlocked(p, open)).sort((a, b) => b.tier - a.tier);
     return pool[0]!.id;
   };
 
@@ -159,6 +163,7 @@ export function createRoom(data: GameData, opts: { allUnlocked: boolean; setting
         ready: p.host,
         party: null,
         rp: Math.max(0, Math.min(1e7, Math.round(p.rp))),
+        unlocked: cleanUnlocks(p.unlocked),
         team: null,
         planeId: null,
         locked: false,
@@ -166,13 +171,20 @@ export function createRoom(data: GameData, opts: { allUnlocked: boolean; setting
         inMatch: false,
       };
       // Late arrivals: after teams are drawn they join the smaller team and get a default plane.
+      list.push(player);
       if (phase === 'teams' || phase === 'select' || phase === 'playing') {
         player.team = smallerTeam();
-        if (choice) player.planeId = defaultPlane(choice.era);
+        if (choice) player.planeId = defaultPlane(player.id, choice.era);
       }
-      list.push(player);
       changed();
       return player;
+    },
+    setProgress(id, rp, unlocked) {
+      const p = room.get(id);
+      if (!p) return;
+      p.rp = Math.max(0, Math.min(1e7, Math.round(rp)));
+      p.unlocked = cleanUnlocks(unlocked);
+      changed();
     },
     remove(id) {
       const i = list.findIndex((p) => p.id === id);
@@ -242,7 +254,7 @@ export function createRoom(data: GameData, opts: { allUnlocked: boolean; setting
     },
     pick(id, planeId, lock) {
       const p = room.get(id);
-      if (!p || (phase !== 'select' && phase !== 'teams') || !allowedPlane(planeId)) return false;
+      if (!p || (phase !== 'select' && phase !== 'teams') || !allowedPlane(id, planeId)) return false;
       p.planeId = planeId;
       p.locked = lock && phase === 'select';
       changed();
@@ -270,7 +282,7 @@ export function createRoom(data: GameData, opts: { allUnlocked: boolean; setting
           assignTeams();
           for (const p of list) {
             p.locked = false;
-            if (!p.planeId || !allowedPlane(p.planeId)) p.planeId = defaultPlane(choice.era);
+            if (!p.planeId || !allowedPlane(p.id, p.planeId)) p.planeId = defaultPlane(p.id, choice.era);
           }
           enter('teams', now, TEAMS_S);
         }
@@ -279,7 +291,7 @@ export function createRoom(data: GameData, opts: { allUnlocked: boolean; setting
       } else if (phase === 'select') {
         if (due || list.every((p) => p.locked)) {
           for (const p of list) {
-            if (!p.planeId || !allowedPlane(p.planeId)) p.planeId = defaultPlane(choice!.era);
+            if (!p.planeId || !allowedPlane(p.id, p.planeId)) p.planeId = defaultPlane(p.id, choice!.era);
             p.locked = true;
             p.inMatch = true;
             p.team ??= smallerTeam();
@@ -329,7 +341,7 @@ export function createRoom(data: GameData, opts: { allUnlocked: boolean; setting
       return {
         phase,
         endsInMs: endsAt === null ? null : Math.max(0, endsAt - now),
-        players: list.map((p) => ({ ...p, votes: { ...p.votes }, device: { ...p.device }, team: preview ? (preview[p.id] ?? null) : p.team })),
+        players: list.map((p) => ({ ...p, votes: { ...p.votes }, device: { ...p.device }, unlocked: { ...p.unlocked }, team: preview ? (preview[p.id] ?? null) : p.team })),
         settings: { ...settings },
         overrides: { ...overrides },
         choice: choice ? { ...choice } : null,

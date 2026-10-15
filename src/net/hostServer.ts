@@ -6,6 +6,7 @@ import { neutralInput, type ControlInput } from '../game/controls';
 import type { Team } from '../game/flight';
 import { addHumanToMatch, botTakeOver, createMatch, rebalanceBots, stepMatch, type Match } from '../game/match';
 import { computeResults, type MatchResults } from '../game/results';
+import { cleanUnlocks } from '../game/unlocks';
 import { lockSeeker, missileTypeIds } from '../game/missiles';
 import { createWorldContext, type GameEvent, type WorldContext } from '../game/world';
 import {
@@ -58,6 +59,8 @@ interface ClientRec {
   connected: boolean;
   leftAt: number;
   inMatch: boolean;
+  /** Firebase user id (null when that player is offline), listed in the match record. */
+  uid: string | null;
   lastHeard: number;
 }
 
@@ -69,11 +72,22 @@ export interface HostOptions {
   /** Debug: override the match length (?matchtime=30). */
   matchTimeS?: number;
   killLimit?: number;
+  /** Saves each match to Firestore (main.ts wires the profile store; tests leave it out). */
+  record?: MatchRecorder;
   /** Peer id of the host's own loopback client, so it can be marked as the host. */
   hostPeerId?: string;
   now?: () => number;
   random?: () => number;
 }
+
+/** The host's side of saving progress: create the match record with every human's uid, add late joiners. */
+export interface MatchRecorder {
+  /** Returns the match id sent to every player (they save their own result under it), or null when offline. */
+  start(uids: string[]): string | null;
+  join(matchId: string, uid: string): void;
+}
+
+const UID_RE = /^[A-Za-z0-9_-]{1,128}$/;
 
 export interface NetCounters {
   bytesIn: number;
@@ -113,6 +127,8 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
   let match: Match | null = null;
   let ctx: WorldContext | null = null;
   let results: MatchResults | null = null;
+  let matchId: string | null = null;
+  let matchUids: string[] = [];
   let rosterVersion = 0;
   const rosterPlanes = new Map<string, string>();
   let nextPlayer = 1;
@@ -148,6 +164,8 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
     if (!match || !ctx || !room.choice) return;
     sendMsg(c.peerId, {
       t: 'start',
+      matchId,
+      uids: matchUids,
       era: room.choice.era,
       mapId: room.choice.mapId,
       you: c.playerId,
@@ -182,6 +200,9 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
       spawnRules: true,
     });
     results = null;
+    const uids = [...clients.values()].filter((c) => c.welcomed && c.uid && room.get(c.playerId)).map((c) => c.uid!);
+    matchUids = [...new Set(uids)];
+    matchId = opts.record && matchUids.length > 0 ? opts.record.start(matchUids) : null;
     room.setBr(teamBr(match, ctx));
     rosterVersion = (rosterVersion + 1) & 0xff;
     rosterPlanes.clear();
@@ -199,7 +220,7 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
     if (!match || !ctx || !room.choice) return;
     const p = room.get(c.playerId);
     if (!p) return;
-    const planeId = p.planeId && room.allowedPlane(p.planeId) ? p.planeId : room.defaultPlane(room.choice.era);
+    const planeId = p.planeId && room.allowedPlane(p.id, p.planeId) ? p.planeId : room.defaultPlane(p.id, room.choice.era);
     const team = addHumanToMatch(match, ctx, { id: c.playerId, name: c.name, planeId });
     if (!team) {
       sendMsg(c.peerId, { t: 'reject', reason: 'This match is full.' });
@@ -207,6 +228,10 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
       return;
     }
     room.joinedMatch(c.playerId, team);
+    if (matchId && c.uid && !matchUids.includes(c.uid)) {
+      matchUids.push(c.uid);
+      opts.record?.join(matchId, c.uid);
+    }
     rebalanceBots(match, ctx);
     room.setBr(teamBr(match, ctx));
     sendRoster();
@@ -230,7 +255,8 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
     c.welcomed = true;
     c.isHost = c.peerId === opts.hostPeerId;
     const rp = typeof m.rp === 'number' && Number.isFinite(m.rp) ? m.rp : 0;
-    room.add({ id: c.playerId, name: c.name, host: c.isHost, device, rp });
+    c.uid = typeof m.uid === 'string' && UID_RE.test(m.uid) ? m.uid : null;
+    room.add({ id: c.playerId, name: c.name, host: c.isHost, device, rp, unlocked: cleanUnlocks(m.unlocked) });
     const hostName = room.players().find((p) => p.host)?.name ?? c.name;
     sendMsg(c.peerId, { t: 'welcome', playerId: c.playerId, version: opts.version, hostName });
     sendMsg(c.peerId, { t: 'room', room: room.state(now()) });
@@ -257,7 +283,7 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
         if (typeof m.planeId === 'string') room.pick(id, m.planeId, Boolean(m.lock));
         break;
       case 'respawn':
-        if (match && ctx && room.phase === 'playing' && typeof m.planeId === 'string' && room.allowedPlane(m.planeId) && match.world.pilots[id] && !match.world.pilots[id]!.bot) {
+        if (match && ctx && room.phase === 'playing' && typeof m.planeId === 'string' && room.allowedPlane(id, m.planeId) && match.world.pilots[id] && !match.world.pilots[id]!.bot) {
           match.world.respawnPlane[id] = m.planeId;
           const p = room.get(id);
           if (p) p.planeId = m.planeId;
@@ -275,6 +301,9 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
         if (text) broadcast({ t: 'chat', from: c.name, team: room.get(id)?.team ?? null, text });
         break;
       }
+      case 'profile':
+        if (typeof m.rp === 'number' && Number.isFinite(m.rp)) room.setProgress(id, m.rp, cleanUnlocks(m.unlocked));
+        break;
       case 'hello':
         break;
     }
@@ -295,6 +324,7 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
       connected: true,
       leftAt: 0,
       inMatch: false,
+      uid: null,
       lastHeard: now(),
     });
   });

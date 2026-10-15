@@ -77,6 +77,10 @@ export interface ClientSession extends Session {
   /** Milliseconds left on the room's phase timer, counted down locally between updates. */
   timeLeftMs(): number | null;
   readonly results: MatchResults | null;
+  /** The Firestore match this round is saved under (from the host), or null. */
+  readonly matchId: string | null;
+  /** Everyone's uids in this match (for the friends leaderboard). */
+  readonly participants: readonly string[];
   readonly chat: readonly ChatLine[];
   readonly rejectReason: string | null;
   /** Ask the host for something (ready, vote, pick a plane, chat…). */
@@ -88,7 +92,16 @@ export interface ClientSession extends Session {
 export function createClientSession(
   transport: ClientTransport,
   data: GameData,
-  opts: { version: string; callsign: string; device: DeviceInfo; rp?: number; now?: () => number; assist?: number },
+  opts: {
+    version: string;
+    callsign: string;
+    device: DeviceInfo;
+    rp?: number;
+    uid?: string | null;
+    unlocked?: Record<string, number>;
+    now?: () => number;
+    assist?: number;
+  },
   events: ClientEvents = {},
 ): ClientSession {
   const now = opts.now ?? (() => performance.now());
@@ -102,6 +115,8 @@ export function createClientSession(
   let room: RoomState | null = null;
   let roomAt = 0;
   let results: MatchResults | null = null;
+  let matchId: string | null = null;
+  let participants: string[] = [];
   const chat: ChatLine[] = [];
   let rejectReason: string | null = null;
   let ended: Session['ended'] = null;
@@ -320,6 +335,8 @@ export function createClientSession(
         smooth.pos = [0, 0, 0];
         pendingEvents.length = 0;
         results = null;
+        matchId = typeof m.matchId === 'string' ? m.matchId : null;
+        participants = Array.isArray(m.uids) ? m.uids.filter((u): u is string => typeof u === 'string').slice(0, 30) : [];
         respawnChoice = null;
         playerId = m.you;
         roster = m.roster;
@@ -390,7 +407,7 @@ export function createClientSession(
     events.onClosed?.();
   });
 
-  send('reliable', encodeJson({ t: 'hello', callsign: opts.callsign, version: opts.version, device: opts.device, rp: opts.rp ?? 0 }));
+  send('reliable', encodeJson({ t: 'hello', callsign: opts.callsign, version: opts.version, device: opts.device, rp: opts.rp ?? 0, uid: opts.uid ?? null, unlocked: opts.unlocked ?? {} }));
 
   const updateStats = (): void => {
     const t = now();
@@ -507,6 +524,12 @@ export function createClientSession(
     },
     get results() {
       return results;
+    },
+    get matchId() {
+      return matchId;
+    },
+    get participants() {
+      return participants;
     },
     chat,
     request(m) {
