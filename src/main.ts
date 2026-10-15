@@ -16,7 +16,11 @@ import { leadPoint } from './game/ballistics';
 import type { ControlInput } from './game/controls';
 import { speedKmh, type PlaneState } from './game/flight';
 import { dirFromYawPitch, FORWARD, rotate } from './game/math';
-import { createWorldContext, type GameEvent } from './game/world';
+import { createWorldContext, newStats, type GameEvent, type WorldContext } from './game/world';
+import { computeResults } from './game/results';
+import { createSilhouettes } from './render/silhouettes';
+import { createRespawnPicker, type RespawnPicker } from './ui/respawn';
+import { createRoomView, type RoomView } from './ui/roomScreens';
 import { createSoloSession, type RenderPose, type Session } from './app/session';
 import { createClientSession, type ClientSession } from './net/clientSession';
 import { createFakeNetwork, type FakeNetwork } from './net/fakeTransport';
@@ -25,7 +29,7 @@ import { createHostServer, type HostOptions, type HostServer } from './net/hostS
 import { iceServers, turnConfigured } from './net/ice';
 import { makeRoomCode, parseRoomCode, shareLink } from './net/roomCode';
 import { combineHosts, type Network } from './net/transport';
-import { createLobby, createNetMenu, createNetOverlay, type LobbyView } from './ui/netScreens';
+import { createCallsignScreen, createConnecting, createNetMenu, createNetOverlay, savedCallsign, type StatusScreen } from './ui/netScreens';
 import { createChaseCamera } from './render/chaseCamera';
 import { createEffects } from './render/effects';
 import { createMapScene } from './render/mapScene';
@@ -73,13 +77,33 @@ function boot(): void {
   const matchTime = env.debug ? Number(params.get('matchtime')) || undefined : undefined;
 
   const view = createView(canvas, { antialias: !env.isTouch && settings.graphics !== 'low' && forced !== 'low' });
-  const ctx = createWorldContext(data, map.id);
-  const mapScene = createMapScene(map, ctx.terrain);
-  const titleShot = createTitleShot(mapScene.scene, ctx.terrain);
   const tracers = createTracers(data.guns);
-  mapScene.scene.add(tracers.mesh);
   const effects = createEffects();
-  mapScene.scene.add(effects.mesh);
+  const silhouettes = createSilhouettes(view.renderer);
+  // One scene per map, built the first time a match is voted onto it and kept (at most 4), so switching back is free.
+  interface MapWorld {
+    ctx: WorldContext;
+    scene: ReturnType<typeof createMapScene>;
+    titleShot: ReturnType<typeof createTitleShot>;
+  }
+  const mapWorlds = new Map<string, MapWorld>();
+  let titlePlane: (() => Object3D) | null = null;
+  const buildMap = (mapId: string): MapWorld => {
+    let mw = mapWorlds.get(mapId);
+    if (!mw) {
+      const c = createWorldContext(data, mapId);
+      const scene = createMapScene(c.map, c.terrain);
+      mw = { ctx: c, scene, titleShot: createTitleShot(scene.scene, c.terrain) };
+      if (titlePlane) mw.titleShot.setModel(titlePlane());
+      mapWorlds.set(mapId, mw);
+    }
+    return mw;
+  };
+  let current = buildMap(map.id);
+  let ctx: WorldContext = current.ctx;
+  let mapScene = current.scene;
+  let titleShot = current.titleShot;
+  mapScene.scene.add(tracers.mesh, effects.mesh);
 
   let quality: QualityLevel = forced ?? initialLevel(settings.graphics, env.isTouch);
   const applyQuality = (level: QualityLevel): void => {
@@ -99,13 +123,27 @@ function boot(): void {
     }
   });
 
+  /** Switch the scene to another map (the voted one) before a match starts there. */
+  const useMap = (mapId: string): void => {
+    if (ctx.map.id === mapId || !data.maps.some((m) => m.id === mapId)) return;
+    const visible = !document.body.classList.contains('is-flying');
+    titleShot.setVisible(false);
+    current = buildMap(mapId);
+    ctx = current.ctx;
+    mapScene = current.scene;
+    titleShot = current.titleShot;
+    titleShot.setVisible(visible);
+    mapScene.scene.add(tracers.mesh, effects.mesh);
+    applyQuality(quality);
+  };
+
   const controls = createPlayerControls();
   const sensitivity = (): number => getSettings().sensitivity;
   const desktop = createDesktopInput(canvas, controls, sensitivity);
   const chase = createChaseCamera(view.camera);
 
   // --- App state ---
-  type Mode = 'title' | 'setup' | 'hangar' | 'netmenu' | 'hostsetup' | 'lobby' | 'match' | 'results';
+  type Mode = 'title' | 'setup' | 'hangar' | 'callsign' | 'netmenu' | 'connecting' | 'room' | 'match' | 'results';
   let mode: Mode = 'title';
   let screen: { dispose(): void } | null = null;
   let session: Session | null = null;
@@ -122,18 +160,22 @@ function boot(): void {
   let endedAt = 0;
   let clock = 0;
 
-  /** Multiplayer state while hosting or joined, from the lobby to the end of the match. */
+  /** Multiplayer state while hosting or joined: the room, then match after match on the same connection. */
   interface NetState {
     isHost: boolean;
     code: string;
     client: ClientSession;
-    /** Host only: the authoritative match, and the zero-delay loopback that carries our own player. */
+    /** Host only: the authoritative room and match, and the zero-delay loopback that carries our own player. */
     server: HostServer | null;
     loop: FakeNetwork | null;
     close(): void;
   }
   let net: NetState | null = null;
-  let lobbyView: LobbyView | null = null;
+  let roomView: RoomView | null = null;
+  let respawn: RespawnPicker | null = null;
+  let callsign = savedCallsign();
+  // Research points: a local stub until Day 8 (?rp=N with ?debug=1 to test team balancing).
+  const stubRp = (): number => (env.debug && params.get('rp') ? Number(params.get('rp')) || 0 : 0);
   // When this tab was last hidden: a phone that was locked loses the connection itself, so "Host left" would be wrong.
   let hiddenAt = -Infinity;
   document.addEventListener('visibilitychange', () => {
@@ -146,7 +188,6 @@ function boot(): void {
   const player = (): PlaneState | null => session?.world.planes.find((p) => p.id === playerId()) ?? null;
   const pilotName = (id: string | null): string => (id ? session?.world.pilots[id]?.name ?? id : '');
   const planeName = (id: string): string => ctx.planeDefs.get(id)?.name ?? id;
-  const eraName = (id: string): string => data.eras.find((e) => e.id === id)?.name ?? id;
 
   const clearScreen = (): void => {
     screen?.dispose();
@@ -161,8 +202,11 @@ function boot(): void {
     touch = null;
     netOverlay?.dispose();
     netOverlay = null;
+    respawn?.dispose();
+    respawn = null;
     for (const v of visuals.values()) mapScene.scene.remove(v.root);
     visuals.clear();
+    visualPlane.clear();
     if (session?.kind === 'solo') session.dispose();
     session = null;
     endedAt = 0;
@@ -186,7 +230,7 @@ function boot(): void {
     titleShot.setVisible(true);
     screen = createTitleScreen(ui, env.version, {
       onSolo: showSetup,
-      onHostJoin: () => showNetMenu(null),
+      onHostJoin: () => showCallsign(null),
       onSettings: () => openSettings(ui, { isTouch: env.isTouch }),
     });
   }
@@ -197,7 +241,7 @@ function boot(): void {
     screen = createSoloSetup(ui, data, { allUnlocked: env.debug }, { onStart: startSolo, onBack: showTitle, onHangar: showHangar });
   }
 
-  // --- Multiplayer: Host / Join menu, host setup, lobby.
+  // --- Multiplayer: callsign → Host / Join → room (lobby, vote, teams, plane select, results).
   const signal = ((): { host: string; port: number; secure: boolean } | null => {
     // A local PeerJS signaling server for the browser tests (?debug=1&signal=localhost:9187).
     const m = (env.debug ? params.get('signal') : null)?.match(/^([\w.-]+):(\d+)$/);
@@ -212,63 +256,81 @@ function boot(): void {
 
   const clientEvents = (): Parameters<typeof createClientSession>[3] => ({
     onWelcome: () => {
-      if (mode === 'netmenu') showLobby();
+      if (mode === 'connecting') showRoom();
     },
-    onLobby: (players, era) => lobbyView?.update(players, eraName(era)),
-    onStart: (s) => enterMatch(s),
-    onReject: (reason) => showNetMenu(net?.code ?? null, reason),
+    onRoom: (room) => {
+      // Get the voted map and era ready while people pick planes.
+      if (room.choice) {
+        const era = room.choice.era;
+        void loadEra(era, data.planes.filter((p) => p.era === era).map((p) => p.id));
+        if (mode === 'room') useMap(room.choice.mapId);
+      }
+      if (mode === 'room' && net) roomView?.update(room, net.client.results);
+    },
+    onResults: (r) => {
+      if (mode === 'room' && net?.client.room) roomView?.update(net.client.room, r);
+    },
+    onChat: (line) => {
+      if (net) roomView?.chat(net.client.chat);
+      if (mode === 'match' && hud) hud.killFeed(`<b class="t-${line.team ?? 'none'}">${esc(line.from)}</b> ${esc(line.text)}`, false);
+    },
+    onStart: (s) => {
+      useMap(s.world.mapId);
+      enterMatch(s);
+    },
+    onReject: (reason) => showNetMenu(net?.isHost ? null : (net?.code ?? null), reason),
     onClosed: () => {
       // During a match the session reports "host left" itself, and the loop shows the results.
-      if (mode === 'lobby' || mode === 'netmenu') showNetMenu(net?.isHost ? null : (net?.code ?? null), 'The host closed the room.');
+      if (mode === 'room' || mode === 'connecting') showNetMenu(net?.isHost ? null : (net?.code ?? null), 'The host closed the room.');
     },
   });
 
-  function showNetMenu(room: string | null, error?: string): ReturnType<typeof createNetMenu> {
+  function showCallsign(room: string | null): void {
+    leaveMatch();
+    closeNet();
+    clearScreen();
+    mode = 'callsign';
+    titleShot.setVisible(true);
+    screen = createCallsignScreen(ui, { room }, {
+      onBack: showTitle,
+      onContinue: (cs) => {
+        callsign = cs;
+        if (room) void joinRoom(room);
+        else showNetMenu(null);
+      },
+    });
+  }
+
+  function showNetMenu(room: string | null, error?: string): StatusScreen {
     leaveMatch();
     closeNet();
     clearScreen();
     mode = 'netmenu';
     titleShot.setVisible(true);
-    const menu = createNetMenu(ui, { room, turn: turnConfigured() }, {
-      onBack: showTitle,
-      onHost: showHostSetup,
-      onJoin: (code, callsign) => void joinRoom(code, callsign, menu),
+    const menu = createNetMenu(ui, { room, turn: turnConfigured(), callsign: callsign || 'Pilot' }, {
+      onBack: () => showCallsign(null),
+      onHost: () => void hostRoom(),
+      onJoin: (code) => void joinRoom(code),
     });
     if (error) menu.setStatus(error, true);
     screen = menu;
     return menu;
   }
 
-  function showHostSetup(callsign: string): void {
+  function showConnecting(text: string, room: string | null): StatusScreen {
+    leaveMatch();
+    closeNet();
     clearScreen();
-    mode = 'hostsetup';
-    screen = createSoloSetup(
-      ui,
-      data,
-      {
-        allUnlocked: env.debug,
-        title: 'Host a match',
-        intro: 'Pick the era and your plane. Friends fly planes from the same era, and bots fill the empty seats of a 10 vs 10 Team Deathmatch.',
-        startLabel: 'Create room',
-        hangar: false,
-      },
-      { onStart: (choice) => void hostRoom(choice, callsign), onBack: () => showNetMenu(null), onHangar: () => {} },
-    );
+    mode = 'connecting';
+    titleShot.setVisible(true);
+    const s = createConnecting(ui, text, () => showNetMenu(room));
+    screen = s;
+    return s;
   }
 
-  /** Until Day 6's plane picker: friends get a random plane within a tier of the host's. */
-  const friendPlane = (choice: SoloChoice): string => {
-    const mine = ctx.planeDefs.get(choice.planeId);
-    const pool = data.planes.filter((p) => p.era === choice.era && (!mine || Math.abs(p.tier - mine.tier) <= 1));
-    return pool[Math.floor(Math.random() * pool.length)]?.id ?? choice.planeId;
-  };
-
-  async function hostRoom(choice: SoloChoice, callsign: string): Promise<void> {
-    const menu = showNetMenu(null);
+  async function hostRoom(): Promise<void> {
+    const status = showConnecting('Creating a room…', null);
     const attempt = netAttempt;
-    menu.setBusy(true);
-    menu.setStatus('Creating a room…');
-    lastChoice = choice;
     try {
       const { mod, network } = await peerNetwork();
       let peerHost: Awaited<ReturnType<Network['host']>> | null = null;
@@ -291,16 +353,14 @@ function boot(): void {
       const transport = combineHosts(code, [peerHost, loopHost]);
       const opts: HostOptions = {
         version: env.version,
-        era: choice.era,
-        mapId: map!.id,
-        difficulty: choice.difficulty,
-        planeFor: (i) => (i === 0 ? choice.planeId : friendPlane(choice)),
-        ...(matchTime ? { timeLimitS: matchTime } : {}),
+        settings: { difficulty: 'normal', bots: true, matchLengthS: 600 },
+        allUnlocked: env.debug,
+        ...(matchTime ? { matchTimeS: matchTime } : {}),
       };
-      const server = createHostServer(ctx, transport, opts);
+      const server = createHostServer(data, transport, opts);
       const loopClient = await loop.join(code);
       opts.hostPeerId = loopClient.id;
-      const client = createClientSession(loopClient, data, { version: env.version, callsign, device: deviceInfo() }, clientEvents());
+      const client = createClientSession(loopClient, data, { version: env.version, callsign, device: deviceInfo(), rp: stubRp() }, clientEvents());
       net = {
         isHost: true,
         code,
@@ -312,19 +372,17 @@ function boot(): void {
           server.close();
         },
       };
-      showLobby();
+      showRoom();
     } catch (err) {
       if (attempt !== netAttempt) return;
       console.warn('Hosting failed', err);
-      menu.setBusy(false);
-      menu.setStatus("Couldn't create a room. Check your internet connection and try again.", true);
+      status.setStatus("Couldn't create a room. Check your internet connection and try again.", true);
     }
   }
 
-  async function joinRoom(code: string, callsign: string, menu: ReturnType<typeof createNetMenu>): Promise<void> {
+  async function joinRoom(code: string): Promise<void> {
+    const status = showConnecting(`Connecting to room ${code}…`, code);
     const attempt = netAttempt;
-    menu.setBusy(true);
-    menu.setStatus(`Connecting to room ${code}…`);
     let notFound: (new (...a: never[]) => Error) | null = null;
     try {
       const { mod, network } = await peerNetwork();
@@ -334,7 +392,7 @@ function boot(): void {
         transport.close();
         return;
       }
-      const client = createClientSession(transport, data, { version: env.version, callsign, device: deviceInfo() }, clientEvents());
+      const client = createClientSession(transport, data, { version: env.version, callsign, device: deviceInfo(), rp: stubRp() }, clientEvents());
       net = { isHost: false, code, client, server: null, loop: null, close: () => client.dispose() };
       window.setTimeout(() => {
         if (net?.client === client && client.phase === 'connecting') showNetMenu(code, 'The host did not answer. Check the code and try again.');
@@ -342,8 +400,7 @@ function boot(): void {
     } catch (err) {
       if (attempt !== netAttempt) return;
       console.warn('Joining failed', err);
-      menu.setBusy(false);
-      menu.setStatus(
+      status.setStatus(
         notFound && err instanceof notFound
           ? `Room ${code} not found. Check the code, and make sure the host's screen is on.`
           : "Couldn't connect. Check your internet connection and try again.",
@@ -352,23 +409,42 @@ function boot(): void {
     }
   }
 
-  function showLobby(): void {
+  function showRoom(): void {
     const n = net;
     if (!n) return;
     clearScreen();
-    mode = 'lobby';
+    mode = 'room';
     titleShot.setVisible(true);
-    const view = createLobby(ui, { isHost: n.isHost, code: n.code, link: shareLink(n.code) }, {
-      onStart: () => n.server?.start(),
+    const server = n.server;
+    const view = createRoomView(ui, {
+      data,
+      code: n.code,
+      link: shareLink(n.code),
+      meId: () => n.client.playerId,
+      timeLeftMs: () => n.client.timeLeftMs(),
+      request: (m) => n.client.request(m),
+      host: server
+        ? {
+            startVote: () => server.startVote(),
+            override: (cat, id) => server.override(cat, id),
+            setSettings: (st) => server.setSettings(st),
+            kick: (id) => server.kick(id),
+            playAgain: () => server.playAgain(),
+          }
+        : null,
+      silhouettes,
       onLeave: () => showNetMenu(null),
     });
-    if (n.client.lobbyPlayers.length > 0) view.update(n.client.lobbyPlayers, lastChoice && n.isHost ? eraName(lastChoice.era) : '');
-    if (n.isHost) view.setStatus('Keep this tab open and on screen while you host: the match runs in your browser.');
-    lobbyView = view;
+    if (n.client.room) {
+      if (n.client.room.choice) useMap(n.client.room.choice.mapId);
+      view.update(n.client.room, n.client.results);
+    }
+    view.chat(n.client.chat);
+    roomView = view;
     screen = {
       dispose: () => {
         view.dispose();
-        if (lobbyView === view) lobbyView = null;
+        if (roomView === view) roomView = null;
       },
     };
   }
@@ -440,6 +516,7 @@ function boot(): void {
   function startSolo(choice: SoloChoice): void {
     closeNet();
     lastChoice = choice;
+    useMap(map!.id);
     enterMatch(
       createSoloSession(ctx, {
         era: choice.era,
@@ -479,28 +556,36 @@ function boot(): void {
       if (me) touch.setPlane(me);
     }
     if (env.debug && s.net) netOverlay = createNetOverlay(ui);
+    if (era) {
+      const allUnlocked = s.kind === 'solo' ? env.debug : (net?.client.room?.allUnlocked ?? false);
+      respawn = createRespawnPicker(ui, { planes: data.planes.filter((p) => p.era === era), allUnlocked, silhouettes }, (id) => session?.chooseRespawn(id));
+    }
     desktop.setEnabled(true);
   }
 
   function endMatch(): void {
     const s = session;
     if (!s) return;
-    const m = s.world.match;
-    const rows = scoreRows();
-    const yourTeam = s.world.pilots[s.playerId]?.team ?? 'blue';
     const hostLeft = s.ended === 'hostLeft';
+    // Multiplayer: back to the room, which shows the host's results and then the lobby, still connected.
+    if (s.kind === 'net' && !hostLeft && net) {
+      leaveMatch();
+      showRoom();
+      return;
+    }
     const weLeft = hostLeft && (document.hidden || performance.now() - hiddenAt < 20_000);
+    const results = computeResults(s.world);
+    const me = s.playerId;
     const wasNet = s.kind === 'net';
     leaveMatch();
     closeNet();
     mode = 'results';
     screen = showResults(
       ui,
+      results,
       {
-        winner: hostLeft ? null : m.winner,
-        score: m.score,
-        rows,
-        yourTeam,
+        me,
+        planeName,
         ...(hostLeft ? { title: weLeft ? 'Connection lost' : 'Host left' } : {}),
         ...(wasNet ? { againLabel: 'Play with friends' } : {}),
       },
@@ -517,7 +602,7 @@ function boot(): void {
     const me = session.playerId;
     return Object.values(w.pilots)
       .map((p) => {
-        const st = w.stats[p.id] ?? { kills: 0, deaths: 0, assists: 0, damage: 0 };
+        const st = w.stats[p.id] ?? newStats();
         const plane = w.planes.find((x) => x.id === p.id);
         return { name: p.name, team: p.team, plane: plane ? planeName(plane.planeId) : '', ...st, you: p.id === me };
       })
@@ -535,12 +620,15 @@ function boot(): void {
   });
 
   /** The plane's visual: the placeholder until its model has loaded, then the real model. */
+  const visualPlane = new Map<string, string>();
   const ensureVisual = (p: PlaneState): PlaneVisual => {
     let v = visuals.get(p.id);
-    if (!v || (v.placeholder && isModelReady(p.planeId))) {
+    // Rebuilt when the model finishes loading, or when the pilot respawns in a different plane.
+    if (!v || (v.placeholder && isModelReady(p.planeId)) || visualPlane.get(p.id) !== p.planeId) {
       if (v) mapScene.scene.remove(v.root);
       v = createPlaneVisual(p.planeId, p.team);
       visuals.set(p.id, v);
+      visualPlane.set(p.id, p.planeId);
       mapScene.scene.add(v.root);
     }
     return v;
@@ -622,7 +710,7 @@ function boot(): void {
       if (clock - hostOut.at >= 1) {
         hostOut = { at: clock, bytes: server.counters.bytesOut, perS: (server.counters.bytesOut - hostOut.bytes) / Math.max(1e-3, clock - hostOut.at) };
       }
-      lines.push(`host up ${kb(hostOut.perS)} to ${Math.max(0, server.lobby().length)} players`);
+      lines.push(`host up ${kb(hostOut.perS)} to ${Math.max(0, server.room().players.length - 1)} players`);
     }
     return lines;
   };
@@ -641,6 +729,8 @@ function boot(): void {
         tickHost(dt);
         net?.client.idle(dt);
       }
+      // Room timers count down between host updates.
+      if (roomView && Math.floor(clock * 4) !== Math.floor((clock - dt) * 4)) roomView.tick();
       if (mode !== 'match' || !session) return;
       const s = session;
       // ?timescale speeds up solo only; a network match runs in real time.
@@ -761,6 +851,7 @@ function boot(): void {
       view.camera.lookAt(focus);
       deathView = { phase: sinceDeath < KILLCAM_S ? 'killcam' : 'respawn', killer: killerId ? pilotName(killerId) : null, respawnIn: me.respawnIn };
     }
+    respawn?.update({ visible: !me.alive, sp: Math.floor(w.stats[me.id]?.sp ?? 0), selected: s.respawnChoice ?? me.planeId });
 
     // HUD data.
     const nose = rotate(me.quat, FORWARD);
@@ -841,11 +932,17 @@ function boot(): void {
 
   showTitle();
   // A share link (?room=CODE) goes straight to the join screen.
-  if (env.room) showNetMenu(parseRoomCode(env.room) ?? env.room.slice(0, 4).toUpperCase());
+  if (env.room) {
+    const code = parseRoomCode(env.room);
+    if (code) showCallsign(code);
+    else showNetMenu(null, `"${env.room.slice(0, 8)}" isn't a room code. Codes are 4 letters, like XQZK.`);
+  }
   loop.start();
   // The title plane becomes a real Spitfire as soon as its model arrives.
   void loadPlane('spitfire_mk5').then(() => {
-    if (isModelReady('spitfire_mk5')) titleShot.setModel(createPlaneVisual('spitfire_mk5', 'blue').root);
+    if (!isModelReady('spitfire_mk5')) return;
+    titlePlane = () => createPlaneVisual('spitfire_mk5', 'blue').root;
+    for (const mw of mapWorlds.values()) mw.titleShot.setModel(titlePlane());
   });
   document.body.dataset['ready'] = 'true';
 
@@ -869,10 +966,19 @@ function boot(): void {
               code: net.code,
               phase: net.client.phase,
               playerId: net.client.playerId,
-              lobby: net.client.lobbyPlayers.map((p) => p.name),
+              lobby: (net.client.room?.players ?? []).map((p) => p.name),
+              room: net.client.room,
+              mode,
               stats: session?.net ? { ...session.net } : null,
             }
           : null,
+      /** The plane each pilot flies in the current match, with the team BR totals (balance checks). */
+      teamBr: () => {
+        if (!session || mode !== 'match') return null;
+        const br = { blue: 0, red: 0 };
+        for (const p of session.world.planes) br[p.team] += ctx.planeDefs.get(p.planeId)?.br ?? 0;
+        return br;
+      },
       /** Other human players' planes as this browser sees them (the multiplayer test compares these). */
       humans: () => {
         if (!session || mode !== 'match') return [];
