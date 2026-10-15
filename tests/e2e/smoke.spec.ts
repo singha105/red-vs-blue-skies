@@ -63,12 +63,19 @@ test('title screen and test scene load without errors', async ({ page }, info) =
   expect(size.dpr).toBeLessThanOrEqual(2);
   await expect.poll(() => canvasHasPixels(page), { timeout: 10_000 }).toBe(true);
 
-  // Host / Join is still a stub and answers with a note instead of doing nothing.
-  await host.click();
-  await expect(page.getByRole('status')).toContainText('coming soon');
-
   // No FPS counter without ?debug=1.
   await expect(page.locator('[data-testid="fps"]')).toHaveCount(0);
+
+  // Host / Join opens the multiplayer menu (thumb-sized buttons there too), and Back returns.
+  await host.click();
+  await expect(page.getByRole('heading', { name: 'Play with friends' })).toBeVisible();
+  for (const name of ['Host', 'Join']) {
+    const box = await page.getByRole('button', { name, exact: true }).boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(56);
+  }
+  await page.screenshot({ path: `${SHOTS}/${info.project.name}-netmenu.png` });
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(solo).toBeVisible();
 
   await page.waitForTimeout(1500); // let the plane move into a nice spot
   await page.screenshot({ path: `${SHOTS}/${info.project.name}-title.png` });

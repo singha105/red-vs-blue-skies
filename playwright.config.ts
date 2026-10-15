@@ -30,12 +30,18 @@ export default defineConfig({
       },
     },
   ],
-  webServer: REMOTE
-    ? undefined
-    : {
-        command: `npm run build && npx vite preview --port ${PORT} --strictPort`,
-        url: `http://localhost:${PORT}/red-vs-blue-skies/`,
-        reuseExistingServer: !process.env['CI'],
-        timeout: 120_000,
-      },
+  webServer: [
+    ...(REMOTE
+      ? []
+      : [
+          {
+            command: `npm run build && npx vite preview --port ${PORT} --strictPort`,
+            url: `http://localhost:${PORT}/red-vs-blue-skies/`,
+            reuseExistingServer: !process.env['CI'],
+            timeout: 120_000,
+          },
+        ]),
+    // Local PeerJS signaling for multiplayer.spec (pages opt in with ?signal=localhost:9187).
+    { command: 'node tests/e2e/peer-server.mjs', url: 'http://localhost:9187/peerjs/id', reuseExistingServer: !process.env['CI'], timeout: 30_000 },
+  ],
 });
