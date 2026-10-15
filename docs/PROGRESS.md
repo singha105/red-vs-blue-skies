@@ -3,6 +3,70 @@
 Live: https://singha105.github.io/red-vs-blue-skies/ (`?debug=1` shows the FPS counter)
 Repo: https://github.com/singha105/red-vs-blue-skies
 
+## Day 9: Remaining planes, maps, modes, sound, effects (2026-10-15)
+
+### Done
+
+**Part A, content**
+
+- **26 propeller plane models** (every WW1, Early WW2 and Late WW2 plane except the Day 4 four), written by `tools/blender/make_prop_specs.py` (lengths and spans from spec sheets; chords, gaps and sections read off general arrangements). Kit additions: fixed landing gear with V struts, axle, wheels or spats, and a tail skid (WW1, P-26, Gladiator, CR.42; the Camel and Dr.I got gear too for consistency); pusher props (`engine.pusher`, the DH.2) with converging tail booms (`pods.xEndM`); radiator and oil-cooler scoops (`scoops`: P-51D, P-40E chin, Hurricane, Yak-3, Bf 109s, P-39 and the P-47's belly); a wing colour (`colors.wing`, the P-26's yellow wings, the Albatros' green); a single centreline fuselage pylon (`xM: 0`). No jets were left as placeholders (Day 7 built all 28), so **all 60 planes have models** and the hangar opens every one (`models.spec`).
+- **Review**: every preview was checked against the real aircraft's general arrangement (no drawings were downloaded this session, as on Day 7). Fixes in passes 2–3: Me 262 nacelles moved aft under the wing; P-26 and CR.42 spats raised under the wing with faired legs; the Bf 109 F wing changed from elliptical to tapered; bomber nacelles moved back onto the wings. Known simplifications: rotary engines are plain cowls, the DH.2's engine is just its prop, wire bracing is left out (the E.III has its pylon), the Fw 190's centreline rack is an empty.
+- **Rocket and bomb pylons** on the P-47D (2 bombs inboard, 8 rockets), F4U-4 (2 + 8) and Fw 190 A-8 (1 centreline bomb, 2 rocket tubes). `ordnance` in planes.json; the missile button releases rockets in pairs while held, then bombs. They hang on the pylons with the Day 4 `rocket` and `bomb_250` models (`pylonMissiles.ts`), disappear as they go, and fly as the same models.
+- **Three generic AI bombers** (`era: "bombers"`, 387–448 triangles, budget 2,000): a WW1 twin-engine biplane bomber, a WW2 four-engine bomber and a swept jet bomber, with gunner positions (nose, top, tail) as muzzle empties.
+- **Maps**: Mountain Valley (ridged mountains to ~1,250 m and one canyon carved west to east, 550 m wide at the floor, with a river; its meander passes exactly through the three zones), Desert Mesas (terraced noise: flat plateaus in 115 m steps over a ~45 m floor), Carrier Strike (open ocean, a carrier and three destroyers per team). maps.json keeps seed, size, colours, spawns and zones; ground target layouts are generated from the seed and heightmap (`groundLayout.ts`: convoy roads walked across flat ground, bunkers spread out with an AA gun each, a depot at the rear, destroyers where there's open water) and the host sends its layout to clients.
+- **Modes** (rules in GAME_DESIGN.md, numbers in modes.json and the new objectives.json), all `"playable": true`:
+  - **Air Domination**: 3 zones, capture below 300 m above the ground inside 700 m (10 s alone, faster with up to 3), 300 tickets, 0.5 tickets/s drained per held zone, 2 per plane lost; 50 RP + 50 SP per capture.
+  - **Ground Strike**: per team two convoys (3 trucks + a tank on a road), 3 bunkers, 3 AA guns, destroyers offshore (carriers on Carrier Strike); targets cost tickets when destroyed (30 RP + 30 SP each); AA sites, ships and carriers fire bursts with imperfect lead (weak: 2 HP a round). Unit HP scales per era.
+  - **Bomber Escort**: one team's waves of 4 bombers fly ~150 s to the other team's depot or carrier and home; 10 points per bomber over the target, 10 per bomber shot down, 1 per kill. Bombers are ordinary planes (pilot role `bomber`), so guns, missiles, hit spheres, snapshots and rendering work on them unchanged; missiles take a capped bite (400–450 HP).
+- **Network**: the start message carries mode, layout and escort team; snapshots carry zone progress/owner and one byte per ground unit (health %, firing), tickets as two bytes, rockets/bombs counts; rockets and bombs fly cosmetically on clients from `drop` events. Unit tests run Ground Strike, Air Domination and Bomber Escort over the fake network with delay and loss.
+- **Rendering and HUD**: ground units are procedural merged low-poly shapes, one InstancedMesh per kind plus team pennants (≤ 9 draw calls), wrecks go dark and burn; zones are open columns as tall as the capture ceiling, coloured by owner and blending toward whoever is capturing. HUD: score label (Kills / Tickets / Points), zone chips A/B/C with capture rings, an objective line ("Capturing B · 45%", "Enemy bombers: 3 flying"), zone letters, target diamonds and bomber boxes on screen, zones and targets on the minimap, rockets and bombs in the ammo line, kill feed for captures, destroyed targets, bomber waves and AA kills.
+- **Solo setup** picks the map and the mode (two buttons in the header that cycle on each tap).
+
+**Part B, sound and effects**
+
+- **Procedural Web Audio** (`src/core/sound.ts`, no sound files): engines per type (WW1 rotary: buzzy square pulses; radial: lumpy detuned saws; inline: smooth saws with a strong 2nd harmonic; jet: band-passed noise roar plus a whine; afterburner: a low rumble) pitched by throttle and speed, for your plane and the three nearest; guns per calibre (rifle-calibre MG, heavy MG, 20 mm, 30/37 mm) from pre-rendered noise bursts with a thump; hit ticks and thuds; explosions (bigger for ground targets); missile and rocket whooshes; AA fire; UI clicks on every button. The Day 7 IR growl, lock, radar and missile-warning tones moved onto the same context. Distance falloff and stereo pan; a compressor on the master.
+- **Volume sliders**: master plus Engines, Guns and explosions, Warnings and clicks.
+- **iPhone**: the context is created and resumed on the first pointerdown/touchend/keydown with a one-sample silent buffer started inside the gesture; resumed again when the tab comes back; `navigator.audioSession.type = 'playback'` where Safari supports it, so the silent switch doesn't mute it. Playwright's WebKit iPhone profile checks the context is running after the first tap and that the master bus has signal during a match.
+- **Effects** (one instanced pool, now 2,400 puffs): contrails from jets' exhausts above 8,000 m, wingtip vapour above 5 G (props) / 6 G (jets), explosions with more fire and falling debris (bigger for ground targets), burning wrecks of ground targets, larger muzzle flashes, and puffs within 14 m of the camera shrink away (your own smoke and fire no longer fill the screen). **Low graphics** turns off contrails, vapour and debris and halves smoke.
+- **Bots** play the objectives: two in five take the objective role (capture the nearest zone they don't hold, circling low inside it; strike the nearest enemy ground target with a dive, guns, rockets and bombs, then climb away; escort the bombers from above and behind), the rest dogfight with mode-aware targeting (interceptors go for bombers, defenders for low enemies near their targets, everyone for planes sitting in a zone). Headless 4-minute bot matches on all 12 mode × map pairs capture zones, destroy targets and launch, bomb and shoot down bombers.
+
+### Download size
+
+| What | Size |
+| --- | --- |
+| WW1 models (10) | 133.8 KB |
+| Early WW2 (10) | 138.2 KB |
+| Late WW2 (10) | 141.5 KB |
+| Early Jets (10) | 115.4 KB |
+| Cold War (10) | 122.6 KB |
+| Modern (10) | 127.5 KB |
+| AI bombers (3) | 35.7 KB |
+| Weapons (7) | 29.9 KB |
+| **All models** | **844.5 KB** |
+| Main bundle | 966 KB (272 KB gzip); PeerJS 24 KB gzip and Firebase 63 KB gzip load only when needed |
+| **Whole site (`dist/`)** | **2.17 MB** (budget 10 MB) |
+
+A match downloads one era's models (115–142 KB), its bomber in Bomber Escort (~12 KB) and the weapon models if that era has missiles or ordnance (30 KB); maps and ground targets are generated, not downloaded.
+
+### Tests
+
+- 155 Vitest (+25: 12 mode × map bot matches, zone capture and drain, bullets and rockets on ground targets, ordnance release order, tickets end a match, the bomber missile cap and interceptor points, deterministic layouts on their own halves, the canyon's depth at the zones, flat mesa tops, three networked-mode tests, all 60 planes plus bombers have models).
+- Playwright (35 passed locally, emulator/full-match specs skipped as before): `modes.spec` plays every mode on all four maps with bots on desktop (one map per mode on the iPhone layout), the solo map/mode pickers, and sound after the first tap on both; `models.spec` opens all 60 planes in the hangar. Perf: high 60 fps (102 draw calls); low at phone size with 4× CPU throttling 60 fps (78); **low, 4× throttle, Ground Strike over Mountain Valley 60 fps (125)**; high, Bomber Escort with Modern jets 57.6 fps.
+
+### Known issues
+
+- Ground units don't collide with anything and convoys drive through each other at the ends of their road; ships are boxes that don't wake.
+- Bombers bomb by passing over the target (explosions on the target, no falling bombs), and their gunners have all-round arcs.
+- Rockets and bombs only hurt ground targets, not planes. Only the three attackers carry them; jets attack ground targets with guns.
+- Engine sound for others is limited to the three nearest planes; no doppler.
+- Island Chain's red side found no convoy road on flat ground (its islands are small), so red has bunkers, AA and destroyers there.
+- Reference drawings weren't downloaded for the review (judged against known general arrangements).
+- TURN still isn't configured (Day 5 issue). The Day 8 cross-device check is still the user's to do.
+
+### Next steps (Day 10)
+
+- Performance, mobile QA on real phones (sound on a real iPhone), balance (AA strength, unit HP, ticket rates), launch.
+
 ## Day 8: Progression, unlocks, Firebase (2026-10-15)
 
 ### Done

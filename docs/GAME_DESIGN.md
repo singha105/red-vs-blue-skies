@@ -122,23 +122,21 @@ Teams are auto-balanced by total Battle Rating, not just headcount. Humans fly w
 
 ## Modes
 
-Data: `src/data/modes.json`.
-
-Each mode has a `playable` flag; the lobby vote lists unplayable modes as "coming soon" (Day 9 builds them).
+Data: `src/data/modes.json` (rules' numbers) and `src/data/objectives.json` (ground units, AA, bomber gunners, rockets and bombs, AI bombers). Rules code: `src/game/objectives.ts`. Every mode is playable since Day 9 (the `playable` flag still hides a mode from the vote if set to false).
 
 - **Team Deathmatch** (`tdm`, default): first team to 50 kills, or most kills after 10 minutes.
-- **Air Domination** (`air_domination`): 3 zones; fly below 300 m over a zone to capture it; held zones drain enemy tickets.
-- **Ground Strike** (`ground_strike`): destroy the enemy's AI convoys, bunkers and ships. Gives bombers and attackers a job.
-- **Bomber Escort** (`bomber_escort`): one team protects AI bombers flying a route; the other intercepts them.
+- **Air Domination** (`air_domination`): 3 zones (the map's `zones`), 700 m radius. A plane inside a zone less than 300 m above the ground captures it: one plane takes 10 s from neutral, up to three count, equal numbers hold it where it is. Each team starts with 300 tickets; every held zone drains 0.5 tickets/s from the other team and every plane lost costs 2. A team at 0 loses; otherwise most tickets after 10 minutes. A capture is 50 RP and 50 SP for each plane that took it.
+- **Ground Strike** (`ground_strike`): each team has 300 tickets and its own half of the map's ground targets: two convoys (three trucks and a tank driving back and forth on a road), three bunkers, an AA gun beside each bunker, and destroyers offshore where there's open water (Carrier Strike: a carrier and three destroyers). Destroying a target costs its team tickets (truck 12, tank 15, AA 10, bunker 30, destroyer 40, carrier 150) and pays 30 RP and 30 SP; a plane lost costs 2. Losing every target also ends it. AA sites, ships and carriers shoot back (weak, bursty, imperfect lead). The P-47D, F4U-4 and Fw 190 A-8 carry rockets and bombs on the missile button. Unit HP scales per era (`eraHpScale`) so WW1 guns can kill a truck and jets don't erase a carrier.
+- **Bomber Escort** (`bomber_escort`): one team (picked at random) flies waves of four AI bombers (a WW1 biplane bomber, a WW2 four-engine bomber or a swept jet bomber by era) from its side to the other team's depot (Carrier Strike: its carrier), about 150 s inbound, then home; the next wave takes off 15 s after the last one is gone. A bomber over the target scores 10 points for the escorts, a bomber shot down 10 for the interceptors, and every plane kill 1. Bombers have defensive gunners (nose, top, tail) and take a capped bite from missiles (a missile removes its % of 400–450 HP, not of the bomber's HP). Most points after 10 minutes wins.
 
 ## Maps
 
-About 16 × 16 km each, generated from a seed so they cost nothing to store. Data: `src/data/maps.json` (seed, size, colours, spawn points, zone positions).
+About 16 × 16 km each, generated from a seed so they cost nothing to store. Data: `src/data/maps.json` (seed, size, colours, spawn points, zone positions). Ground target layouts are generated from the seed and heightmap (`src/game/groundLayout.ts`) and sent by the host in the match start message.
 
 - **Island Chain** (`island_chain`, default): open ocean and green islands.
-- **Mountain Valley** (`mountain_valley`): a canyon you can fly through to escape missiles.
-- **Desert Mesas** (`desert_mesas`): flat-topped plateaus, great visibility.
-- **Carrier Strike** (`carrier_strike`): open ocean with one aircraft carrier per team as the ground target.
+- **Mountain Valley** (`mountain_valley`): ridged mountains up to ~1,250 m with one winding canyon carved through them west to east, 550 m wide at the floor, with a river; the three zones sit on the canyon floor, so capturing means flying the canyon.
+- **Desert Mesas** (`desert_mesas`): terraced noise: flat-topped plateaus in steps of 115 m above a desert floor at ~45 m, great visibility.
+- **Carrier Strike** (`carrier_strike`): open ocean with one aircraft carrier per team (steaming in a wide circle behind its side, with three destroyers); the carriers are the ground targets in Ground Strike and Bomber Escort, scenery in the other modes.
 
 ## Lobby flow
 

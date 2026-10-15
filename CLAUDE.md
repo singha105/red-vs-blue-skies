@@ -36,17 +36,23 @@ The Mac has 8 GB RAM: don't leave dev servers running, and stop any server you s
 src/
   main.ts        boot: settings → data validation → renderer → title screen
   core/          loop (fixed 60 Hz), desktop input, playerControls (aim state → ControlInput),
-                 quality presets + auto picker, settings (localStorage), env (URL flags)
+                 quality presets + auto picker, settings (localStorage), env (URL flags),
+                 sound (procedural Web Audio: engines, guns, hits, explosions, UI; buses + iPhone unlock),
+                 audio (cockpit seeker/warning tones on the sound engine's context)
   game/          simulation: plain serializable data, NO Three.js imports
                  math, terrain (seeded heightmap), flight (energy model), autopilot (mouse-aim PD),
                  controls (ControlInput), ballistics (guns, bullets, hit spheres), missiles (seekers, PN
                  guidance, locks, flares/chaff, notching), sun (SUN_DIR for sky + IR seekers), world (planes,
-                 bullets, damage, kills, respawn, spawn points, stepWorld), bots (AI → ControlInput), match (TDM,
-                 humans + bots), teams (split by RP + parties, bot BR balancing), results (RP formula, awards),
+                 bullets, damage, kills, respawn, spawn points, stepWorld), bots (AI → ControlInput, mode
+                 objectives too), match (any mode, humans + bots), objectives (zones, ground units, AA, rockets and
+                 bombs, bomber waves, scoring per mode), groundLayout (seeded ground target layout per map),
+                 teams (split by RP + parties, bot BR balancing), results (RP formula, awards),
                  unlocks (research trees: tiers in order, 200 × tier RP; spawn costs)
   render/        Three.js only: renderer, mapScene (sky, ocean, terrain LOD chunks, clouds, sun),
-                 chaseCamera, planeMesh (merged, 1 draw call), tracers + effects (instanced pools), missiles
-                 (missiles, trails, flares, chaff, afterburner glow), titleShot,
+                 chaseCamera, planeMesh (merged, 1 draw call), tracers + effects (instanced pools: smoke, fire,
+                 explosions, contrails, vapour), missiles (missiles, trails, flares, chaff, afterburner glow),
+                 pylonMissiles (missiles, rockets and bombs on pylons and in flight), groundUnits (procedural
+                 instanced trucks/tanks/bunkers/AA/ships/carriers/depots, zone columns), titleShot,
                  silhouettes (top-view card images rendered from the models)
   profile/       progress (Day 8): model (pure: profile, results, queue, leaderboard ranking), cloud (Firebase
                  Auth + Firestore Lite, lazy-loaded), store (cached profile, offline queue, sync), config (web config)
@@ -60,7 +66,8 @@ src/
                  netScreens (callsign, host/join), roomScreens (lobby, vote, teams, plane select, results,
                  chat), respawn (plane picker with SP costs), research (unlock trees), leaderboard, rotate
                  prompt, error overlay, FPS
-  data/          JSON data files + types.ts + validate.ts (checked at startup)
+  data/          JSON data files + types.ts + validate.ts (checked at startup); objectives.json holds ground
+                 units, AA, bomber gunners, rockets/bombs and the AI bombers
   styles.css     global styles; fonts.css declares the self-hosted fonts
 public/
   models/        generated .glb files (Day 4+), never hand-edited
@@ -131,11 +138,12 @@ docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md
 ## Controls and URL flags
 
 - Mouse aim: the mouse moves the aim circle, the autopilot (`src/game/autopilot.ts`) flies the nose (small circle) onto it. Click to capture the mouse; if the browser refuses pointer lock, the cursor's offset from screen centre steers instead.
-- Keys: W/S throttle, A/D roll override, arrows fly directly, C free-look, Space fire, Q (or right mouse) missile, F flare + chaff, R next missile target, L auto-level.
+- Keys: W/S throttle, A/D roll override, arrows fly directly, C free-look, Space fire, Q (or right mouse) missile (on the P-47D, F4U-4 and Fw 190 A-8: rockets in pairs, then bombs, while held), F flare + chaff, R next missile target, L auto-level.
+- Solo setup: era, plane, difficulty, plus Map and Mode buttons in the header that cycle on each tap.
 - Touch: drag the right side to aim, a quick tap on an enemy picks it as the missile target, throttle slider on the left, Fire/Missile/Flare by the left thumb (the Missile button shows a lock ring), Level/Look top right.
 - Gamepad: left stick aim, right stick look, RT/LT throttle, A fire, B missile, X flare, RB next target, Y level.
 - Tab (or the Scores button) shows the scoreboard.
-- `?debug=1` FPS counter plus Firestore reads/writes (this match and this session), `window.__rvbs` test hooks; all planes selectable **only on localhost** (`&locks=1` keeps the real unlocks); with debug, `?timescale=N` runs the sim N× faster and `?matchtime=S` shortens the match. `?gfx=low|medium|high` forces a quality level.
+- `?debug=1` FPS counter plus Firestore reads/writes (this match and this session), `window.__rvbs` test hooks (`startSolo({era, planeId, map, mode})`, `objectives()`, `sound()`, `placeNearUnit(kind)`…); all planes selectable **only on localhost** (`&locks=1` keeps the real unlocks); with debug, `?timescale=N` runs the sim N× faster and `?matchtime=S` shortens the match. `?gfx=low|medium|high` forces a quality level.
 - With `?debug=1`: `&emu=1` (localhost) uses the Firebase emulators, `&offline=1` pretends Firebase is unreachable. Automated browsers (Playwright) never touch the real Firebase unless the page has `&fb=1`.
 - `?room=CODE` opens the callsign step for that room (the lobby's share link and QR use it). With `?debug=1`, a network match shows ping, loss, snapshots/s and KB/s in and out, and `?signal=host:port` uses a local PeerJS signaling server.
 - `FULL_MATCH=1 npx playwright test match.spec` plays a full 10-minute match at 10× speed on both viewports.
@@ -152,10 +160,17 @@ The service worker (`public/sw.js`) is network-first, so a normal reload picks u
 - Every model is reproducible from `tools/blender/specs/<id>.json` + the kits. Never hand-edit .glb files or download models; fix the spec or kit and rerun `npm run models`.
 - Frame: models face +Z, +Y up, +X is the left wing; real metres; origin at mid-fuselage. Materials BODY, TEAM (white, tinted red/blue in game), GLASS, DARK; colours are vertex colours.
 - Named nodes the game uses: `prop` (spins about its local Z), `muzzle_N`, `pylon_N`, `exhaust_N`. Spec guns carry a `mount` index into the plane's `guns` list in planes.json.
-- Budgets: 1,200 triangles for props, 1,500 for jets (build fails above). Current models are ~300–470.
-- The jet specs (every jet except the hand-written mig15bis and f4e) are written by `python3 tools/blender/make_jet_specs.py`; edit that script, not the jet JSONs. Kit extras: `pods` (nacelles, booms, tip tanks), `chin_intake`, `fin_only` tails, canards/LERX as extra wing entries.
+- Budgets: 1,200 triangles for props, 1,500 for jets, 2,000 for the AI bombers (build fails above). Current models are ~290–490.
+- The jet specs (every jet except the hand-written mig15bis and f4e) are written by `python3 tools/blender/make_jet_specs.py`; the Day 9 prop specs and the three AI bombers (`era: "bombers"`, `public/models/bombers/`) by `python3 tools/blender/make_prop_specs.py`. Edit those scripts, not their JSONs (hand-written: sopwith_camel, fokker_dr1, spitfire_mk5, f4u4, mig15bis, f4e). Kit extras: `pods` (nacelles, booms with `xEndM`, tip tanks), `chin_intake`, `scoops` (radiators), `gear` (fixed gear, spats), `engine.pusher` (DH.2), `colors.wing`, `fin_only` tails, canards/LERX as extra wing entries; xM 0 on a fuselage pylon is one centreline pylon. `planeModels.json` records each plane's `engine` sound type (rotary/radial/inline/jet).
 - To add a plane: write its spec, `npm run models -- <id>`, look at `tools/blender/previews/<id>.png` next to a reference in `tools/blender/refs/`, adjust, repeat (up to 3 passes).
-- In game: `src/render/models.ts` loads only the current era's models; planes without one use the box placeholder. Hit spheres and muzzle positions come from `src/data/planeModels.json`.
+- In game: `src/render/models.ts` loads only the current era's models (plus that era's bomber in Bomber Escort); every plane has a model since Day 9. Hit spheres and muzzle positions come from `src/data/planeModels.json`. Ground targets and carriers are built in code (`src/render/groundUnits.ts`), not downloaded.
+
+## Modes (Day 9)
+
+- `world.objectives` (objectives.ts) holds the mode: zones, ground units (positions follow from the match clock and `ctx.layout`, so clients only get health + firing bits), rockets/bombs in flight, and Bomber Escort's wave state. `match.score` is kills (TDM), tickets left (Air Domination, Ground Strike) or points (Bomber Escort); `scoreDeath`/`checkEnd` apply each mode's rules.
+- AI bombers are ordinary planes with pilot `role: 'bomber'` (ids `B1`…), added after the players; they never respawn on their own, don't count as seats, and are left out of team BR, scoreboards and results. `isBomber(world, id)`.
+- Network: the `start` message carries `mode`, the host's ground `layout` and the `escort` team; snapshots carry zone progress/owner and one byte per unit; `drop` events let clients fly rockets and bombs cosmetically.
+- Sound: one AudioContext (`createSound`), buses engine / weapons / cockpit / ui with sliders in Settings; unlocked on the first pointerdown/touchend/keydown with a silent buffer; `navigator.audioSession.type = 'playback'` where supported.
 
 ## Tools on this machine
 
