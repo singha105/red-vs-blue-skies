@@ -43,6 +43,7 @@ interface ClientRec {
   connected: boolean;
   leftAt: number;
   inMatch: boolean;
+  lastHeard: number;
 }
 
 export interface HostOptions {
@@ -174,6 +175,7 @@ export function createHostServer(ctx: WorldContext, transport: HostTransport, op
       connected: true,
       leftAt: 0,
       inMatch: false,
+      lastHeard: now(),
     });
   });
 
@@ -191,6 +193,7 @@ export function createHostServer(ctx: WorldContext, transport: HostTransport, op
     const c = clients.get(peerId);
     if (!c) return;
     counters.bytesIn += payloadBytes(data);
+    c.lastHeard = now();
     if (typeof data === 'string') {
       const m = decodeJson<ClientMsg>(data);
       if (!m) return;
@@ -251,6 +254,10 @@ export function createHostServer(ctx: WorldContext, transport: HostTransport, op
       const t = now();
       for (const c of clients.values()) c.tokens = Math.min(MAX_INPUTS_PER_S, c.tokens + MAX_INPUTS_PER_S * dt);
 
+      // Clients answer pings every second; 8 s of silence means the connection died without a close.
+      for (const c of clients.values()) {
+        if (c.connected && c.welcomed && !c.isHost && t - c.lastHeard > 8000) transport.kick(c.peerId);
+      }
       if (t - lastPing > 1000) {
         lastPing = t;
         for (const c of clients.values()) if (c.welcomed && c.connected && !c.isHost) send(c.peerId, 'unreliable', encodePing(MSG_PING, pingId++, t));

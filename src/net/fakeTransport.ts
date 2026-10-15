@@ -84,7 +84,10 @@ export function createFakeNetwork(initial: FakeOptions = {}): FakeNetwork {
     closed = false;
     upReliable = { at: 0 };
     downReliable = { at: 0 };
-    constructor(readonly id: string, readonly host: FakeHost) {}
+    constructor(
+      readonly id: string,
+      readonly host: FakeHost,
+    ) {}
     send(channel: Channel, data: Payload): void {
       if (this.closed) return;
       const copy = typeof data === 'string' ? data : data.slice(0);

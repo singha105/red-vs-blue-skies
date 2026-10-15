@@ -109,6 +109,8 @@ export function createClientSession(
   let pingId = 0;
   let lastPing = 0;
   let windowStart = now();
+  let lastHeard = now();
+  const SILENCE_MS = 8000; // the host pings every second; this long without a word means it's gone
   const stats: NetStats = { pingMs: null, loss: 0, snapshotsPerS: 0, bytesInPerS: 0, bytesOutPerS: 0 };
 
   const send = (channel: 'reliable' | 'unreliable', d: ArrayBuffer | string): void => {
@@ -287,6 +289,7 @@ export function createClientSession(
 
   transport.onMessage((_channel, d) => {
     bytesIn += payloadBytes(d);
+    lastHeard = now();
     if (typeof d === 'string') {
       const m = decodeJson<HostMsg>(d);
       if (m) onHostMsg(m);
@@ -314,6 +317,13 @@ export function createClientSession(
 
   const updateStats = (): void => {
     const t = now();
+    if ((phase === 'playing' || phase === 'lobby') && t - lastHeard > SILENCE_MS) {
+      if (phase === 'playing') ended = 'hostLeft';
+      phase = 'closed';
+      events.onClosed?.();
+      transport.close();
+      return;
+    }
     if (t - lastPing > 1000) {
       lastPing = t;
       send('unreliable', encodePing(MSG_PING, pingId++, t));
