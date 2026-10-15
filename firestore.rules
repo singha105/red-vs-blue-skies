@@ -1,0 +1,148 @@
+rules_version = '2';
+
+// Red vs Blue Skies: friends-grade anti-cheat for progression (Day 8).
+// - players/{uid}: only you write your profile. RP only goes up through a match result saved in the same
+//   batch, by exactly that result's RP (≤ 3,000); it only goes down by buying the next tier of an era.
+// - matches/{matchId}: the host lists the participants. One result per uid per match, only for participants,
+//   only while the match is under an hour old.
+// Everything a client can't break is checked here; everything else (the RP formula itself) runs on the host.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function eras() {
+      return ['ww1', 'early_ww2', 'late_ww2', 'early_jets', 'cold_war', 'modern'];
+    }
+
+    function isCount(v, max) {
+      return v is int && v >= 0 && v <= max;
+    }
+
+    function validCallsign(c) {
+      return c is string && c.size() >= 1 && c.size() <= 16;
+    }
+
+    function validFriends(f) {
+      return f is list && f.size() <= 50;
+    }
+
+    function matchPath(matchId) {
+      return /databases/$(database)/documents/matches/$(matchId);
+    }
+
+    function resultPath(matchId, uid) {
+      return /databases/$(database)/documents/matches/$(matchId)/results/$(uid);
+    }
+
+    // A brand-new profile: nothing earned, tier 1 everywhere.
+    function validNewProfile(d) {
+      return d.keys().hasOnly(['callsign', 'rp', 'unlocked', 'stats', 'friends', 'lastMatch', 'lastUnlock', 'createdAt'])
+        && d.keys().hasAll(['callsign', 'rp', 'unlocked', 'stats', 'friends', 'createdAt'])
+        && validCallsign(d.callsign)
+        && d.rp == 0
+        && d.unlocked == {'ww1': 1, 'early_ww2': 1, 'late_ww2': 1, 'early_jets': 1, 'cold_war': 1, 'modern': 1}
+        && d.stats == {'kills': 0, 'deaths': 0, 'assists': 0, 'matches': 0, 'wins': 0}
+        && d.friends == []
+        && d.get('lastMatch', null) == null
+        && d.get('lastUnlock', null) == null
+        && d.createdAt == request.time;
+    }
+
+    // RP and stats grow by exactly one result, created in this same batch (its createdAt is this request's
+    // time, so an old result can't be replayed).
+    function isResultUpdate(uid) {
+      let before = resource.data;
+      let after = request.resource.data;
+      let matchId = after.lastMatch;
+      let path = resultPath(matchId, uid);
+      let r = getAfter(path).data;
+      return after.diff(before).affectedKeys().hasOnly(['rp', 'stats', 'lastMatch', 'friends'])
+        && matchId is string
+        && existsAfter(path)
+        && r.createdAt == request.time
+        && after.rp == before.rp + r.rp
+        && after.stats.keys().hasOnly(['kills', 'deaths', 'assists', 'matches', 'wins'])
+        && after.stats.kills == before.stats.kills + r.kills
+        && after.stats.deaths == before.stats.deaths + r.deaths
+        && after.stats.assists == before.stats.assists + r.assists
+        && after.stats.matches == before.stats.matches + 1
+        && after.stats.wins == before.stats.wins + (r.won ? 1 : 0)
+        && validFriends(after.friends);
+    }
+
+    // Buy the next tier of one era: lastUnlock names it, RP drops by exactly 200 × tier and can't go negative.
+    function isUnlockUpdate() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let era = after.lastUnlock.era;
+      let tier = after.lastUnlock.tier;
+      return after.diff(before).affectedKeys().hasOnly(['rp', 'unlocked', 'lastUnlock'])
+        && after.lastUnlock.keys().hasOnly(['era', 'tier'])
+        && era in eras()
+        && tier is int
+        && tier >= 2 && tier <= 10
+        && after.unlocked.diff(before.unlocked).affectedKeys().hasOnly([era])
+        && after.unlocked[era] == tier
+        && before.unlocked[era] == tier - 1
+        && after.rp == before.rp - 200 * tier
+        && after.rp >= 0;
+    }
+
+    function isCallsignUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['callsign'])
+        && validCallsign(request.resource.data.callsign);
+    }
+
+    match /players/{uid} {
+      // Profiles are public to players (the friends leaderboard reads them).
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid && validNewProfile(request.resource.data);
+      allow update: if signedIn() && request.auth.uid == uid
+        && (isResultUpdate(uid) || isUnlockUpdate() || isCallsignUpdate());
+      allow delete: if false;
+    }
+
+    match /matches/{matchId} {
+      allow read: if signedIn();
+      // The host's record of who played: up to 20 humans, the host among them.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['host', 'participants', 'createdAt'])
+        && request.resource.data.host == request.auth.uid
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() >= 1
+        && request.resource.data.participants.size() <= 20
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.createdAt == request.time;
+      // The host adds players who join during the match.
+      allow update: if signedIn()
+        && resource.data.host == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants'])
+        && request.resource.data.participants is list
+        && request.resource.data.participants.size() <= 30
+        && request.resource.data.participants.hasAll(resource.data.participants)
+        && request.time < resource.data.createdAt + duration.value(1, 'h');
+      allow delete: if false;
+
+      match /results/{uid} {
+        allow read: if signedIn();
+        // Your own result, once (create only), if you played, within the hour, at most 3,000 RP.
+        allow create: if signedIn()
+          && request.auth.uid == uid
+          && uid in get(matchPath(matchId)).data.participants
+          && request.time < get(matchPath(matchId)).data.createdAt + duration.value(1, 'h')
+          && request.resource.data.keys().hasOnly(['rp', 'kills', 'deaths', 'assists', 'won', 'createdAt'])
+          && request.resource.data.keys().hasAll(['rp', 'kills', 'deaths', 'assists', 'won', 'createdAt'])
+          && isCount(request.resource.data.rp, 3000)
+          && isCount(request.resource.data.kills, 500)
+          && isCount(request.resource.data.deaths, 500)
+          && isCount(request.resource.data.assists, 500)
+          && request.resource.data.won is bool
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+  }
+}
