@@ -1,7 +1,7 @@
 // Boot and app flow: title → solo setup → match → results. One renderer and one map scene are shared.
 import './fonts.css';
 import './styles.css';
-import { Matrix4, Quaternion, Vector3, type Mesh } from 'three';
+import { Matrix4, Quaternion, Vector3, type Object3D } from 'three';
 import { env } from './core/env';
 import { createDesktopInput } from './core/input';
 import { createLoop } from './core/loop';
@@ -19,7 +19,8 @@ import { createWorldContext, type GameEvent } from './game/world';
 import { createChaseCamera } from './render/chaseCamera';
 import { createEffects } from './render/effects';
 import { createMapScene } from './render/mapScene';
-import { createPlaceholderPlane } from './render/planeMesh';
+import { createPlaneVisual, isModelReady, loadEra, loadPlane, type PlaneVisual } from './render/models';
+import { planeSize } from './game/planeModels';
 import { createView } from './render/renderer';
 import { createTitleShot } from './render/titleShot';
 import { createTracers } from './render/tracers';
@@ -29,6 +30,7 @@ import { createHud, escapeHtml as esc, type Hud, type Marker, type ScoreRow } fr
 import { showResults } from './ui/results';
 import { openSettings } from './ui/settingsPanel';
 import { createSoloSetup, type SoloChoice } from './ui/soloSetup';
+import { createHangarUi } from './ui/hangar';
 import { createTitleScreen } from './ui/title';
 import { createTouchControls, type TouchControls } from './ui/touchControls';
 
@@ -93,14 +95,14 @@ function boot(): void {
   const chase = createChaseCamera(view.camera);
 
   // --- App state ---
-  type Mode = 'title' | 'setup' | 'match' | 'results';
+  type Mode = 'title' | 'setup' | 'match' | 'results' | 'hangar';
   let mode: Mode = 'title';
   let screen: { dispose(): void } | null = null;
   let match: Match | null = null;
   let lastChoice: SoloChoice | null = null;
   let hud: Hud | null = null;
   let touch: TouchControls | null = null;
-  const meshes = new Map<string, Mesh>();
+  const visuals = new Map<string, PlaneVisual>();
   const prev = new Map<string, { pos: Vec3; quat: Quat }>();
   const frameEvents: GameEvent[] = [];
   let wasAlive = true;
@@ -124,8 +126,8 @@ function boot(): void {
     hud = null;
     touch?.dispose();
     touch = null;
-    for (const mesh of meshes.values()) mapScene.scene.remove(mesh);
-    meshes.clear();
+    for (const v of visuals.values()) mapScene.scene.remove(v.root);
+    visuals.clear();
     prev.clear();
     match = null;
     endedAt = 0;
@@ -149,7 +151,71 @@ function boot(): void {
   function showSetup(): void {
     clearScreen();
     mode = 'setup';
-    screen = createSoloSetup(ui, data, { allUnlocked: env.debug }, { onStart: startMatch, onBack: showTitle });
+    screen = createSoloSetup(ui, data, { allUnlocked: env.debug }, { onStart: startMatch, onBack: showTitle, onHangar: showHangar });
+  }
+
+  // --- Hangar: the selected plane parked high above the islands, orbited by the camera.
+  const HANGAR_POS = new Vector3(0, 3400, 0);
+  const hangar = { visual: null as PlaneVisual | null, planeId: '', team: 'blue' as PlaneState['team'], yaw: 2.4, pitch: 0.25, dist: 22, touched: false };
+  const setHangarVisual = (): void => {
+    if (hangar.visual) mapScene.scene.remove(hangar.visual.root);
+    const v = createPlaneVisual(hangar.planeId, hangar.team);
+    v.root.position.copy(HANGAR_POS);
+    mapScene.scene.add(v.root);
+    hangar.visual = v;
+  };
+  const leaveHangar = (): void => {
+    if (hangar.visual) mapScene.scene.remove(hangar.visual.root);
+    hangar.visual = null;
+  };
+
+  function showHangar(choice: SoloChoice): void {
+    clearScreen();
+    mode = 'hangar';
+    titleShot.setVisible(false);
+    const plane = ctx.planeDefs.get(choice.planeId)!;
+    const size = planeSize(plane);
+    Object.assign(hangar, { planeId: plane.id, team: 'blue', yaw: 2.4, pitch: 0.25, dist: Math.max(size.lengthM, size.wingspanM) * 1.7, touched: false });
+    setHangarVisual();
+    void loadPlane(plane.id);
+    const ui2 = createHangarUi(ui, plane, data, {
+      onRotate: (dx, dy) => {
+        hangar.touched = true;
+        hangar.yaw -= dx * 0.01;
+        hangar.pitch = Math.max(-1.2, Math.min(1.2, hangar.pitch + dy * 0.01));
+      },
+      onZoom: (f) => {
+        hangar.dist = Math.max(size.lengthM * 0.8, Math.min(size.lengthM * 4, hangar.dist * f));
+      },
+      onTeam: (team) => {
+        hangar.team = team;
+        setHangarVisual();
+      },
+      onBack: () => {
+        leaveHangar();
+        titleShot.setVisible(true);
+        showSetup();
+      },
+    });
+    screen = ui2;
+  }
+
+  function renderHangar(frameDt: number): void {
+    if (hangar.visual?.placeholder && isModelReady(hangar.planeId)) setHangarVisual();
+    if (!hangar.touched) hangar.yaw += frameDt * 0.25;
+    const v = hangar.visual;
+    if (v?.prop) v.prop.rotation.z += frameDt * 6;
+    const cp = Math.cos(hangar.pitch);
+    view.camera.position.set(
+      HANGAR_POS.x + Math.sin(hangar.yaw) * cp * hangar.dist,
+      HANGAR_POS.y + Math.sin(hangar.pitch) * hangar.dist,
+      HANGAR_POS.z + Math.cos(hangar.yaw) * cp * hangar.dist,
+    );
+    view.camera.lookAt(HANGAR_POS);
+    if (view.camera.fov !== 45) {
+      view.camera.fov = 45;
+      view.camera.updateProjectionMatrix();
+    }
   }
 
   function startMatch(choice: SoloChoice): void {
@@ -159,6 +225,10 @@ function boot(): void {
     titleShot.setVisible(false);
     mode = 'match';
     document.body.classList.add('is-flying');
+    // Only the voted era's models are downloaded.
+    void loadEra(choice.era, data.planes.filter((p) => p.era === choice.era).map((p) => p.id));
+    const mine = ctx.planeDefs.get(choice.planeId);
+    chase.setScale(mine ? planeSize(mine).lengthM / 9 : 1);
     match = createSoloMatch(ctx, {
       era: choice.era,
       planeId: choice.planeId,
@@ -217,15 +287,18 @@ function boot(): void {
     if (e.code === 'Tab' && mode === 'match') hud?.setScoreboard(null);
   });
 
-  const ensureMesh = (p: PlaneState): Mesh => {
-    let mesh = meshes.get(p.id);
-    if (!mesh) {
-      mesh = createPlaceholderPlane(p.team);
-      meshes.set(p.id, mesh);
-      mapScene.scene.add(mesh);
+  /** The plane's visual: the placeholder until its model has loaded, then the real model. */
+  const ensureVisual = (p: PlaneState): PlaneVisual => {
+    let v = visuals.get(p.id);
+    if (!v || (v.placeholder && isModelReady(p.planeId))) {
+      if (v) mapScene.scene.remove(v.root);
+      v = createPlaneVisual(p.planeId, p.team);
+      visuals.set(p.id, v);
+      mapScene.scene.add(v.root);
     }
-    return mesh;
+    return v;
   };
+  const ensureMesh = (p: PlaneState): Object3D => ensureVisual(p).root;
 
   // Scratch objects reused every frame.
   const qa = new Quaternion();
@@ -323,7 +396,10 @@ function boot(): void {
     },
     render(alpha, frameDt) {
       fpsAvg = fpsAvg === 0 ? 1 / frameDt : fpsAvg * 0.95 + (1 / Math.max(frameDt, 1e-3)) * 0.05;
-      if (mode !== 'match' || !match) {
+      if (mode === 'hangar') {
+        renderHangar(frameDt);
+        tracers.update([], 0, 0, view.camera.position);
+      } else if (mode !== 'match' || !match) {
         titleShot.update(clock, frameDt, view.camera);
         tracers.update([], 0, 0, view.camera.position);
       } else {
@@ -345,7 +421,8 @@ function boot(): void {
     handleEvents();
 
     for (const p of w.planes) {
-      const mesh = ensureMesh(p);
+      const visual = ensureVisual(p);
+      const mesh = visual.root;
       mesh.visible = p.alive || p.wreck;
       if (!mesh.visible) continue;
       const before = prev.get(p.id);
@@ -356,15 +433,29 @@ function boot(): void {
         mesh.position.fromArray(p.pos);
         mesh.quaternion.fromArray(p.quat);
       }
-      // Smoke from damaged engines, fire, and falling wrecks.
+      mesh.updateMatrixWorld();
+      // Props spin with throttle (a wreck's windmills slowly).
+      if (visual.prop) visual.prop.rotation.z += frameDt * (p.alive ? 12 + 55 * p.throttle : 4);
+      // Muzzle flashes at every gun muzzle while firing.
+      if (p.firing && visual.muzzles.length > 0) {
+        for (const mz of visual.muzzles) {
+          mz.getWorldPosition(vc);
+          effects.emit('muzzle', vc.x, vc.y, vc.z);
+        }
+      }
+      // Smoke from damaged engines, fire, and falling wrecks, out of the exhausts when the model has them.
       const rate = (p.wreck ? 40 : (p.fireFor > 0 ? 30 : 0) + (p.damaged.engine ? 18 : 0)) * effects.density;
       if (rate > 0) {
         let acc = (smokeAcc.get(p.id) ?? 0) + rate * frameDt;
-        const f = rotate(p.quat, FORWARD);
+        const ex = visual.exhausts[0];
+        if (ex) ex.getWorldPosition(vc);
+        else {
+          const f = rotate(p.quat, FORWARD);
+          vc.set(mesh.position.x - f[0] * 3, mesh.position.y - f[1] * 3, mesh.position.z - f[2] * 3);
+        }
         while (acc >= 1) {
           acc -= 1;
-          const x = mesh.position.x - f[0] * 3, y = mesh.position.y - f[1] * 3, z = mesh.position.z - f[2] * 3;
-          effects.emit(p.fireFor > 0 || (p.wreck && Math.random() < 0.4) ? 'fire' : p.wreck ? 'darkSmoke' : 'smoke', x, y, z);
+          effects.emit(p.fireFor > 0 || (p.wreck && Math.random() < 0.4) ? 'fire' : p.wreck ? 'darkSmoke' : 'smoke', vc.x, vc.y, vc.z);
         }
         smokeAcc.set(p.id, acc);
       }
@@ -474,12 +565,18 @@ function boot(): void {
 
   showTitle();
   loop.start();
+  // The title plane becomes a real Spitfire as soon as its model arrives.
+  void loadPlane('spitfire_mk5').then(() => {
+    if (isModelReady('spitfire_mk5')) titleShot.setModel(createPlaneVisual('spitfire_mk5', 'blue').root);
+  });
   document.body.dataset['ready'] = 'true';
 
   if (env.debug) {
     // Test and debugging hooks (Playwright reads these). Only with ?debug=1.
     (window as unknown as { __rvbs: unknown }).__rvbs = {
       mode: () => mode,
+      models: () => [...visuals.values()].map((v) => ({ placeholder: v.placeholder, muzzles: v.muzzles.length, prop: v.prop !== null })),
+      hangar: () => (mode === 'hangar' ? { planeId: hangar.planeId, placeholder: hangar.visual?.placeholder ?? true, yaw: hangar.yaw } : null),
       startSolo: (choice?: Partial<SoloChoice>) =>
         startMatch({ era: 'early_ww2', planeId: 'spitfire_mk5', difficulty: 'normal', ...choice }),
       match: () =>

@@ -15,6 +15,8 @@ export interface ChaseCamera {
   /** Add shake: 0.2 is a light bump, 1 is a big explosion nearby. */
   shake(amount: number): void;
   reset(): void;
+  /** Scale the follow distance to the plane (1 = a 9 m fighter). */
+  setScale(scale: number): void;
 }
 
 export function createChaseCamera(camera: PerspectiveCamera): ChaseCamera {
@@ -25,11 +27,12 @@ export function createChaseCamera(camera: PerspectiveCamera): ChaseCamera {
   let trauma = 0;
   let primed = false;
   let fov = BASE_FOV;
+  let size = 1;
 
   return {
     update(dt, planePos, aimDir, speedMs, freeLookDir) {
       const dir = freeLookDir ?? aimDir;
-      desired.copy(dir).multiplyScalar(-DISTANCE).addScaledVector(up, HEIGHT);
+      desired.copy(dir).multiplyScalar(-DISTANCE * size).addScaledVector(up, HEIGHT * size);
       if (!primed) {
         offset.copy(desired);
         primed = true;
@@ -62,6 +65,9 @@ export function createChaseCamera(camera: PerspectiveCamera): ChaseCamera {
     },
     reset() {
       primed = false;
+    },
+    setScale(scale) {
+      size = Math.min(2, Math.max(0.75, scale));
     },
   };
 }

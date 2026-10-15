@@ -1,5 +1,5 @@
 // Title screen backdrop: a placeholder plane circling the tallest island, filmed from inside the turn.
-import { Matrix4, PerspectiveCamera, Scene, Vector3 } from 'three';
+import { Matrix4, PerspectiveCamera, Scene, Vector3, type Object3D } from 'three';
 import { circlePose, type CirclePath } from '../game/testFlight';
 import type { Terrain } from '../game/terrain';
 import { createPlaceholderPlane } from './planeMesh';
@@ -7,6 +7,8 @@ import { createPlaceholderPlane } from './planeMesh';
 export interface TitleShot {
   update(timeS: number, frameDt: number, camera: PerspectiveCamera): void;
   setVisible(visible: boolean): void;
+  /** Replace the placeholder with a real model. */
+  setModel(model: Object3D): void;
 }
 
 /** A spot over open water close to the tallest island, so the island fills the background as the plane circles. */
@@ -36,7 +38,7 @@ function findCircleSpot(terrain: Terrain): [number, number, number] {
 
 export function createTitleShot(scene: Scene, terrain: Terrain): TitleShot {
   const path: CirclePath = { center: findCircleSpot(terrain), radiusM: 340, speedMs: 58 };
-  const plane = createPlaceholderPlane('blue');
+  let plane: Object3D = createPlaceholderPlane('blue');
   scene.add(plane);
 
   const bx = new Vector3();
@@ -52,6 +54,12 @@ export function createTitleShot(scene: Scene, terrain: Terrain): TitleShot {
     setVisible(visible) {
       plane.visible = visible;
       first = true;
+    },
+    setModel(model) {
+      model.visible = plane.visible;
+      scene.remove(plane);
+      plane = model;
+      scene.add(plane);
     },
     update(timeS, frameDt, camera) {
       const pose = circlePose(path, timeS);

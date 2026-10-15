@@ -4,7 +4,7 @@ import { Color, IcosahedronGeometry, InstancedMesh, Matrix4, MeshBasicMaterial, 
 
 const MAX = 900;
 
-export type PuffKind = 'smoke' | 'darkSmoke' | 'fire' | 'flash' | 'spark';
+export type PuffKind = 'smoke' | 'darkSmoke' | 'fire' | 'flash' | 'spark' | 'muzzle';
 
 const KINDS: Record<PuffKind, { colour: Color; life: number; size: number; grow: number; rise: number }> = {
   smoke: { colour: new Color('#9aa1a8'), life: 2.4, size: 2, grow: 3.2, rise: 2 },
@@ -12,6 +12,7 @@ const KINDS: Record<PuffKind, { colour: Color; life: number; size: number; grow:
   fire: { colour: new Color('#ff8a2a'), life: 0.6, size: 1.8, grow: 1.5, rise: 1 },
   flash: { colour: new Color('#ffd27a'), life: 0.7, size: 6, grow: 22, rise: 0 },
   spark: { colour: new Color('#ffe9a8'), life: 0.25, size: 1, grow: 2, rise: 0 },
+  muzzle: { colour: new Color('#fff0b0'), life: 0.05, size: 0.35, grow: 8, rise: 0 },
 };
 
 export interface Effects {
