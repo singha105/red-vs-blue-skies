@@ -32,6 +32,10 @@ import { combineHosts, type Network } from './net/transport';
 import { createCallsignScreen, createConnecting, createNetMenu, createNetOverlay, savedCallsign, type StatusScreen } from './ui/netScreens';
 import { createChaseCamera } from './render/chaseCamera';
 import { createEffects } from './render/effects';
+import { createMissileFx, type GlowSource } from './render/missiles';
+import { createCockpitAudio } from './core/audio';
+import { cockpitState, cycleTarget, targetAt } from './app/weapons';
+import { afterburner, launch as launchMissile } from './game/missiles';
 import { createMapScene } from './render/mapScene';
 import { createPlaneVisual, isModelReady, loadEra, loadPlane, type PlaneVisual } from './render/models';
 import { planeSize } from './game/planeModels';
@@ -79,6 +83,8 @@ function boot(): void {
   const view = createView(canvas, { antialias: !env.isTouch && settings.graphics !== 'low' && forced !== 'low' });
   const tracers = createTracers(data.guns);
   const effects = createEffects();
+  const missileFx = createMissileFx(effects);
+  const audio = createCockpitAudio(() => getSettings().volume);
   const silhouettes = createSilhouettes(view.renderer);
   // One scene per map, built the first time a match is voted onto it and kept (at most 4), so switching back is free.
   interface MapWorld {
@@ -103,7 +109,7 @@ function boot(): void {
   let ctx: WorldContext = current.ctx;
   let mapScene = current.scene;
   let titleShot = current.titleShot;
-  mapScene.scene.add(tracers.mesh, effects.mesh);
+  mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root);
 
   let quality: QualityLevel = forced ?? initialLevel(settings.graphics, env.isTouch);
   const applyQuality = (level: QualityLevel): void => {
@@ -133,7 +139,7 @@ function boot(): void {
     mapScene = current.scene;
     titleShot = current.titleShot;
     titleShot.setVisible(visible);
-    mapScene.scene.add(tracers.mesh, effects.mesh);
+    mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root);
     applyQuality(quality);
   };
 
@@ -210,6 +216,9 @@ function boot(): void {
     if (session?.kind === 'solo') session.dispose();
     session = null;
     endedAt = 0;
+    controls.target = null;
+    missileFx.clear();
+    audio.mute();
     mapScene.shadowTarget = null;
     document.body.classList.remove('is-flying');
   };
@@ -551,8 +560,13 @@ function boot(): void {
       onMenu: showTitle,
       onScores: (open) => hud?.setScoreboard(open ? scoreRows() : null),
     });
+    controls.target = null;
     if (env.isTouch) {
-      touch = createTouchControls(ui, controls, sensitivity);
+      // A quick tap on an enemy picks it as the missile target (tapping empty sky clears the pick).
+      touch = createTouchControls(ui, controls, sensitivity, (x, y) => {
+        const self = player();
+        if (session && self) controls.target = targetAt(session.world, self, screenOfPlane, x, y);
+      });
       if (me) touch.setPlane(me);
     }
     if (env.debug && s.net) netOverlay = createNetOverlay(ui);
@@ -649,6 +663,13 @@ function boot(): void {
     return { x: (proj.x * 0.5 + 0.5) * window.innerWidth, y: (-proj.y * 0.5 + 0.5) * window.innerHeight };
   };
   const smokeAcc = new Map<string, number>();
+  const burners: GlowSource[] = [];
+  const burnerPool: GlowSource[] = [];
+  /** Where a plane is drawn on screen this frame (its mesh), for target boxes and taps. */
+  const screenOfPlane = (id: string): { x: number; y: number } | null => {
+    const v = visuals.get(id);
+    return v && v.root.visible ? toScreen(vc.copy(v.root.position)) : null;
+  };
 
   const handleEvents = (): void => {
     if (!session || !hud) {
@@ -674,6 +695,14 @@ function boot(): void {
             hud.damageFrom(Math.atan2(vc.x, vc.y));
           }
         }
+      } else if (e.t === 'detonate') {
+        effects.explosion(e.pos[0], e.pos[1], e.pos[2]);
+        if (vc.set(e.pos[0], e.pos[1], e.pos[2]).distanceTo(view.camera.position) < 200) chase.shake(e.victim === myId ? 0.6 : 0.3);
+      } else if (e.t === 'launch') {
+        const shooter = w.planes.find((p) => p.id === e.owner);
+        if (shooter) for (let k = 0; k < 3; k++) effects.emit('smoke', shooter.pos[0], shooter.pos[1] - 2, shooter.pos[2]);
+      } else if (e.t === 'decoy' && e.kind === 'chaff') {
+        missileFx.chaffBurst(e.pos[0], e.pos[1], e.pos[2]);
       } else if (e.t === 'kill') {
         const victim = w.pilots[e.victim];
         const killer = e.killer ? w.pilots[e.killer] : null;
@@ -739,8 +768,10 @@ function boot(): void {
         const me = player();
         let input: ControlInput | null = null;
         if (me?.alive) {
+          if (desktop.takeTargetCycle()) controls.target = cycleTarget(s.world, me, controls.target);
+          if (controls.target && !s.world.planes.some((p) => p.id === controls.target && p.alive)) controls.target = null;
           controls.fire = desktop.buttons.fire || (touch?.buttons.fire ?? false);
-          controls.missile = desktop.buttons.missile || (touch?.buttons.missile ?? false);
+          controls.missile = desktop.buttons.missile || (touch?.buttons.missile ?? false) || desktop.takeMissilePress() || (touch?.takeMissilePress() ?? false);
           controls.flare = desktop.buttons.flare || (touch?.buttons.flare ?? false);
           input = controls.sample(me, dt);
         }
@@ -809,6 +840,28 @@ function boot(): void {
           effects.emit('muzzle', vc.x, vc.y, vc.z);
         }
       }
+      // Afterburner glow at every exhaust (or the tail when the model has none).
+      if (p.alive && afterburner(p, ctx.planeDefs.get(p.planeId))) {
+        const size = Math.max(0.8, planeSize(ctx.planeDefs.get(p.planeId)!).lengthM / 16);
+        const add = (x: number, y: number, z: number): void => {
+          const g = burnerPool[burners.length] ?? { x: 0, y: 0, z: 0, size: 1 };
+          burnerPool[burners.length] = g;
+          g.x = x;
+          g.y = y;
+          g.z = z;
+          g.size = size;
+          burners.push(g);
+        };
+        if (visual.exhausts.length > 0) {
+          for (const ex of visual.exhausts) {
+            ex.getWorldPosition(vc);
+            add(vc.x, vc.y, vc.z);
+          }
+        } else {
+          const f = rotate(p.quat, FORWARD);
+          add(mesh.position.x - f[0] * 7, mesh.position.y - f[1] * 7, mesh.position.z - f[2] * 7);
+        }
+      }
       // Smoke from damaged engines, fire, and falling wrecks, out of the exhausts when the model has them.
       const rate = (p.wreck ? 40 : (p.fireFor > 0 ? 30 : 0) + (p.damaged.engine ? 18 : 0)) * effects.density;
       if (rate > 0) {
@@ -827,6 +880,8 @@ function boot(): void {
       }
     }
     tracers.update(w.bullets, 1 - alpha, 1 / 60, view.camera.position);
+    missileFx.update(w, (1 - alpha) / 60, frameDt, burners);
+    burners.length = 0;
     if (!me) return;
 
     const meMesh = ensureMesh(me);
@@ -896,10 +951,15 @@ function boot(): void {
     const hint = env.isTouch || desktop.pointerLocked || desktop.gamepadConnected
       ? ''
       : desktop.cursorSteering
-        ? 'Hold the cursor where you want to fly. Click or Space fires, Tab shows scores'
-        : 'Click to steer with the mouse. Space fires, W/S throttle, Tab shows scores';
+        ? `Hold the cursor where you want to fly. Click or Space fires${def.missiles.length ? ', Q missile, R target, F flares' : ''}, Tab shows scores`
+        : `Click to steer with the mouse. Space fires${def.missiles.length ? ', Q missile, R target, F flares' : ''}, W/S throttle, Tab shows scores`;
+
+    const cockpit = cockpitState(w, ctx, me, controls.target, screenOfPlane);
+    audio.update(cockpit.seeker, cockpit.warning, clock);
+    touch?.setWeapons(cockpit.touch);
 
     hud?.update({
+      weapons: cockpit.frame,
       speedKmh: speedKmh(me),
       altitudeM: me.pos[1],
       throttle: me.throttle,
@@ -989,6 +1049,45 @@ function boot(): void {
           .map((p) => ({ id: p.id, name: w.pilots[p.id]!.name, pos: [...p.pos], alive: p.alive }));
       },
       aim: () => ({ ...controls.aim }),
+      /** Missiles in the air and the player's weapon state. */
+      missiles: () => {
+        if (!session || mode !== 'match') return null;
+        const me = player();
+        return {
+          inAir: session.world.missiles.map((m) => ({ id: m.id, type: m.type, owner: m.owner, target: m.target })),
+          picked: controls.target,
+          me: me ? { flares: me.flares, chaff: me.chaff, missiles: [...me.missiles], lockTarget: me.lockTarget, lockProgress: me.lockProgress, hp: me.hp } : null,
+        };
+      },
+      /** Solo only: put the nearest enemy `distM` ahead of the player, flying the same way (a tail shot). */
+      placeEnemyAhead: (distM: number) => {
+        const me = player();
+        if (!session || session.kind !== 'solo' || !me) return null;
+        const enemy = session.world.planes.filter((p) => p.alive && p.team !== me.team)[0];
+        if (!enemy) return null;
+        const f = rotate(me.quat, FORWARD);
+        enemy.pos = [me.pos[0] + f[0] * distM, me.pos[1] + f[1] * distM, me.pos[2] + f[2] * distM];
+        enemy.quat = [...me.quat];
+        enemy.vel = [...me.vel];
+        enemy.protectedFor = 0;
+        return enemy.id;
+      },
+      /** Solo only: an enemy behind the player launches `type` at it. */
+      launchAtPlayer: (type: string, distM = 1800) => {
+        const me = player();
+        const m = ctx.missileDefs.get(type);
+        if (!session || session.kind !== 'solo' || !me || !m) return null;
+        const w = session.world;
+        const enemy = w.planes.filter((p) => p.alive && p.team !== me.team)[0];
+        if (!enemy) return null;
+        const f = rotate(me.quat, FORWARD);
+        enemy.pos = [me.pos[0] - f[0] * distM, me.pos[1] - f[1] * distM, me.pos[2] - f[2] * distM];
+        enemy.quat = [...me.quat];
+        enemy.vel = [...me.vel];
+        const before = w.nextMissileId;
+        launchMissile(w, enemy, 0, m, me, []);
+        return before;
+      },
       player: () => {
         const p = player();
         return p ? (JSON.parse(JSON.stringify(p)) as PlaneState) : null;

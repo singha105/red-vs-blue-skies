@@ -68,13 +68,21 @@ Ranges are game values scaled to the map, not real-world figures. Data: `src/dat
 
 | Class | id | Real examples | How it locks | Game range | Beaten by |
 | --- | --- | --- | --- | --- | --- |
-| Rear-aspect IR | `ir_rear` | AIM-9B, K-13 | Only from behind the target, 20° cone, 2 s to lock | 2.5 km | Flares (60% each), flying toward the sun |
-| All-aspect IR | `ir_all_aspect` | AIM-9L, R-60 | Any angle, 30° cone, 1.5 s | 3.5 km | Flares (40% each) |
-| High off-boresight IR | `ir_hobs` | R-73, AIM-9X | Up to 75° off the nose, 1 s | 4 km | Flares (25% each), hard turns |
+| Rear-aspect IR | `ir_rear` | AIM-9B, K-13, R.550 Magic | Only from behind the target, 20° cone, 2 s to lock | 2.5 km | Flares (60% for the first), flying toward the sun, turning to face it, outrunning it |
+| All-aspect IR | `ir_all_aspect` | AIM-9L, R-60, Magic 2 | Any angle, 30° cone, 1.5 s | 3.5 km | Flares (40–45% for the first) |
+| High off-boresight IR | `ir_hobs` | R-73, AIM-9X, MICA IR | Up to 75° off the nose, 1 s | 4 km | Flares (22–28% for the first), hard turns late in its flight |
 | Semi-active radar | `radar_semi_active` | AIM-7, R-27R | Your radar must stay locked until impact | 6 km | Chaff, notching (fly 90° to the missile), breaking the shooter's lock |
 | Active radar | `radar_active` | AIM-120, R-77, MICA | Fire and forget | 8 km | Chaff, notching, outrunning it |
 
 In the data, `flareResistance` is the chance one flare fails, so a 60% flare success is a resistance of 0.4. `damage` is the percent of the target's max HP a hit removes.
+
+How the simulation plays it (Day 7, `src/game/missiles.ts`):
+
+- **One Flare button** (F, the touch Flare button, gamepad X) drops a flare and a chaff bundle together every 0.3 s while held; phones have no room for two buttons. Each decoy gets one roll per missile guiding on you. The first decoy a missile sees succeeds with 1 − resistance; each further decoy of the same kind is 0.6× as convincing. Flares work 0.6× as well in afterburner (cut the throttle), chaff 1.5× as well while you're notching.
+- **IR seekers** see engine heat: lock range scales with throttle, ×1.4 in afterburner. Rear-aspect seekers lock only within 45° of the target's tail (a missile already in flight keeps the exhaust until the target shows its beam, 90°). Head-on, all-aspect seekers see about 60% as far. The sun within 10° of the line of sight blinds them.
+- **Radar** locks need the target in a 60° cone ahead and are halved below 300 m (ground clutter). A target whose speed along the line of sight is under 45 m/s is in the notch (the window is 1.6× wider below 300 m and half as wide for an active seeker inside its last 1.5 km). Radar missiles remember the track for 1.2 s, so a notch has to be held, not flicked through. Semi-active missiles also need the shooter's lock to the end.
+- **Guidance** is proportional navigation (N = 4). The G a missile can pull falls with the square of its speed, and after the motor burns out drag slows it, so late in flight it can be out-turned or outrun. The motor adds to the launcher's speed (40% of it), so a fast launch reaches further.
+- **Target selection**: R on desktop, a quick tap on an enemy on touch, RB on a gamepad; otherwise the weapons computer picks the enemy nearest the nose and the mount whose missile suits the range.
 
 Fairness rules:
 

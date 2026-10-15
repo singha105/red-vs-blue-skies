@@ -2,6 +2,7 @@
 // kill feed, scoreboard, hit markers, damage-direction arrows, lead indicator, plane markers, minimap,
 // and the killcam / respawn screen. DOM writes only happen when a shown value changes.
 import type { Team } from '../game/flight';
+import { createMissileHud, type WeaponsFrame } from './missileHud';
 
 export type ScreenPoint = { x: number; y: number } | null;
 
@@ -50,6 +51,8 @@ export interface HudFrame {
   killLimit: number;
   freeLook: boolean;
   hint: string;
+  /** Missiles, countermeasures and threats (null for planes without any, and in menus). */
+  weapons: WeaponsFrame | null;
   death: null | { phase: 'killcam' | 'respawn'; killer: string | null; respawnIn: number };
 }
 
@@ -111,6 +114,7 @@ export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onSco
     <div class="hud__board" hidden><table><thead><tr><th>Pilot</th><th>Plane</th><th>K</th><th>D</th><th>A</th><th>Dmg</th></tr></thead><tbody></tbody></table></div>
   `;
   parent.appendChild(el);
+  const missiles = createMissileHud(el);
 
   const q = <T extends HTMLElement>(sel: string): T => el.querySelector<T>(sel)!;
   const qa = (sel: string): HTMLElement[] => [...el.querySelectorAll<HTMLElement>(sel)];
@@ -186,6 +190,7 @@ export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onSco
       place(reticle, f.aim, flying && !f.freeLook);
       place(nose, f.nose, flying);
       place(lead, f.lead, flying);
+      missiles.update(f.weapons, flying);
 
       for (let i = 0; i < MAX_MARKERS; i++) {
         const node = markers[i]!;

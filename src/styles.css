@@ -2187,3 +2187,185 @@ body.is-flying {
     display: none;
   }
 }
+
+/* Missiles: target and lock boxes, radar warning, launch warning, loadout (src/ui/missileHud.ts) */
+.mhud,
+.mhud > * {
+  position: absolute;
+}
+.mhud {
+  inset: 0;
+  pointer-events: none;
+}
+.mhud__pick,
+.mhud__lock {
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+.mhud__pick {
+  width: 26px;
+  height: 26px;
+  border: 2px dashed rgba(255, 209, 102, 0.9);
+  rotate: 45deg;
+}
+.mhud__lock {
+  width: 46px;
+  height: 46px;
+  border: 2px solid #ffd166;
+}
+.mhud__lock svg {
+  position: absolute;
+  inset: -9px;
+  width: calc(100% + 18px);
+  height: calc(100% + 18px);
+  rotate: -90deg;
+}
+.mhud__lock circle {
+  fill: none;
+  stroke: #ffd166;
+  stroke-width: 2.5;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+}
+.mhud__lock.is-locked {
+  border-color: #ff5a4e;
+  border-width: 3px;
+  box-shadow: 0 0 0 1px rgba(14, 33, 56, 0.5);
+}
+.mhud__lock.is-locked circle {
+  stroke: #ff5a4e;
+}
+.mhud__lock.is-far {
+  border-color: #ff5a4e;
+  border-style: dashed;
+}
+.mhud__rwr {
+  --r: clamp(22px, 4.6vmin, 36px);
+  top: calc(10px + var(--safe-top));
+  right: calc(clamp(72px, 16vmin, 120px) + 20px + var(--safe-right));
+  width: clamp(64px, 13vmin, 96px);
+  aspect-ratio: 1;
+  border: 2px solid rgba(244, 247, 251, 0.6);
+  border-radius: 50%;
+  background: rgba(14, 33, 56, 0.4);
+}
+.mhud__rwr[hidden] {
+  display: none;
+}
+.mhud__rwr-me {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  translate: -50% -60%;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 10px solid var(--paper);
+}
+.mhud__threat {
+  position: absolute;
+  left: calc(50% - 5px);
+  top: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  transform-origin: 50% 50%;
+}
+.mhud__threat.is-spike {
+  background: #ffd166;
+}
+.mhud__threat.is-missile {
+  background: #ff3b30;
+  box-shadow: 0 0 6px #ff3b30;
+  animation: mhud-blink 0.25s steps(2) infinite;
+}
+.mhud__launch {
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 16px;
+  border-radius: 6px;
+  background: rgba(214, 38, 30, 0.92);
+  color: #fff;
+  font: 700 1.25em var(--text);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  animation: mhud-blink 0.5s steps(2) infinite;
+}
+.mhud__load {
+  left: 50%;
+  bottom: calc(104px + var(--safe-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  font-size: 0.8em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: 0.92;
+}
+.mhud__load .is-active {
+  color: #ffd166;
+  font-weight: 700;
+}
+.mhud__load .is-empty {
+  opacity: 0.45;
+}
+.has-touch .mhud__load {
+  left: calc(270px + var(--safe-left));
+  bottom: calc(76px + var(--safe-bottom));
+  transform: none;
+}
+@keyframes mhud-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mhud__launch,
+  .mhud__threat.is-missile {
+    animation: none;
+  }
+}
+@media (max-height: 430px) {
+  .mhud__launch {
+    top: 24%;
+    font-size: 1em;
+  }
+}
+
+/* Touch Missile button: lock-progress ring and counts */
+.tbtn--missile {
+  position: relative;
+}
+.tbtn__ring {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  pointer-events: none;
+  overflow: visible;
+}
+.tbtn__ring rect {
+  fill: none;
+  stroke: #ffd166;
+  stroke-width: 4;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+}
+.tbtn--missile.is-locked .tbtn__ring rect {
+  stroke: #ff5a4e;
+}
+.tbtn--missile.is-locked {
+  border-color: #ff5a4e;
+}
+.tbtn__count {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+.tbtn.is-empty {
+  opacity: 0.5;
+}

@@ -120,6 +120,7 @@ export function createClientSession(
   let seq = 0;
   let current: ControlInput = neutralInput();
   let tickInInput = 0;
+  const pressed = { missile: false, flare: false };
   const history: { seq: number; input: ControlInput }[] = [];
   const smooth = { pos: [0, 0, 0] as Vec3 };
   const prevPose = new Map<string, RenderPose>();
@@ -547,8 +548,15 @@ export function createClientSession(
 
       // Own plane: commit a new input every other tick (30 Hz), send it, predict with it.
       if (own && own.alive && latest) {
+        // A press shorter than an input period (a quick tap) still has to reach the host.
+        if (input) {
+          pressed.missile ||= input.missile;
+          pressed.flare ||= input.flare;
+        }
         if (tickInInput === 0) {
           current = input ?? neutralInput(own.throttle);
+          current = { ...current, missile: current.missile || pressed.missile, flare: current.flare || pressed.flare };
+          pressed.missile = pressed.flare = false;
           seq++;
           history.push({ seq, input: current });
           while (history.length > 120) history.shift();

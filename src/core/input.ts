@@ -1,10 +1,10 @@
 // Desktop devices: mouse (pointer lock), keyboard and gamepad, all feeding PlayerControls.
 //
 // Mouse: move = aim, left button = fire, right button = missile.
-// Keys: W/S throttle, A/D roll override, C (hold) free-look, Space fire, Q missile, F flare, L auto-level,
-// arrow keys = direct pitch/roll for players without a mouse.
+// Keys: W/S throttle, A/D roll override, C (hold) free-look, Space fire, Q missile, F flare (+ chaff),
+// R next missile target, L auto-level, arrow keys = direct pitch/roll for players without a mouse.
 // Gamepad: left stick aims, right trigger / left trigger raise / lower throttle, A fire, B missile, X flare,
-// Y auto-level, right stick free-look.
+// RB next target, Y auto-level, right stick free-look.
 import type { PlaneState } from '../game/flight';
 import type { PlayerControls } from './playerControls';
 
@@ -23,6 +23,10 @@ export interface DesktopInput {
   readonly gamepadConnected: boolean;
   /** Weapon buttons held on desktop devices this frame; main combines them with touch. */
   readonly buttons: Readonly<{ fire: boolean; missile: boolean; flare: boolean }>;
+  /** True once per press of R / RB (pick the next missile target). */
+  takeTargetCycle(): boolean;
+  /** Missile presses since the last call, so a key tapped between two simulation ticks still fires. */
+  takeMissilePress(): boolean;
   setEnabled(enabled: boolean): void;
   dispose(): void;
 }
@@ -33,6 +37,8 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
   let locked = false;
   let padConnected = false;
   let autoLevelQueued = false;
+  let targetQueued = false;
+  let missileQueued = false;
   let padButtons: boolean[] = [];
   // If the browser refuses pointer lock (some embedded views and iframes), steer by how far the cursor
   // sits from the screen centre instead, like a joystick.
@@ -47,6 +53,8 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
     keys.add(e.code);
     if (e.code === 'KeyL') autoLevelQueued = true;
+    if (e.code === 'KeyR' && !e.repeat) targetQueued = true;
+    if (e.code === 'KeyQ' && !e.repeat) missileQueued = true;
   };
   const onKeyUp = (e: KeyboardEvent): void => {
     keys.delete(e.code);
@@ -76,7 +84,10 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
       return;
     }
     if (e.button === 0) mouseFire = true;
-    if (e.button === 2) mouseMissile = true;
+    if (e.button === 2) {
+      mouseMissile = true;
+      missileQueued = true;
+    }
   };
   const onPointerUp = (e: PointerEvent): void => {
     if (e.pointerType !== 'mouse') return;
@@ -136,6 +147,16 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
     get gamepadConnected() {
       return padConnected;
     },
+    takeMissilePress() {
+      const q = missileQueued;
+      missileQueued = false;
+      return q;
+    },
+    takeTargetCycle() {
+      const q = targetQueued;
+      targetQueued = false;
+      return q;
+    },
     setEnabled(next) {
       enabled = next;
       if (!next) {
@@ -173,6 +194,7 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
         missile = missile || Boolean(b[1]);
         flare = flare || Boolean(b[2]);
         if (b[3] && !padButtons[3]) autoLevelQueued = true;
+        if (b[5] && !padButtons[5]) targetQueued = true;
         padButtons = b;
       }
       if (!locked && lockRefused && cursor.inside) {
