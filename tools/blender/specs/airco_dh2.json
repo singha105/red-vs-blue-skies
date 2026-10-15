@@ -1,0 +1,160 @@
+{
+  "id": "airco_dh2",
+  "era": "ww1",
+  "lengthM": 7.68,
+  "wingspanM": 8.61,
+  "fuselage": {
+    "sides": 8,
+    "sections": [
+      [
+        0.0,
+        0.5,
+        0.6,
+        0.0
+      ],
+      [
+        0.08,
+        0.72,
+        0.86,
+        0.0
+      ],
+      [
+        0.24,
+        0.76,
+        0.9,
+        0.04
+      ],
+      [
+        0.36,
+        0.6,
+        0.7,
+        0.06
+      ],
+      [
+        0.42,
+        0.0,
+        0.0,
+        0.06
+      ]
+    ],
+    "teamBand": [
+      0.22,
+      0.3
+    ]
+  },
+  "wing": [
+    {
+      "spanM": 8.61,
+      "planform": "tapered",
+      "rootChordM": 1.45,
+      "tipChordM": 1.45,
+      "positionAlongLength": 0.28,
+      "yM": 1.15,
+      "dihedralDeg": 2,
+      "sweepDeg": 0,
+      "thickness": 0.08
+    },
+    {
+      "spanM": 8.61,
+      "planform": "tapered",
+      "rootChordM": 1.45,
+      "tipChordM": 1.45,
+      "positionAlongLength": 0.3,
+      "yM": -0.45,
+      "dihedralDeg": 2,
+      "sweepDeg": 0,
+      "thickness": 0.08
+    }
+  ],
+  "struts": {
+    "spanFractions": [
+      0.42,
+      0.85
+    ],
+    "cabane": false
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 2.6,
+    "stab": {
+      "rootChordM": 1.0,
+      "tipChordM": 0.95,
+      "sweepDeg": 0,
+      "positionAlongLength": 0.84,
+      "yM": 0.25
+    },
+    "finHeightM": 1.1,
+    "fin": {
+      "rootChordM": 0.9,
+      "tipChordM": 0.7,
+      "sweepDeg": 5,
+      "positionAlongLength": 0.86
+    }
+  },
+  "engine": {
+    "type": "rotary",
+    "propBlades": 4,
+    "propDiameterM": 2.6,
+    "spinner": false,
+    "propOffsetM": 0.2,
+    "pusher": true
+  },
+  "pods": [
+    {
+      "xM": 1.35,
+      "xEndM": 0.25,
+      "yM": 0.55,
+      "yEndM": 0.25,
+      "fromT": 0.36,
+      "toT": 0.9,
+      "radiusM": 0.05,
+      "endRadiusM": 0.04,
+      "sides": 4
+    },
+    {
+      "xM": 1.35,
+      "xEndM": 0.25,
+      "yM": -0.4,
+      "yEndM": 0.2,
+      "fromT": 0.38,
+      "toT": 0.9,
+      "radiusM": 0.05,
+      "endRadiusM": 0.04,
+      "sides": 4
+    }
+  ],
+  "canopy": {
+    "type": "open",
+    "positionAlongLength": 0.16,
+    "lengthM": 0.7,
+    "widthM": 0.5
+  },
+  "gear": {
+    "t": 0.2,
+    "trackM": 1.7,
+    "heightM": 0.95,
+    "wheelM": 0.68,
+    "tailSkid": false
+  },
+  "guns": [
+    {
+      "at": "fuselage",
+      "t": 0.01,
+      "xM": 0.0,
+      "mount": 0,
+      "zOffsetM": 0.1,
+      "yOffsetM": 0.25
+    }
+  ],
+  "colors": {
+    "body": "#5f5a3c",
+    "camo": "#5f5a3c",
+    "underside": "#d8cfae",
+    "teamBand": [
+      "fuselage_band",
+      "wingtips",
+      "nose"
+    ]
+  },
+  "pylons": []
+}

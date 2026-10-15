@@ -1,0 +1,127 @@
+{
+  "id": "fokker_e3",
+  "era": "ww1",
+  "lengthM": 7.2,
+  "wingspanM": 9.52,
+  "fuselage": {
+    "sides": 8,
+    "sections": [
+      [
+        0,
+        0.75,
+        0.912,
+        0.0
+      ],
+      [
+        0.13,
+        0.698,
+        0.95,
+        0.0
+      ],
+      [
+        0.36,
+        0.652,
+        0.95,
+        0.019
+      ],
+      [
+        0.55,
+        0.48,
+        0.788,
+        0.048
+      ],
+      [
+        0.8,
+        0.247,
+        0.456,
+        0.104
+      ],
+      [
+        1.0,
+        0.053,
+        0.162,
+        0.123
+      ]
+    ]
+  },
+  "wing": {
+    "planform": "tapered",
+    "rootChordM": 1.8,
+    "tipChordM": 1.8,
+    "positionAlongLength": 0.2,
+    "mount": "high",
+    "sweepDeg": 0,
+    "dihedralDeg": 0,
+    "thickness": 0.07,
+    "yM": 0.42
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 3.1,
+    "stab": {
+      "rootChordM": 1.0,
+      "tipChordM": 0.6,
+      "sweepDeg": 20,
+      "positionAlongLength": 0.86
+    },
+    "finHeightM": 1.0,
+    "fin": {
+      "rootChordM": 0.9,
+      "tipChordM": 0.6,
+      "sweepDeg": 10,
+      "positionAlongLength": 0.88
+    }
+  },
+  "engine": {
+    "type": "radial_cowl",
+    "cowlDiameterM": 0.95,
+    "cowlLengthM": 0.45,
+    "propBlades": 2,
+    "propDiameterM": 2.6,
+    "spinner": false,
+    "propOffsetM": 0.12
+  },
+  "canopy": {
+    "type": "open",
+    "positionAlongLength": 0.36,
+    "lengthM": 0.8,
+    "widthM": 0.55
+  },
+  "gear": {
+    "t": 0.14,
+    "trackM": 1.7,
+    "heightM": 1.0,
+    "wheelM": 0.68
+  },
+  "struts": {
+    "spanFractions": [],
+    "cabane": false
+  },
+  "guns": [
+    {
+      "at": "fuselage",
+      "t": 0.12,
+      "xM": 0.0,
+      "mount": 0,
+      "zOffsetM": 0.2,
+      "yOffsetM": 0.58
+    }
+  ],
+  "colors": {
+    "body": "#c9b98f",
+    "camo": "#b8a87f",
+    "underside": "#d6c9a2",
+    "teamBand": [
+      "fuselage_band",
+      "wingtips",
+      "cowl"
+    ]
+  },
+  "hump": {
+    "fromT": 0.26,
+    "toT": 0.3,
+    "widthM": 0.12,
+    "heightM": 0.75
+  },
+  "pylons": []
+}

@@ -117,7 +117,19 @@
   "pylons": [
     {
       "at": "wing",
-      "spanFraction": 0.64
+      "spanFraction": 0.18
+    },
+    {
+      "at": "wing",
+      "spanFraction": 0.5
+    },
+    {
+      "at": "wing",
+      "spanFraction": 0.58
+    },
+    {
+      "at": "wing",
+      "spanFraction": 0.66
     },
     {
       "at": "wing",

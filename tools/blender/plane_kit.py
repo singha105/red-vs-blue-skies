@@ -140,6 +140,7 @@ class Plane:
         self.col_body = hex_lin(c.get("body", "#8a9099"))
         self.col_camo = hex_lin(c.get("camo", c.get("body", "#8a9099")))
         self.col_under = hex_lin(c.get("underside", c.get("body", "#b8c4c8")))
+        self.col_wing = hex_lin(c["wing"]) if "wing" in c else None  # e.g. the P-26's yellow wings
         self.col_team = hex_lin("#ffffff")
         self.col_dark = hex_lin(DARK)
         self.col_glass = hex_lin(GLASS)
@@ -267,6 +268,8 @@ class Plane:
                     else:
                         normal = (0, 1 if up else -1, 0)
                     mat, col = self.paint(None, normal, (i, k, side, stations[i][0], kind == "fin"))
+                    if kind == "wing" and self.col_wing:
+                        col = self.col_wing
                     if tip_zone:
                         mat, col = "TEAM", self.col_team
                     if kind == "fin" and "fin" in self.team:
@@ -406,7 +409,7 @@ class Plane:
         for s in (0.0, 1.0):
             st.append((s * half, lerp(root, tip, s), le0 - math.tan(sweep) * s * half, y0 + math.tan(dih) * s * half))
         if t.get("type") != "fin_only":  # tailless deltas (Mirage, Gripen, Rafale, Typhoon) have no stabiliser
-            self.surface(st, 0.08, team_tip="stab_tips" in self.team)
+            self.surface(st, 0.08, team_tip="stab_tips" in self.team, kind="stab")
         # Fin(s).
         fin_h = t.get("finHeightM", 1.2)
         fin = t.get("fin", {})
@@ -466,27 +469,89 @@ class Plane:
                     self.mb.f(idx, "BODY", self.col_body if k != 2 else self.col_under)
         if kind == "chin_intake":
             # One intake under the nose, centred (F-16, F-8, Typhoon): a duct that fairs into the belly.
-            a, b = e.get("fromT", 0.2), e.get("toT", 0.5)
-            iw, ih = e.get("widthM", 0.9), e.get("heightM", 0.7)
-            w, h, y = self.section_at(a + 0.02)
-            yc = y - h / 2 + e.get("yOffsetM", -0.2)
-            za, zb = self.z_at(a), self.z_at(b)
-            keep = e.get("taperM", 0.5)
-            pts = [(iw / 2, yc + ih / 2, za), (-iw / 2, yc + ih / 2, za), (-iw / 2, yc - ih / 2, za), (iw / 2, yc - ih / 2, za)]
-            f = [self.mb.v(p) for p in pts]
-            ytop = yc + ih / 2
-            bk = [self.mb.v((p[0] * keep, ytop + (p[1] - ytop) * keep, zb)) for p in pts]
-            self.mb.f(list(reversed(f)), "DARK", self.col_dark)
-            for k in range(4):
-                k2 = (k + 1) % 4
-                self.mb.f([f[k], f[k2], bk[k2], bk[k]], "BODY", self.col_body if k != 2 else self.col_under)
+            self.duct(e)
         for ex in self.s.get("exhausts", []):
             self.nozzle(ex)
+        pusher = e.get("pusher", False)
+        if pusher:
+            # DH.2: the engine and prop sit behind the nacelle, between the tail booms.
+            t_end = self.sections[-1][0]
+            nose_z = self.z_at(t_end) - 2 * e.get("propOffsetM", 0.15)
+            y0 = self.section_at(t_end - 0.05)[2]
         if kind in ("inline_nose", "radial_cowl", "rotary") and e.get("propBlades"):
             self.propeller(e, nose_z, y0)
         if not self.s.get("exhausts") and not any(p.get("exhaust") for p in self.s.get("pods", [])):
             # Smoke point for prop planes: just behind the engine.
-            self.exhausts.append((0.0, y0, nose_z - e.get("cowlLengthM", 1.0) - 0.4))
+            self.exhausts.append((0.0, y0, nose_z + 0.3 if pusher else nose_z - e.get("cowlLengthM", 1.0) - 0.4))
+
+    def duct(self, e):
+        """A rectangular duct under the fuselage that fairs into the belly: jet chin intakes and the radiator
+        scoops of prop fighters (P-51, P-40 chin, Hurricane, Yak-3)."""
+        a, b = e.get("fromT", 0.2), e.get("toT", 0.5)
+        iw, ih = e.get("widthM", 0.9), e.get("heightM", 0.7)
+        w, h, y = self.section_at(a + 0.02)
+        yc = y - h / 2 + e.get("yOffsetM", -0.2)
+        za, zb = self.z_at(a), self.z_at(b)
+        keep = e.get("taperM", 0.5)
+        pts = [(iw / 2, yc + ih / 2, za), (-iw / 2, yc + ih / 2, za), (-iw / 2, yc - ih / 2, za), (iw / 2, yc - ih / 2, za)]
+        f = [self.mb.v(p) for p in pts]
+        ytop = yc + ih / 2
+        bk = [self.mb.v((p[0] * keep, ytop + (p[1] - ytop) * keep, zb)) for p in pts]
+        self.mb.f(list(reversed(f)), "DARK", self.col_dark)
+        for k in range(4):
+            k2 = (k + 1) % 4
+            self.mb.f([f[k], f[k2], bk[k2], bk[k]], "BODY", self.col_body if k != 2 else self.col_under)
+
+    def scoops(self):
+        for sc in self.s.get("scoops", []):
+            self.duct(sc)
+
+    def gear(self):
+        """Fixed landing gear (WW1 and early biplanes, P-26): V struts, an axle and wheels or spats, a tail skid."""
+        g = self.s.get("gear")
+        if not g:
+            return
+        t = g.get("t", 0.2)
+        w, h, yc = self.section_at(t)
+        z = self.z_at(t)
+        bottom = yc - h / 2
+        wr = g.get("wheelM", 0.66) / 2
+        axle_y = bottom - g.get("heightM", 0.9) + wr
+        track = g.get("trackM", 1.6) / 2
+        spats = g.get("spats", False)
+        root_x = g.get("rootXM", w * 0.3)
+        root_y = g.get("rootYM", bottom + 0.05)
+        for side in (1, -1):
+            x = track * side
+            # Spatted legs are faired (a fat strut); open gear is a thin V.
+            self.box((root_x * side, root_y, z + (0.0 if spats else 0.32)), (x, axle_y + (wr * 0.6 if spats else 0), z), 0.16 if spats else 0.06,
+                     "BODY" if spats else "DARK", self.col_body if spats else None)
+            if not spats:
+                self.box((root_x * side, root_y, z - 0.32), (x, axle_y, z), 0.06)
+                self.wheel((x + 0.04 * side, axle_y, z), wr, 0.12)
+            else:
+                # A spat: a fat box around the wheel, slimmer at the back.
+                self.box((x, axle_y, z + wr * 1.2), (x, axle_y + 0.04, z - wr * 1.5), wr * 1.15, "BODY", self.col_body)
+        if not spats and g.get("axle", True):
+            self.box((track, axle_y, z), (-track, axle_y, z), 0.05)
+        if g.get("tailSkid", True):
+            tt = g.get("skidT", 0.94)
+            ws, hs, ys = self.section_at(tt)
+            zt = self.z_at(tt)
+            self.box((0, ys - hs / 2 + 0.02, zt + 0.25), (0, ys - hs / 2 - 0.25, zt - 0.1), 0.05)
+
+    def wheel(self, c, r, width):
+        K = 8
+        cx, cy, cz = c
+        rings = []
+        for dx in (width / 2, -width / 2):
+            rings.append([self.mb.v((cx + dx, cy + r * math.sin(2 * math.pi * k / K), cz + r * math.cos(2 * math.pi * k / K))) for k in range(K)])
+        a, b = rings
+        self.mb.f(a, "DARK", self.col_dark)
+        self.mb.f(list(reversed(b)), "DARK", self.col_dark)
+        for k in range(K):
+            k2 = (k + 1) % K
+            self.mb.f([a[k2], a[k], b[k], b[k2]], "DARK", self.col_dark)
 
     def nozzle(self, ex):
         t = ex.get("t", 1.0)
@@ -590,6 +655,7 @@ class Plane:
         """Cylinders beside the fuselage: engine nacelles on the wings (Meteor) or tail booms (Vampire)."""
         for pd in self.s.get("pods", []):
             x, r = pd["xM"], pd.get("radiusM", 0.5)
+            xb = pd.get("xEndM", x)
             za, zb = self.z_at(pd["fromT"]), self.z_at(pd["toT"])
             ya = pd.get("yM", 0.0)
             yb = pd.get("yEndM", ya)
@@ -598,7 +664,7 @@ class Plane:
             for side in (1, -1):
                 cx = x * side
                 front = [self.mb.v((cx + r * math.cos(2 * math.pi * k / K), ya + r * math.sin(2 * math.pi * k / K), za)) for k in range(K)]
-                back = [self.mb.v((cx + rb * math.cos(2 * math.pi * k / K), yb + rb * math.sin(2 * math.pi * k / K), zb)) for k in range(K)]
+                back = [self.mb.v((xb * side + rb * math.cos(2 * math.pi * k / K), yb + rb * math.sin(2 * math.pi * k / K), zb)) for k in range(K)]
                 for k in range(K):
                     k2 = (k + 1) % K
                     idx = [front[k2], front[k], back[k], back[k2]]
@@ -611,7 +677,7 @@ class Plane:
                 self.mb.f(front if side < 0 else list(reversed(front)), "DARK" if inlet else "BODY", self.col_dark if inlet else self.col_body)
                 self.mb.f(back if side < 0 else list(reversed(back)), "DARK", self.col_dark)
                 if pd.get("exhaust"):
-                    self.exhausts.append((cx, yb, zb))
+                    self.exhausts.append((xb * side, yb, zb))
 
     def hump(self):
         """Optional fairing over the guns (the Camel's hump)."""
@@ -661,8 +727,10 @@ class Plane:
             else:
                 t = p["t"]
                 w, h, yc = self.section_at(t)
-                for side in (1, -1):
-                    self.pylons.append((p.get("xM", w / 2) * side, yc + p.get("yOffsetM", -h / 2 - 0.1), self.z_at(t)))
+                x = p.get("xM", w / 2)
+                # xM 0 is one centreline pylon (the Fw 190's bomb rack); anything else is a left/right pair.
+                for side in ((1, -1) if x else (1,)):
+                    self.pylons.append((x * side, yc + p.get("yOffsetM", -h / 2 - 0.1), self.z_at(t)))
 
     def build(self):
         self.fuselage()
@@ -672,6 +740,8 @@ class Plane:
         self.canopy()
         self.pods()
         self.hump()
+        self.scoops()
+        self.gear()
         self.guns()
         self.pylons_()
         body = self.mb.to_object("body")

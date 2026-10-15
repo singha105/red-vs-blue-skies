@@ -1,0 +1,149 @@
+{
+  "id": "p39q",
+  "era": "late_ww2",
+  "lengthM": 9.19,
+  "wingspanM": 10.36,
+  "fuselage": {
+    "sides": 8,
+    "sections": [
+      [
+        0,
+        0.56,
+        0.735,
+        0.0
+      ],
+      [
+        0.09,
+        0.82,
+        1.08,
+        0.0
+      ],
+      [
+        0.26,
+        1.0,
+        1.395,
+        0.06
+      ],
+      [
+        0.43,
+        0.96,
+        1.5,
+        0.09
+      ],
+      [
+        0.6,
+        0.71,
+        1.17,
+        0.105
+      ],
+      [
+        0.8,
+        0.44,
+        0.795,
+        0.15
+      ],
+      [
+        0.95,
+        0.2,
+        0.48,
+        0.225
+      ],
+      [
+        1.0,
+        0.07,
+        0.225,
+        0.24
+      ]
+    ]
+  },
+  "wing": {
+    "planform": "tapered",
+    "rootChordM": 2.4,
+    "tipChordM": 1.2,
+    "positionAlongLength": 0.3,
+    "mount": "low",
+    "sweepDeg": 0,
+    "dihedralDeg": 4,
+    "thickness": 0.13
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 4.0,
+    "stab": {
+      "rootChordM": 1.3,
+      "tipChordM": 0.7,
+      "sweepDeg": 5,
+      "positionAlongLength": 0.86
+    },
+    "finHeightM": 1.35,
+    "fin": {
+      "rootChordM": 1.3,
+      "tipChordM": 0.7,
+      "sweepDeg": 20,
+      "positionAlongLength": 0.84
+    }
+  },
+  "engine": {
+    "type": "inline_nose",
+    "propBlades": 3,
+    "propDiameterM": 3.15,
+    "spinner": true,
+    "propOffsetM": 0.2,
+    "spinnerDiameterM": 0.55,
+    "spinnerLengthM": 0.6
+  },
+  "scoops": [
+    {
+      "fromT": 0.46,
+      "toT": 0.6,
+      "widthM": 0.5,
+      "heightM": 0.3,
+      "yOffsetM": 0.0,
+      "taperM": 0.6
+    }
+  ],
+  "canopy": {
+    "type": "framed",
+    "positionAlongLength": 0.36,
+    "lengthM": 1.6,
+    "widthM": 0.66,
+    "heightM": 0.5,
+    "profile": [
+      0.3,
+      0.95,
+      1.0,
+      1.0,
+      0.7
+    ]
+  },
+  "guns": [
+    {
+      "at": "fuselage",
+      "t": 0.0,
+      "xM": 0.0,
+      "mount": 0,
+      "zOffsetM": 0.9,
+      "yOffsetM": 0.0
+    },
+    {
+      "at": "fuselage",
+      "t": 0.08,
+      "xM": 0.2,
+      "mount": 1,
+      "zOffsetM": 0.2,
+      "yOffsetM": 0.3
+    },
+    {
+      "at": "wing",
+      "spanFraction": 0.42,
+      "mount": 1
+    }
+  ],
+  "colors": {
+    "body": "#5a5a3c",
+    "camo": "#5a5a3c",
+    "underside": "#9a9a96",
+    "teamBand": "aft_fuselage_wingtips_fin"
+  },
+  "pylons": []
+}

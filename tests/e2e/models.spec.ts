@@ -58,3 +58,27 @@ test('a WW1 match flies the Camel and Dr.I models with props and muzzles', async
   await page.screenshot({ path: `${SHOTS}/${info.project.name}-ww1-models.png` });
   await page.keyboard.up('Space');
 });
+
+test('every one of the 60 planes opens its real model in the hangar', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop-chrome' || Boolean(process.env['BASE_URL']), 'all planes need ?debug=1 on localhost; one viewport is enough');
+  test.setTimeout(180_000);
+  await page.goto('./?debug=1');
+  await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
+  await page.getByRole('button', { name: 'Play Solo' }).click();
+  const eras = ['WW1', 'Early WW2', 'Late WW2', 'Early Jets', 'Cold War', 'Modern'];
+  let seen = 0;
+  for (const era of eras) {
+    await page.getByRole('radio', { name: new RegExp(`^${era}`) }).click();
+    const planes = page.locator('[role="radiogroup"][aria-label="Plane"] [role="radio"]');
+    const n = await planes.count();
+    expect(n, era).toBe(10);
+    for (let i = 0; i < n; i++) {
+      await page.locator('[role="radiogroup"][aria-label="Plane"] [role="radio"]').nth(i).click();
+      await page.getByRole('button', { name: 'Hangar' }).click();
+      await expect.poll(async () => (await hangar(page))?.placeholder, { timeout: 10_000 }).toBe(false);
+      seen++;
+      await page.getByRole('button', { name: 'Back' }).click();
+    }
+  }
+  expect(seen).toBe(60);
+});

@@ -22,6 +22,7 @@ import weapons_kit  # noqa: E402
 
 PROP_BUDGET = 1200
 JET_BUDGET = 1500
+BOMBER_BUDGET = 2000  # the AI bombers (Bomber Escort) are three or four times a fighter's size
 
 
 def reset():
@@ -64,7 +65,7 @@ def main():
         reset()
         objs, info = plane_kit.build(spec)
         jet = spec["era"] in ("early_jets", "cold_war", "modern")
-        budget = JET_BUDGET if jet else PROP_BUDGET
+        budget = BOMBER_BUDGET if spec["era"] == "bombers" else JET_BUDGET if jet else PROP_BUDGET
         info["budget"] = budget
         if info["tris"] > budget:
             failures.append(f"{spec['id']}: {info['tris']} triangles > {budget}")

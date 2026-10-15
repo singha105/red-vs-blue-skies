@@ -1,0 +1,143 @@
+{
+  "id": "cr42",
+  "era": "early_ww2",
+  "lengthM": 8.25,
+  "wingspanM": 9.7,
+  "fuselage": {
+    "sides": 8,
+    "sections": [
+      [
+        0,
+        0.92,
+        1.134,
+        0.0
+      ],
+      [
+        0.1,
+        1.0,
+        1.242,
+        0.0
+      ],
+      [
+        0.32,
+        0.94,
+        1.35,
+        0.054
+      ],
+      [
+        0.52,
+        0.8,
+        1.31,
+        0.108
+      ],
+      [
+        0.72,
+        0.55,
+        0.972,
+        0.162
+      ],
+      [
+        0.9,
+        0.27,
+        0.581,
+        0.23
+      ],
+      [
+        1.0,
+        0.08,
+        0.257,
+        0.257
+      ]
+    ]
+  },
+  "wing": [
+    {
+      "spanM": 9.7,
+      "planform": "tapered",
+      "rootChordM": 1.8,
+      "tipChordM": 1.4,
+      "positionAlongLength": 0.2,
+      "yM": 1.15,
+      "dihedralDeg": 0,
+      "sweepDeg": 0,
+      "thickness": 0.08
+    },
+    {
+      "spanM": 6.5,
+      "planform": "tapered",
+      "rootChordM": 1.1,
+      "tipChordM": 0.8,
+      "positionAlongLength": 0.24,
+      "yM": -0.5,
+      "dihedralDeg": 3,
+      "sweepDeg": 0,
+      "thickness": 0.08
+    }
+  ],
+  "struts": {
+    "spanFractions": [
+      0.85
+    ],
+    "cabane": true
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 3.3,
+    "stab": {
+      "rootChordM": 1.1,
+      "tipChordM": 0.7,
+      "sweepDeg": 10,
+      "positionAlongLength": 0.85
+    },
+    "finHeightM": 1.15,
+    "fin": {
+      "rootChordM": 1.15,
+      "tipChordM": 0.6,
+      "sweepDeg": 25,
+      "positionAlongLength": 0.85
+    }
+  },
+  "engine": {
+    "type": "radial_cowl",
+    "cowlDiameterM": 1.2,
+    "cowlLengthM": 0.7,
+    "propBlades": 3,
+    "propDiameterM": 2.8,
+    "spinner": true,
+    "propOffsetM": 0.15,
+    "spinnerDiameterM": 0.4,
+    "spinnerLengthM": 0.35
+  },
+  "canopy": {
+    "type": "open",
+    "positionAlongLength": 0.42,
+    "lengthM": 0.85,
+    "widthM": 0.6
+  },
+  "gear": {
+    "t": 0.18,
+    "trackM": 2.0,
+    "heightM": 0.8,
+    "wheelM": 0.7,
+    "spats": true,
+    "rootXM": 0.9,
+    "rootYM": -0.55
+  },
+  "guns": [
+    {
+      "at": "fuselage",
+      "t": 0.1,
+      "xM": 0.25,
+      "mount": 0,
+      "zOffsetM": 0.2,
+      "yOffsetM": 0.45
+    }
+  ],
+  "colors": {
+    "body": "#b8a76a",
+    "camo": "#5f6b3b",
+    "underside": "#b9bfbf",
+    "teamBand": "aft_fuselage_and_wingtips"
+  },
+  "pylons": []
+}

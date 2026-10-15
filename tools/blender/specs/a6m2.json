@@ -1,0 +1,120 @@
+{
+  "id": "a6m2",
+  "era": "early_ww2",
+  "lengthM": 9.06,
+  "wingspanM": 12.0,
+  "fuselage": {
+    "sides": 8,
+    "sections": [
+      [
+        0,
+        1.058,
+        1.176,
+        0.0
+      ],
+      [
+        0.1,
+        1.15,
+        1.288,
+        0.0
+      ],
+      [
+        0.32,
+        1.081,
+        1.4,
+        0.056
+      ],
+      [
+        0.52,
+        0.92,
+        1.358,
+        0.112
+      ],
+      [
+        0.72,
+        0.632,
+        1.008,
+        0.168
+      ],
+      [
+        0.9,
+        0.31,
+        0.602,
+        0.238
+      ],
+      [
+        1.0,
+        0.092,
+        0.266,
+        0.266
+      ]
+    ]
+  },
+  "wing": {
+    "planform": "tapered",
+    "rootChordM": 2.6,
+    "tipChordM": 1.3,
+    "positionAlongLength": 0.25,
+    "mount": "low",
+    "sweepDeg": 0,
+    "dihedralDeg": 6,
+    "thickness": 0.12
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 4.4,
+    "stab": {
+      "rootChordM": 1.2,
+      "tipChordM": 0.6,
+      "sweepDeg": 10,
+      "positionAlongLength": 0.86
+    },
+    "finHeightM": 1.3,
+    "fin": {
+      "rootChordM": 1.4,
+      "tipChordM": 0.6,
+      "sweepDeg": 25,
+      "positionAlongLength": 0.84
+    }
+  },
+  "engine": {
+    "type": "radial_cowl",
+    "cowlDiameterM": 1.2,
+    "cowlLengthM": 0.8,
+    "propBlades": 3,
+    "propDiameterM": 2.9,
+    "spinner": true,
+    "propOffsetM": 0.15,
+    "spinnerDiameterM": 0.45,
+    "spinnerLengthM": 0.4
+  },
+  "canopy": {
+    "type": "framed",
+    "positionAlongLength": 0.46,
+    "lengthM": 2.4,
+    "widthM": 0.62,
+    "heightM": 0.48
+  },
+  "guns": [
+    {
+      "at": "wing",
+      "spanFraction": 0.45,
+      "mount": 0
+    },
+    {
+      "at": "fuselage",
+      "t": 0.12,
+      "xM": 0.2,
+      "mount": 1,
+      "zOffsetM": 0.2,
+      "yOffsetM": 0.2
+    }
+  ],
+  "colors": {
+    "body": "#b5b59a",
+    "camo": "#a9a98e",
+    "underside": "#c2c2aa",
+    "teamBand": "aft_fuselage_wingtips_fin"
+  },
+  "pylons": []
+}

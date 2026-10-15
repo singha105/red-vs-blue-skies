@@ -10,11 +10,13 @@ const result = loadGameData();
 if (!result.ok) throw new Error('data invalid');
 const data = result.data;
 const ctx = createWorldContext(data, 'island_chain');
-const FIRST_SIX = ['sopwith_camel', 'fokker_dr1', 'spitfire_mk5', 'f4u4', 'mig15bis', 'f4e'];
+const ALL = data.planes.map((p) => p.id);
+const BOMBERS = ['bomber_ww1', 'bomber_ww2', 'bomber_jet'];
 
 describe('plane models', () => {
-  it('the first six planes have built models that exist in public/', () => {
-    for (const id of FIRST_SIX) {
+  it('all 60 planes have built models that exist in public/', () => {
+    expect(ALL).toHaveLength(60);
+    for (const id of ALL) {
       const m = PLANE_MODELS[id];
       expect(m, id).toBeDefined();
       expect(existsSync(new URL(`../../public/${m!.file}`, import.meta.url)), id).toBe(true);
@@ -29,11 +31,20 @@ describe('plane models', () => {
 
   it('manifest lists every model with its size', () => {
     const manifest = JSON.parse(readFileSync(new URL('../../public/models/manifest.json', import.meta.url), 'utf8'));
-    for (const id of FIRST_SIX) expect(manifest.planes[id].bytes).toBeGreaterThan(1000);
+    for (const id of [...ALL, ...BOMBERS]) expect(manifest.planes[id].bytes, id).toBeGreaterThan(1000);
     expect(Object.keys(manifest.weapons).sort()).toEqual(
       ['bomb_250', 'drop_tank', 'missile_ir_large', 'missile_ir_small', 'missile_radar_long', 'missile_radar_medium', 'rocket'],
     );
     expect(manifest.totalBytes).toBeLessThan(10 * 1024 * 1024);
+  });
+
+  it('the AI bombers have gunner muzzles and stay inside their budget', () => {
+    for (const id of BOMBERS) {
+      const m = PLANE_MODELS[id]!;
+      expect(m.file).toBe(`models/bombers/${id}.glb`);
+      expect(m.tris).toBeLessThanOrEqual(2000);
+      expect(m.muzzles.length, id).toBeGreaterThanOrEqual(2);
+    }
   });
 
   it('bullets leave from the model\'s muzzles', () => {

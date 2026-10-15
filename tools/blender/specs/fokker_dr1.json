@@ -3,16 +3,134 @@
   "era": "ww1",
   "lengthM": 5.77,
   "wingspanM": 7.19,
-  "fuselage": { "sides": 8, "sections": [[0.0, 0.86, 0.88, 0.0], [0.12, 0.82, 0.96, 0.0], [0.38, 0.72, 0.98, 0.03], [0.66, 0.4, 0.6, 0.06], [1.0, 0.06, 0.16, 0.1]] },
+  "fuselage": {
+    "sides": 8,
+    "sections": [
+      [
+        0.0,
+        0.86,
+        0.88,
+        0.0
+      ],
+      [
+        0.12,
+        0.82,
+        0.96,
+        0.0
+      ],
+      [
+        0.38,
+        0.72,
+        0.98,
+        0.03
+      ],
+      [
+        0.66,
+        0.4,
+        0.6,
+        0.06
+      ],
+      [
+        1.0,
+        0.06,
+        0.16,
+        0.1
+      ]
+    ]
+  },
   "wing": [
-    { "spanM": 7.19, "planform": "tapered", "rootChordM": 1.0, "tipChordM": 0.98, "positionAlongLength": 0.19, "yM": 1.1, "dihedralDeg": 0, "thickness": 0.12 },
-    { "spanM": 6.23, "planform": "tapered", "rootChordM": 1.0, "tipChordM": 0.98, "positionAlongLength": 0.21, "yM": 0.36, "dihedralDeg": 0, "thickness": 0.12 },
-    { "spanM": 5.7, "planform": "tapered", "rootChordM": 1.0, "tipChordM": 0.98, "positionAlongLength": 0.23, "yM": -0.4, "dihedralDeg": 0, "thickness": 0.12 }
+    {
+      "spanM": 7.19,
+      "planform": "tapered",
+      "rootChordM": 1.0,
+      "tipChordM": 0.98,
+      "positionAlongLength": 0.19,
+      "yM": 1.1,
+      "dihedralDeg": 0,
+      "thickness": 0.12
+    },
+    {
+      "spanM": 6.23,
+      "planform": "tapered",
+      "rootChordM": 1.0,
+      "tipChordM": 0.98,
+      "positionAlongLength": 0.21,
+      "yM": 0.36,
+      "dihedralDeg": 0,
+      "thickness": 0.12
+    },
+    {
+      "spanM": 5.7,
+      "planform": "tapered",
+      "rootChordM": 1.0,
+      "tipChordM": 0.98,
+      "positionAlongLength": 0.23,
+      "yM": -0.4,
+      "dihedralDeg": 0,
+      "thickness": 0.12
+    }
   ],
-  "struts": { "spanFractions": [0.7], "cabane": true },
-  "tail": { "type": "conventional", "stabSpanM": 2.6, "stab": { "rootChordM": 1.1, "tipChordM": 0.35, "sweepDeg": 32, "positionAlongLength": 0.83 }, "finHeightM": 0.95, "fin": { "rootChordM": 0.8, "tipChordM": 0.45, "sweepDeg": 10, "positionAlongLength": 0.86 } },
-  "engine": { "type": "radial_cowl", "cowlDiameterM": 0.95, "cowlLengthM": 0.55, "propBlades": 2, "propDiameterM": 2.62, "spinner": false, "propOffsetM": 0.12 },
-  "canopy": { "type": "open", "positionAlongLength": 0.42, "lengthM": 0.75, "widthM": 0.55 },
-  "guns": [{ "at": "fuselage", "t": 0.16, "xM": 0.12, "yOffsetM": 0.6, "mount": 0 }],
-  "colors": { "body": "#6e7442", "camo": "#5d6338", "underside": "#a7c3d6", "teamBand": ["cowl", "fin", "wingtips"] }
+  "struts": {
+    "spanFractions": [
+      0.7
+    ],
+    "cabane": true
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 2.6,
+    "stab": {
+      "rootChordM": 1.1,
+      "tipChordM": 0.35,
+      "sweepDeg": 32,
+      "positionAlongLength": 0.83
+    },
+    "finHeightM": 0.95,
+    "fin": {
+      "rootChordM": 0.8,
+      "tipChordM": 0.45,
+      "sweepDeg": 10,
+      "positionAlongLength": 0.86
+    }
+  },
+  "engine": {
+    "type": "radial_cowl",
+    "cowlDiameterM": 0.95,
+    "cowlLengthM": 0.55,
+    "propBlades": 2,
+    "propDiameterM": 2.62,
+    "spinner": false,
+    "propOffsetM": 0.12
+  },
+  "canopy": {
+    "type": "open",
+    "positionAlongLength": 0.42,
+    "lengthM": 0.75,
+    "widthM": 0.55
+  },
+  "guns": [
+    {
+      "at": "fuselage",
+      "t": 0.16,
+      "xM": 0.12,
+      "yOffsetM": 0.6,
+      "mount": 0
+    }
+  ],
+  "colors": {
+    "body": "#6e7442",
+    "camo": "#5d6338",
+    "underside": "#a7c3d6",
+    "teamBand": [
+      "cowl",
+      "fin",
+      "wingtips"
+    ]
+  },
+  "gear": {
+    "t": 0.16,
+    "trackM": 1.6,
+    "heightM": 0.95,
+    "wheelM": 0.66
+  }
 }

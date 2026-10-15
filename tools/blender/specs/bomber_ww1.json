@@ -1,0 +1,161 @@
+{
+  "id": "bomber_ww1",
+  "era": "bombers",
+  "lengthM": 12.0,
+  "wingspanM": 23.0,
+  "fuselage": {
+    "sides": 8,
+    "sections": [
+      [
+        0,
+        0.96,
+        1.275,
+        0.0
+      ],
+      [
+        0.12,
+        1.2,
+        1.5,
+        0.0
+      ],
+      [
+        0.35,
+        1.14,
+        1.5,
+        0.03
+      ],
+      [
+        0.55,
+        0.84,
+        1.23,
+        0.075
+      ],
+      [
+        0.8,
+        0.432,
+        0.75,
+        0.15
+      ],
+      [
+        1.0,
+        0.084,
+        0.27,
+        0.195
+      ]
+    ]
+  },
+  "wing": [
+    {
+      "spanM": 23.0,
+      "planform": "tapered",
+      "rootChordM": 2.6,
+      "tipChordM": 2.4,
+      "positionAlongLength": 0.3,
+      "yM": 1.6,
+      "dihedralDeg": 0,
+      "sweepDeg": 0,
+      "thickness": 0.08
+    },
+    {
+      "spanM": 21.5,
+      "planform": "tapered",
+      "rootChordM": 2.6,
+      "tipChordM": 2.4,
+      "positionAlongLength": 0.32,
+      "yM": -0.7,
+      "dihedralDeg": 0,
+      "sweepDeg": 0,
+      "thickness": 0.08
+    }
+  ],
+  "struts": {
+    "spanFractions": [
+      0.3,
+      0.62,
+      0.9
+    ],
+    "cabane": true
+  },
+  "tail": {
+    "type": "twin_fin",
+    "stabSpanM": 5.5,
+    "stab": {
+      "rootChordM": 1.8,
+      "tipChordM": 1.5,
+      "sweepDeg": 0,
+      "positionAlongLength": 0.86
+    },
+    "finHeightM": 1.8,
+    "fin": {
+      "rootChordM": 1.8,
+      "tipChordM": 1.2,
+      "sweepDeg": 15,
+      "positionAlongLength": 0.86
+    },
+    "finOffsetM": 1.2
+  },
+  "engine": {
+    "type": "inline_nose"
+  },
+  "pods": [
+    {
+      "xM": 2.6,
+      "yM": 0.15,
+      "fromT": 0.22,
+      "toT": 0.42,
+      "radiusM": 0.45,
+      "endRadiusM": 0.25,
+      "sides": 6,
+      "intake": true
+    }
+  ],
+  "canopy": {
+    "type": "open",
+    "positionAlongLength": 0.15,
+    "lengthM": 1.0,
+    "widthM": 0.7
+  },
+  "gear": {
+    "t": 0.28,
+    "trackM": 3.0,
+    "heightM": 1.2,
+    "wheelM": 0.9
+  },
+  "guns": [
+    {
+      "at": "fuselage",
+      "t": 0.04,
+      "xM": 0.0,
+      "mount": 0,
+      "zOffsetM": 0.0,
+      "yOffsetM": 0.7
+    },
+    {
+      "at": "fuselage",
+      "t": 0.45,
+      "xM": 0.0,
+      "mount": 1,
+      "zOffsetM": 0.0,
+      "yOffsetM": 0.8
+    },
+    {
+      "at": "fuselage",
+      "t": 0.6,
+      "xM": 0.0,
+      "mount": 2,
+      "zOffsetM": 0.0,
+      "yOffsetM": 0.6
+    }
+  ],
+  "colors": {
+    "body": "#5f5a3c",
+    "camo": "#5f5a3c",
+    "underside": "#d8cfae",
+    "teamBand": [
+      "fuselage_band",
+      "wingtips",
+      "cowl"
+    ]
+  },
+  "pylons": []
+}

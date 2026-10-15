@@ -1,0 +1,122 @@
+{
+  "id": "f6f5",
+  "era": "late_ww2",
+  "lengthM": 10.24,
+  "wingspanM": 13.06,
+  "fuselage": {
+    "sides": 8,
+    "sections": [
+      [
+        0,
+        1.242,
+        1.47,
+        0.0
+      ],
+      [
+        0.1,
+        1.35,
+        1.61,
+        0.0
+      ],
+      [
+        0.32,
+        1.269,
+        1.75,
+        0.07
+      ],
+      [
+        0.52,
+        1.08,
+        1.698,
+        0.14
+      ],
+      [
+        0.72,
+        0.743,
+        1.26,
+        0.21
+      ],
+      [
+        0.9,
+        0.365,
+        0.752,
+        0.298
+      ],
+      [
+        1.0,
+        0.108,
+        0.333,
+        0.333
+      ]
+    ]
+  },
+  "wing": {
+    "planform": "tapered",
+    "rootChordM": 3.0,
+    "tipChordM": 1.6,
+    "positionAlongLength": 0.3,
+    "mount": "low",
+    "sweepDeg": 0,
+    "dihedralDeg": 7,
+    "thickness": 0.14
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 4.8,
+    "stab": {
+      "rootChordM": 1.6,
+      "tipChordM": 0.8,
+      "sweepDeg": 5,
+      "positionAlongLength": 0.86
+    },
+    "finHeightM": 1.8,
+    "fin": {
+      "rootChordM": 1.7,
+      "tipChordM": 0.8,
+      "sweepDeg": 15,
+      "positionAlongLength": 0.82
+    }
+  },
+  "engine": {
+    "type": "radial_cowl",
+    "cowlDiameterM": 1.4,
+    "cowlLengthM": 1.0,
+    "propBlades": 3,
+    "propDiameterM": 4.0,
+    "spinner": true,
+    "propOffsetM": 0.15,
+    "spinnerDiameterM": 0.5,
+    "spinnerLengthM": 0.45
+  },
+  "canopy": {
+    "type": "framed",
+    "positionAlongLength": 0.45,
+    "lengthM": 1.6,
+    "widthM": 0.7,
+    "heightM": 0.5
+  },
+  "guns": [
+    {
+      "at": "wing",
+      "spanFraction": 0.38,
+      "mount": 0
+    },
+    {
+      "at": "wing",
+      "spanFraction": 0.43,
+      "mount": 0
+    },
+    {
+      "at": "wing",
+      "spanFraction": 0.48,
+      "mount": 0
+    }
+  ],
+  "colors": {
+    "body": "#1d2c4c",
+    "camo": "#1d2c4c",
+    "underside": "#22355a",
+    "teamBand": "aft_fuselage_wingtips_fin"
+  },
+  "pylons": []
+}

@@ -1,0 +1,114 @@
+{
+  "id": "i16",
+  "era": "early_ww2",
+  "lengthM": 6.13,
+  "wingspanM": 9.0,
+  "fuselage": {
+    "sides": 8,
+    "sections": [
+      [
+        0,
+        1.235,
+        1.232,
+        0.0
+      ],
+      [
+        0.12,
+        1.3,
+        1.33,
+        0.0
+      ],
+      [
+        0.35,
+        1.196,
+        1.4,
+        0.07
+      ],
+      [
+        0.6,
+        0.858,
+        1.148,
+        0.14
+      ],
+      [
+        0.85,
+        0.416,
+        0.7,
+        0.224
+      ],
+      [
+        1.0,
+        0.13,
+        0.308,
+        0.28
+      ]
+    ]
+  },
+  "wing": {
+    "planform": "tapered",
+    "rootChordM": 2.4,
+    "tipChordM": 1.2,
+    "positionAlongLength": 0.26,
+    "mount": "low",
+    "sweepDeg": 0,
+    "dihedralDeg": 4,
+    "thickness": 0.13
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 3.6,
+    "stab": {
+      "rootChordM": 1.0,
+      "tipChordM": 0.6,
+      "sweepDeg": 10,
+      "positionAlongLength": 0.86
+    },
+    "finHeightM": 1.15,
+    "fin": {
+      "rootChordM": 1.1,
+      "tipChordM": 0.6,
+      "sweepDeg": 20,
+      "positionAlongLength": 0.85
+    }
+  },
+  "engine": {
+    "type": "radial_cowl",
+    "cowlDiameterM": 1.35,
+    "cowlLengthM": 0.7,
+    "propBlades": 2,
+    "propDiameterM": 2.8,
+    "spinner": true,
+    "propOffsetM": 0.15,
+    "spinnerDiameterM": 0.4,
+    "spinnerLengthM": 0.3
+  },
+  "canopy": {
+    "type": "teardrop",
+    "positionAlongLength": 0.5,
+    "lengthM": 0.9,
+    "widthM": 0.62,
+    "heightM": 0.4
+  },
+  "guns": [
+    {
+      "at": "fuselage",
+      "t": 0.1,
+      "xM": 0.32,
+      "mount": 0,
+      "zOffsetM": 0.2,
+      "yOffsetM": 0.3
+    },
+    {
+      "at": "wing",
+      "spanFraction": 0.36,
+      "mount": 0
+    }
+  ],
+  "colors": {
+    "body": "#56653a",
+    "camo": "#3f4b2c",
+    "underside": "#a9c0cf",
+    "teamBand": "aft_fuselage_wingtips_fin"
+  },
+  "pylons": []
+}

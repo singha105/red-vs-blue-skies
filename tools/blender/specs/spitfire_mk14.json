@@ -1,0 +1,131 @@
+{
+  "id": "spitfire_mk14",
+  "era": "late_ww2",
+  "lengthM": 9.96,
+  "wingspanM": 11.23,
+  "fuselage": {
+    "sides": 8,
+    "sections": [
+      [
+        0,
+        0.515,
+        0.686,
+        0.0
+      ],
+      [
+        0.09,
+        0.754,
+        1.008,
+        0.0
+      ],
+      [
+        0.26,
+        0.92,
+        1.302,
+        0.056
+      ],
+      [
+        0.43,
+        0.883,
+        1.4,
+        0.084
+      ],
+      [
+        0.6,
+        0.653,
+        1.092,
+        0.098
+      ],
+      [
+        0.8,
+        0.405,
+        0.742,
+        0.14
+      ],
+      [
+        0.95,
+        0.184,
+        0.448,
+        0.21
+      ],
+      [
+        1.0,
+        0.064,
+        0.21,
+        0.224
+      ]
+    ]
+  },
+  "wing": {
+    "planform": "elliptical",
+    "rootChordM": 2.5,
+    "tipChordM": 0.55,
+    "positionAlongLength": 0.28,
+    "mount": "low",
+    "sweepDeg": 0,
+    "dihedralDeg": 6,
+    "thickness": 0.12
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 3.4,
+    "stab": {
+      "rootChordM": 1.15,
+      "tipChordM": 0.6,
+      "sweepDeg": 8,
+      "positionAlongLength": 0.86
+    },
+    "finHeightM": 1.35,
+    "fin": {
+      "rootChordM": 1.4,
+      "tipChordM": 0.55,
+      "sweepDeg": 25,
+      "positionAlongLength": 0.84
+    }
+  },
+  "engine": {
+    "type": "inline_nose",
+    "propBlades": 5,
+    "propDiameterM": 3.15,
+    "spinner": true,
+    "propOffsetM": 0.2,
+    "spinnerDiameterM": 0.6,
+    "spinnerLengthM": 0.75
+  },
+  "scoops": [
+    {
+      "fromT": 0.3,
+      "toT": 0.42,
+      "widthM": 0.4,
+      "heightM": 0.3,
+      "yOffsetM": 0.0,
+      "taperM": 0.6
+    }
+  ],
+  "canopy": {
+    "type": "teardrop",
+    "positionAlongLength": 0.5,
+    "lengthM": 1.5,
+    "widthM": 0.62,
+    "heightM": 0.48
+  },
+  "guns": [
+    {
+      "at": "wing",
+      "spanFraction": 0.36,
+      "mount": 0
+    },
+    {
+      "at": "wing",
+      "spanFraction": 0.46,
+      "mount": 1
+    }
+  ],
+  "colors": {
+    "body": "#6b5a3c",
+    "camo": "#4a5a3a",
+    "underside": "#b9c1c4",
+    "teamBand": "aft_fuselage_and_wingtips"
+  },
+  "pylons": []
+}

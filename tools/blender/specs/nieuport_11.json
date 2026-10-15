@@ -1,0 +1,136 @@
+{
+  "id": "nieuport_11",
+  "era": "ww1",
+  "lengthM": 5.8,
+  "wingspanM": 7.55,
+  "fuselage": {
+    "sides": 8,
+    "sections": [
+      [
+        0,
+        0.72,
+        0.864,
+        0.0
+      ],
+      [
+        0.13,
+        0.67,
+        0.9,
+        0.0
+      ],
+      [
+        0.36,
+        0.626,
+        0.9,
+        0.018
+      ],
+      [
+        0.55,
+        0.461,
+        0.747,
+        0.045
+      ],
+      [
+        0.8,
+        0.238,
+        0.432,
+        0.099
+      ],
+      [
+        1.0,
+        0.05,
+        0.153,
+        0.117
+      ]
+    ]
+  },
+  "wing": [
+    {
+      "spanM": 7.55,
+      "planform": "tapered",
+      "rootChordM": 1.2,
+      "tipChordM": 1.15,
+      "positionAlongLength": 0.17,
+      "yM": 1.0,
+      "dihedralDeg": 0,
+      "sweepDeg": 3,
+      "thickness": 0.08
+    },
+    {
+      "spanM": 7.4,
+      "planform": "tapered",
+      "rootChordM": 0.7,
+      "tipChordM": 0.55,
+      "positionAlongLength": 0.22,
+      "yM": -0.4,
+      "dihedralDeg": 4,
+      "sweepDeg": 3,
+      "thickness": 0.08
+    }
+  ],
+  "struts": {
+    "spanFractions": [
+      0.62
+    ],
+    "cabane": true
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 2.5,
+    "stab": {
+      "rootChordM": 0.9,
+      "tipChordM": 0.55,
+      "sweepDeg": 15,
+      "positionAlongLength": 0.86
+    },
+    "finHeightM": 0.85,
+    "fin": {
+      "rootChordM": 0.8,
+      "tipChordM": 0.6,
+      "sweepDeg": 30,
+      "positionAlongLength": 0.86
+    }
+  },
+  "engine": {
+    "type": "radial_cowl",
+    "cowlDiameterM": 0.9,
+    "cowlLengthM": 0.45,
+    "propBlades": 2,
+    "propDiameterM": 2.4,
+    "spinner": false,
+    "propOffsetM": 0.12
+  },
+  "canopy": {
+    "type": "open",
+    "positionAlongLength": 0.4,
+    "lengthM": 0.8,
+    "widthM": 0.55
+  },
+  "gear": {
+    "t": 0.15,
+    "trackM": 1.6,
+    "heightM": 0.9,
+    "wheelM": 0.62
+  },
+  "guns": [
+    {
+      "at": "fuselage",
+      "t": 0.22,
+      "xM": 0.0,
+      "mount": 0,
+      "zOffsetM": 0.4,
+      "yOffsetM": 1.0
+    }
+  ],
+  "colors": {
+    "body": "#b9b6a6",
+    "camo": "#a9a593",
+    "underside": "#cfccbd",
+    "teamBand": [
+      "fuselage_band",
+      "wingtips",
+      "cowl"
+    ]
+  },
+  "pylons": []
+}

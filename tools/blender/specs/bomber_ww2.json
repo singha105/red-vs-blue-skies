@@ -1,0 +1,137 @@
+{
+  "id": "bomber_ww2",
+  "era": "bombers",
+  "lengthM": 22.6,
+  "wingspanM": 31.6,
+  "fuselage": {
+    "sides": 10,
+    "sections": [
+      [
+        0,
+        1.08,
+        1.35,
+        -0.135
+      ],
+      [
+        0.06,
+        1.968,
+        2.322,
+        0.0
+      ],
+      [
+        0.18,
+        2.4,
+        2.7,
+        0.0
+      ],
+      [
+        0.55,
+        2.28,
+        2.565,
+        0.054
+      ],
+      [
+        0.8,
+        1.32,
+        1.62,
+        0.324
+      ],
+      [
+        1.0,
+        0.288,
+        0.54,
+        0.594
+      ]
+    ]
+  },
+  "wing": {
+    "planform": "tapered",
+    "rootChordM": 5.6,
+    "tipChordM": 2.2,
+    "positionAlongLength": 0.3,
+    "mount": "mid",
+    "sweepDeg": 0,
+    "dihedralDeg": 4,
+    "thickness": 0.15
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 13.0,
+    "stab": {
+      "rootChordM": 4.0,
+      "tipChordM": 2.0,
+      "sweepDeg": 5,
+      "positionAlongLength": 0.83
+    },
+    "finHeightM": 5.0,
+    "fin": {
+      "rootChordM": 5.5,
+      "tipChordM": 2.0,
+      "sweepDeg": 30,
+      "positionAlongLength": 0.76
+    }
+  },
+  "engine": {
+    "type": "inline_nose"
+  },
+  "pods": [
+    {
+      "xM": 4.2,
+      "yM": -0.1,
+      "fromT": 0.21,
+      "toT": 0.44,
+      "radiusM": 0.75,
+      "endRadiusM": 0.4,
+      "intake": true
+    },
+    {
+      "xM": 7.8,
+      "yM": 0.0,
+      "fromT": 0.23,
+      "toT": 0.42,
+      "radiusM": 0.7,
+      "endRadiusM": 0.35,
+      "intake": true
+    }
+  ],
+  "canopy": {
+    "type": "framed",
+    "positionAlongLength": 0.1,
+    "lengthM": 2.6,
+    "widthM": 1.5,
+    "heightM": 0.7
+  },
+  "guns": [
+    {
+      "at": "fuselage",
+      "t": 0.0,
+      "xM": 0.0,
+      "mount": 0,
+      "zOffsetM": 0.3,
+      "yOffsetM": 0.0
+    },
+    {
+      "at": "fuselage",
+      "t": 0.3,
+      "xM": 0.0,
+      "mount": 1,
+      "zOffsetM": 0.0,
+      "yOffsetM": 1.55
+    },
+    {
+      "at": "fuselage",
+      "t": 1.0,
+      "xM": 0.0,
+      "mount": 2,
+      "zOffsetM": -0.2,
+      "yOffsetM": 0.0
+    }
+  ],
+  "colors": {
+    "body": "#6d7154",
+    "camo": "#5a5f44",
+    "underside": "#9fa8ad",
+    "teamBand": "aft_fuselage_wingtips_fin"
+  },
+  "pylons": []
+}
