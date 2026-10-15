@@ -3,6 +3,54 @@
 Live: https://singha105.github.io/red-vs-blue-skies/ (`?debug=1` shows the FPS counter)
 Repo: https://github.com/singha105/red-vs-blue-skies
 
+## Day 5: Multiplayer (2026-10-14)
+
+### Done
+
+- **Transport interface** (`src/net/transport.ts`): host and client sides with two channels, `reliable` (ordered) and `unreliable` (unordered). Three implementations: PeerJS (`peerTransport.ts`, loaded only when you host or join, so solo stays offline-safe), an in-memory fake with delay, jitter and loss (`fakeTransport.ts`), and `combineHosts`, which joins the PeerJS host to the host's own zero-delay loopback.
+- **Host flow**: Host / Join → callsign → era, plane and bots → Create room. The peer id is `rvbs-<CODE>`, with 4 letters and no I or O. The lobby shows the code, a QR code generated locally (`qrcode-generator`), the `?room=CODE` link and a Copy button. If the code is taken it retries with a new one, up to 5 times.
+- **Join flow**: the link or QR opens the join screen with the code filled in → callsign → Join. Clear errors for a room that isn't found, a different version, a full room, and no answer.
+- **ICE**: Google STUN, plus Metered TURN once `VITE_TURN_DOMAIN` / `VITE_TURN_API_KEY` are set (fetched with a 4 s timeout, falls back to STUN). The deploy build reads both from repo secrets.
+- **Protocol** (`protocol.ts`): 10-byte inputs at 30/s with a seq. Snapshots at 20/s are 15 B plus 22 B per plane: quantised position, velocity and smallest-three quaternion, with state flags, plus your own ammo. That's about 460 B for 20 planes. Events (hit, kill, explode, spawn), roster, stats and match state go as JSON on the reliable channel. No bullets are sent: each plane's firing flag drives local tracers.
+- **Host is authoritative** (`hostServer.ts`): runs the real match at 60 Hz with bots filling to 20, decides every hit, damage, kill and score, and sends hit events only to the two pilots involved. Validation: inputs clamped on decode, a 70/s token bucket, seq must increase, firing limited to real rpm because the host simulates the guns, and different build versions rejected.
+- **Client** (`clientSession.ts`): your own plane is predicted with the same flight model and reconciled on every snapshot (unacknowledged inputs replayed, errors under 60 m smoothed out, larger ones snap). Other planes are drawn 100 ms in the past, interpolated, and extrapolated with velocity for up to 250 ms.
+- **The host plays too** through the loopback ClientSession, so the host's own player goes through exactly the same code path as everyone else.
+- **Leaving**: a client who leaves (or goes silent for 8 s) is handed to a bot after 10 s. If the host leaves, everyone gets a "Host left" results screen with the scores so far. A phone that loses the connection itself (locked or backgrounded) sees "Connection lost" instead. You can join a running match: you take a bot's seat on the team with fewer humans.
+- **Lobby host advice**: each player's device (phone or computer, and connection type where the browser reports it) and ping. The lobby recommends the best host (a laptop on Wi-Fi) and warns when the host is a phone.
+- **Debug overlay** (`?debug=1`): ping, loss, snapshots/s, KB/s in and out, and, on the host, upload to all players.
+- **Session abstraction** (`src/app/session.ts`): `main.ts` now renders any match through `Session` (solo or networked).
+- **Phone layouts**: the Host/Join menu and the lobby fit a 390 px tall landscape phone without scrolling.
+- **Tests**: 58 Vitest. They add 13 net tests: room codes, quaternion packing, snapshot round trip and size, input clamping, lobby and version reject, prediction under 100 ms RTT with 10% loss, interpolation under 20% loss with no teleporting, bandwidth, fire rate bounded by rpm, input-flood rate limit, leave → bot after 10 s, host close → host left, and join in progress. Playwright adds `multiplayer.spec`: 3 Chromium contexts (host laptop, laptop client, touch-phone client) on localhost with a local PeerJS server. Everyone sees the other two humans move, both clients get ≥ 15 snapshots/s and < 30 KB/s, the phone shows as a phone in the lobby, and both clients get "Host left" when the host closes. The smoke test now covers the real Host/Join screen.
+
+### Bandwidth (measured)
+
+| | Fake transport, 20 planes | 3 browsers on localhost |
+| --- | --- | --- |
+| Per client, down | 10.0 KB/s | 9.8–9.9 KB/s |
+| Per client, up | 0.31 KB/s | 0.3 KB/s |
+| Snapshots | 20/s | 19.6–19.7/s |
+
+The host uploads about 10 KB/s per remote player (about 190 KB/s for a full 20-player room).
+
+### Known issues
+
+- **PeerJS can't turn off retransmits**, so the "unreliable" channel is unordered but still retransmitted. Late snapshots are discarded, so this only costs bandwidth on bad links.
+- **The host tab must stay visible.** Browsers pause `requestAnimationFrame` in hidden tabs, which pauses the whole match. The lobby tells the host to keep the tab on screen.
+- **iOS suspends WebRTC when a phone is locked or Safari goes to the background.** A phone client is replaced by a bot after 10 s; a phone host ends the match for everyone, hence the lobby warning.
+- **TURN not configured yet**: phones on mobile data may fail to connect until the Metered domain and API key are added (the Host/Join screen says so).
+- **Mixed plane choice**: friends get a random plane within a tier of the host's (Day 6 adds plane select). Touch aim assist is off in network matches for now, so prediction matches the host exactly.
+- **No rematch in the same room**: after the results, "Play with friends" goes back to Host / Join (Day 6 adds results → lobby).
+- The 20-player host upload (~190 KB/s) hasn't been tested on real home Wi-Fi yet.
+
+### Still to do for Day 5's done-when
+
+- Add the Metered TURN domain and API key (`.env` plus repo secrets) and redeploy.
+- Run the manual test in [`docs/MULTIPLAYER_TEST.md`](MULTIPLAYER_TEST.md) on the live site: 2 laptops plus a phone on mobile data.
+
+### Next steps (Day 6)
+
+- Lobby, voting, teams, plane select, results → back to lobby, chat.
+
 ## Day 4: Blender pipeline and first planes (2026-10-14)
 
 ### Done

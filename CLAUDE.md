@@ -40,7 +40,11 @@ src/
                  bullets, damage, kills, respawn, stepWorld), bots (AI → ControlInput), match (solo TDM)
   render/        Three.js only: renderer, mapScene (sky, ocean, terrain LOD chunks, clouds, sun),
                  chaseCamera, planeMesh (merged, 1 draw call), tracers + effects (instanced pools), titleShot
-  net/           networking (Day 5): Transport interface, PeerJS adapter
+  app/           session.ts: what the renderer needs from a match (solo or networked)
+  net/           multiplayer: transport (interface), peerTransport (PeerJS, lazy-loaded), fakeTransport
+                 (in-memory, delay/loss, also the host's loopback), protocol (binary input/snapshot),
+                 hostServer (authoritative match), clientSession (prediction + interpolation),
+                 roomCode, ice (STUN + Metered TURN), hostAdvice
   ui/            HTML/CSS overlays: title, soloSetup, settingsPanel, HUD, results, touch controls,
                  rotate prompt, error overlay, FPS
   data/          JSON data files + types.ts + validate.ts (checked at startup)
@@ -88,6 +92,15 @@ docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md
 5. No copyrighted assets (nothing from War Thunder or other games). Make everything or use CC0.
 6. Finish by updating docs/PROGRESS.md, committing, pushing, and confirming the live deploy.
 
+## Multiplayer (Day 5)
+
+- One player's browser hosts: `HostServer` runs the real match (bots included) and alone decides hits, damage, kills and scores. Everyone, the host's own player included, is a `ClientSession`; the host's runs over a zero-delay `FakeNetwork` loopback joined to PeerJS with `combineHosts`. Per 60 Hz step: `session.step` → `loop.advance` → `server.tick`.
+- PeerJS public signaling, peer id `rvbs-<CODE>`, 4-letter codes without I/O. Each client opens two DataConnections: `r` (reliable, ordered: JSON events) and `u` (unordered: binary inputs 30/s, snapshots 20/s, pings). PeerJS can't turn retransmits off, so `u` is unordered but still reliable.
+- No bullets on the wire: the `firing` flag drives local cosmetic tracers. Own plane predicted and reconciled; others drawn 100 ms behind, extrapolated up to 250 ms.
+- Host validation: inputs clamped on decode, token bucket 70/s, seq must increase, fire rate is whatever the sim allows (real rpm), different `__APP_VERSION__` is rejected.
+- TURN: `VITE_TURN_DOMAIN` + `VITE_TURN_API_KEY` in `.env` (gitignored) and as GitHub Actions secrets for the deploy build. The Metered apiKey only fetches TURN credentials, so it's fine in the bundle; never put the Metered secret key anywhere.
+- Change the protocol in `src/net/protocol.ts` only, and keep `tests/unit/net.test.ts` (fake transport with delay/loss) passing. `tests/e2e/multiplayer.spec.ts` runs 1 host + 2 clients against a local PeerJS server (`tests/e2e/peer-server.mjs`, port 9187).
+
 ## Controls and URL flags
 
 - Mouse aim: the mouse moves the aim circle, the autopilot (`src/game/autopilot.ts`) flies the nose (small circle) onto it. Click to capture the mouse; if the browser refuses pointer lock, the cursor's offset from screen centre steers instead.
@@ -96,6 +109,7 @@ docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md
 - Gamepad: left stick aim, right stick look, RT/LT throttle, A fire, B missile, X flare, Y level.
 - Tab (or the Scores button) shows the scoreboard.
 - `?debug=1` FPS counter, all planes selectable, `window.__rvbs` test hooks; with debug, `?timescale=N` runs the sim N× faster and `?matchtime=S` shortens the match. `?gfx=low|medium|high` forces a quality level.
+- `?room=CODE` opens the join screen with the code filled in (the lobby's share link and QR use it). With `?debug=1`, a network match shows ping, loss, snapshots/s and KB/s in and out, and `?signal=host:port` uses a local PeerJS signaling server.
 - `FULL_MATCH=1 npx playwright test match.spec` plays a full 10-minute match at 10× speed on both viewports.
 
 ## Deploy
