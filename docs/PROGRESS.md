@@ -53,6 +53,10 @@ A match downloads one era's models (115–142 KB), its bomber in Bomber Escort (
 - 155 Vitest (+25: 12 mode × map bot matches, zone capture and drain, bullets and rockets on ground targets, ordnance release order, tickets end a match, the bomber missile cap and interceptor points, deterministic layouts on their own halves, the canyon's depth at the zones, flat mesa tops, three networked-mode tests, all 60 planes plus bombers have models).
 - Playwright (35 passed locally, emulator/full-match specs skipped as before): `modes.spec` plays every mode on all four maps with bots on desktop (one map per mode on the iPhone layout), the solo map/mode pickers, and sound after the first tap on both; `models.spec` opens all 60 planes in the hangar. Perf: high 60 fps (102 draw calls); low at phone size with 4× CPU throttling 60 fps (78); **low, 4× throttle, Ground Strike over Mountain Valley 60 fps (125)**; high, Bomber Escort with Modern jets 57.6 fps.
 
+### Deploy
+
+- Pushed and deployed (GitHub Actions green, live bundle `index-CCWYt2Q5.js`). The Playwright suite against the live site with `BASE_URL`: **34 passed** (both multiplayer specs over public PeerJS signaling, every mode on every map with tier-1 planes, sound after the first tap on desktop and the iPhone profile, perf 60 fps on all four profiles including low + 4× throttle in Ground Strike over Mountain Valley). The all-60-planes hangar test runs on localhost only (it needs every plane unlocked).
+
 ### Known issues
 
 - Ground units don't collide with anything and convoys drive through each other at the ends of their road; ships are boxes that don't wake.
