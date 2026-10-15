@@ -36,14 +36,17 @@ src/
                  quality presets + auto picker, settings (localStorage), env (URL flags)
   game/          simulation: plain serializable data, NO Three.js imports
                  math, terrain (seeded heightmap), flight (energy model), autopilot (mouse-aim PD),
-                 controls (ControlInput), ballistics (guns, bullets, hit spheres), world (planes,
+                 controls (ControlInput), ballistics (guns, bullets, hit spheres), missiles (seekers, PN
+                 guidance, locks, flares/chaff, notching), sun (SUN_DIR for sky + IR seekers), world (planes,
                  bullets, damage, kills, respawn, spawn points, stepWorld), bots (AI → ControlInput), match (TDM,
                  humans + bots), teams (split by RP + parties, bot BR balancing), results (RP formula, awards),
                  unlocks (tier stub until Day 8, spawn costs)
   render/        Three.js only: renderer, mapScene (sky, ocean, terrain LOD chunks, clouds, sun),
-                 chaseCamera, planeMesh (merged, 1 draw call), tracers + effects (instanced pools), titleShot,
+                 chaseCamera, planeMesh (merged, 1 draw call), tracers + effects (instanced pools), missiles
+                 (missiles, trails, flares, chaff, afterburner glow), titleShot,
                  silhouettes (top-view card images rendered from the models)
-  app/           session.ts: what the renderer needs from a match (solo or networked)
+  app/           session.ts: what the renderer needs from a match (solo or networked); weapons.ts: cockpit
+                 missile state (lock box, RWR, warnings, tones) and target picking
   net/           multiplayer: transport (interface), peerTransport (PeerJS, lazy-loaded), fakeTransport
                  (in-memory, delay/loss, also the host's loopback), protocol (binary input/snapshot),
                  room (host-owned lobby state machine, pure), hostServer (room + authoritative match),
@@ -106,15 +109,16 @@ docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md
 - PeerJS public signaling, peer id `rvbs-<CODE>`, 4-letter codes without I/O. Each client opens two DataConnections: `r` (reliable, ordered: JSON events) and `u` (unordered: binary inputs 30/s, snapshots 20/s, pings). PeerJS can't turn retransmits off, so `u` is unordered but still reliable.
 - No bullets on the wire: the `firing` flag drives local cosmetic tracers. Own plane predicted and reconciled; others drawn 100 ms behind, extrapolated up to 250 ms.
 - Host validation: inputs clamped on decode, token bucket 70/s, seq must increase, fire rate is whatever the sim allows (real rpm), different `__APP_VERSION__` is rejected.
+- Missiles (Day 7) are host-simulated and sent in snapshots (17 B each); the input carries the picked target as a roster slot; launch/detonate/decoy are reliable events and clients fly flares and chaff locally.
 - TURN: `VITE_TURN_DOMAIN` + `VITE_TURN_API_KEY` in `.env` (gitignored) and as GitHub Actions secrets for the deploy build. The Metered apiKey only fetches TURN credentials, so it's fine in the bundle; never put the Metered secret key anywhere.
 - Change the protocol in `src/net/protocol.ts` only, and keep `tests/unit/net.test.ts` (fake transport with delay/loss) passing. `tests/e2e/multiplayer.spec.ts` (movement, bandwidth, host left) and `multiplayer-loop.spec.ts` (two full rounds, BR check) run 1 host + 2 clients (one phone-sized) against a local PeerJS server (`tests/e2e/peer-server.mjs`, port 9187), or the public one with `BASE_URL`/`PUBLIC_SIGNAL=1`. Shared steps are in `tests/e2e/netHelpers.ts`.
 
 ## Controls and URL flags
 
 - Mouse aim: the mouse moves the aim circle, the autopilot (`src/game/autopilot.ts`) flies the nose (small circle) onto it. Click to capture the mouse; if the browser refuses pointer lock, the cursor's offset from screen centre steers instead.
-- Keys: W/S throttle, A/D roll override, arrows fly directly, C free-look, Space fire, Q missile, F flare, L auto-level.
-- Touch: drag the right side to aim, throttle slider on the left, Fire/Missile/Flare by the left thumb, Level/Look top right.
-- Gamepad: left stick aim, right stick look, RT/LT throttle, A fire, B missile, X flare, Y level.
+- Keys: W/S throttle, A/D roll override, arrows fly directly, C free-look, Space fire, Q (or right mouse) missile, F flare + chaff, R next missile target, L auto-level.
+- Touch: drag the right side to aim, a quick tap on an enemy picks it as the missile target, throttle slider on the left, Fire/Missile/Flare by the left thumb (the Missile button shows a lock ring), Level/Look top right.
+- Gamepad: left stick aim, right stick look, RT/LT throttle, A fire, B missile, X flare, RB next target, Y level.
 - Tab (or the Scores button) shows the scoreboard.
 - `?debug=1` FPS counter, all planes selectable, `window.__rvbs` test hooks; with debug, `?timescale=N` runs the sim N× faster and `?matchtime=S` shortens the match. `?gfx=low|medium|high` forces a quality level.
 - With `?debug=1`, `?rp=N` sets this player's (stub) research points, for testing team balancing.
@@ -133,7 +137,8 @@ The service worker (`public/sw.js`) is network-first, so a normal reload picks u
 - Every model is reproducible from `tools/blender/specs/<id>.json` + the kits. Never hand-edit .glb files or download models; fix the spec or kit and rerun `npm run models`.
 - Frame: models face +Z, +Y up, +X is the left wing; real metres; origin at mid-fuselage. Materials BODY, TEAM (white, tinted red/blue in game), GLASS, DARK; colours are vertex colours.
 - Named nodes the game uses: `prop` (spins about its local Z), `muzzle_N`, `pylon_N`, `exhaust_N`. Spec guns carry a `mount` index into the plane's `guns` list in planes.json.
-- Budgets: 1,200 triangles for props, 1,500 for jets (build fails above). Current models are ~300–460.
+- Budgets: 1,200 triangles for props, 1,500 for jets (build fails above). Current models are ~300–470.
+- The jet specs (every jet except the hand-written mig15bis and f4e) are written by `python3 tools/blender/make_jet_specs.py`; edit that script, not the jet JSONs. Kit extras: `pods` (nacelles, booms, tip tanks), `chin_intake`, `fin_only` tails, canards/LERX as extra wing entries.
 - To add a plane: write its spec, `npm run models -- <id>`, look at `tools/blender/previews/<id>.png` next to a reference in `tools/blender/refs/`, adjust, repeat (up to 3 passes).
 - In game: `src/render/models.ts` loads only the current era's models; planes without one use the box placeholder. Hit spheres and muzzle positions come from `src/data/planeModels.json`.
 

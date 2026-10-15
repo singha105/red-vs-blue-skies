@@ -3,6 +3,51 @@
 Live: https://singha105.github.io/red-vs-blue-skies/ (`?debug=1` shows the FPS counter)
 Repo: https://github.com/singha105/red-vs-blue-skies
 
+## Day 7: Missiles, countermeasures, jet models (2026-10-15)
+
+### Done
+
+- **Missiles in the sim** (`src/game/missiles.ts`, run by `stepWorld`): every plane has per-mount missile counts, flares, chaff and a lock (`lockTarget`, `lockMount`, `lockProgress`). The weapons computer picks the target you chose (or the enemy nearest the nose) and the mount whose missile suits the range, builds the lock over the missile's lock time, and launches on a fresh press. Missiles and decoys live in `WorldState` (`missiles`, `decoys`, `nextMissileId`); `launch`, `detonate` and `decoy` are new `GameEvent`s; a hit removes `damage`% of the victim's max HP through `applyDamage` (with a hit event, so hit markers and damage arrows work).
+- **Seekers**: IR sees engine heat (lock range scales with throttle, ×1.4 in afterburner); rear-aspect IR locks only within 45° of the tail (90° once in flight); head-on, all-aspect IR sees about 60% as far; the sun within 10° blinds it (`SUN_DIR` in `src/game/sun.ts`, shared with the sky). Radar: 60° cone, halved below 300 m, a notch when the target's speed along the line of sight is under 45 m/s (wider low down, half as wide for an active seeker inside 1.5 km), 1.2 s track memory; semi-active needs the shooter's lock to the end.
+- **Guidance and kinematics**: proportional navigation, N = 4; available G falls with speed², motor drives toward the missile's speed plus 40% of the launcher's, v² drag after burnout, turning costs speed, 15 m proximity fuse; a missile that loses its target flies on for 4 s and self-destructs.
+- **Countermeasures**: one Flare button drops a flare and a chaff bundle every 0.3 s (judgment call from the handoff: phones have no room for two buttons). Each decoy gets one roll per guiding missile: 1 − resistance for the first, ×0.6 for each further one, flares ×0.6 in afterburner, chaff ×1.5 while notching.
+- **Counter for every missile** (today's rule): measured in `tests/unit/missiles.test.ts` ("every missile has a counter") with scripted defenders; nothing needed a data nerf after the decoy fade, afterburner and notch rules went in. Hit rates over 30 shots (none = straight and level, cm = flares/chaff only, turn = beam/notch only, full = both):
+
+  | Missile, shot | none | cm | turn | full |
+  | --- | --- | --- | --- | --- |
+  | AIM-9B / K-13 / Magic, tail, 1.5 km | 1.00 | 0.07 | 1.00 | 0.07 |
+  | AIM-9L, 120°, 2 km | 1.00 | 0.20 | 1.00 | 0.20 |
+  | R-73, 150°, 2.2 km | 1.00 | 0.37 | 1.00 | 0.37 |
+  | AIM-9X, 150°, 2.2 km | 1.00 | 0.43 | 1.00 | 0.43 |
+  | AIM-7F, 170°, 5 km | 1.00 | 0.10 | 1.00 | 0.10 |
+  | R-27R, 170°, 5 km | 1.00 | 0.10 | 0.00 | 0.00 |
+  | AIM-120B, 170°, 6.5 km | 1.00 | 0.20 | 1.00 | 0.17 |
+  | R-77 / MICA EM, 170°, 6.5 km | 1.00 | 0.20 | 0.00 | 0.00 |
+
+  A notch started at launch at 5–6.5 km is right at the edge (it takes ~4 s to turn onto the beam), so whether it alone works depends on the geometry; early notching plus chaff is the reliable counter. Rear-aspect IR is also beaten by turning to face it before launch and by outrunning it (an AIM-9B at 2.5 km can't catch a fleeing F-8 in afterburner).
+- **Bots** (`bots.ts`): fire once locked between 1.3× min range and 75% of max range, outside gun range, one missile in the air per target, every 5–14 s by difficulty. Each inbound missile gets one awareness roll (easy 35%, normal 70%, hard 95%); then flares + throttle back + a crossing break for IR, a notch + chaff for radar, sloppier for weaker bots. Headless 4-minute Modern 10 v 10 on normal: 125 launches, 266 flares, 266 chaff, 21 missile kills.
+- **Networking** (`protocol.ts`): inputs are 11 bytes (target as a roster slot); planes are 24 bytes (lock target slot + progress/radar byte, for the RWR); snapshots carry missiles (17 bytes each); the trailer has your own missile, flare and chaff counts and lock mount. Launch, detonate and decoy go as reliable events; clients fly flares and chaff locally and draw missiles 100 ms behind like planes. Quick taps of Missile/Flare are latched so they reach the host.
+- **Cockpit** (`src/ui/missileHud.ts`, `src/app/weapons.ts`, `src/core/audio.ts`): target select with R / a quick tap on an enemy / gamepad RB, picked-target diamond, lock box with a progress ring (solid red when locked, dashed when out of range), loadout and countermeasure counts, a radar-warning display (yellow = a radar locking you, blinking red = a missile inbound) next to the minimap, and a loud red launch warning that names the counter ("IR: flares, cut throttle, turn" / "radar: chaff, turn 90° to it"). Web Audio tones: IR growl → steady lock tone, radar beeps → steady tone, RWR beeps, fast launch-warning beeps. On touch the Missile button has a lock-progress ring and counts.
+- **Rendering** (`src/render/missiles.ts`): instanced missile bodies and motor flames, smoke trails, flares with trails, chaff clouds, afterburner glow at every exhaust empty (2 extra draw calls).
+- **Data**: Mirage IIIE carries the R.550 Magic.
+- **Part B, jet models**: all 28 remaining jets have specs and models (`tools/blender/make_jet_specs.py` writes the specs; dimensions from spec sheets, the rest read off general arrangements). Kit additions: `pods` (Meteor nacelles, Vampire booms, tip tanks), `chin_intake` (F-8, F-16, Typhoon), `fin_only` tails for tailless deltas, canards and LERX/gloves as extra wings. Pylons for each jet's missiles, exhaust empties for the afterburner glow. 303–469 triangles each; all 34 planes plus weapons are 450 KB.
+- **Tests**: 114 Vitest (+40: guidance hits nine missile/geometry cases, PN flies a lead course, outrun after burnout, rear-aspect, afterburner heat, sun, notch geometry, **notching breaks a semi-active lock**, **flare and chaff pull rates within 5% of 1 − resistance over 1,000 trials**, flares ignore radar and chaff ignores IR, a counter for all 15 missiles, bots launch/flare/chaff/kill in a headless Modern match, protocol round trips for missiles, locks and the target byte). Playwright adds `missiles.spec` on Desktop Chrome and the iPhone touch layout: R or a tap picks the enemy, the lock goes solid (and the ring on the touch Missile button), Q or a tap fires, then an inbound missile shows the warning and flares pull it off.
+
+### Review of the jet models
+
+Each preview was checked against the real aircraft's planform; a second pass widened the twin-engine bodies back to the nozzles (F-14, F-15, MiG-29, Su-27, F-22) and moved the Mirage deltas aft. No reference drawings were downloaded this session (Day 4's were), so the review was against known general arrangements; shapes are deliberately simple and some details are approximations: the F-14 is modelled at a mid wing sweep, LERX and canards are flat plates, intakes are boxes.
+
+### Known issues
+
+- Missiles aren't drawn hanging on the pylons yet (the pylon empties exist).
+- Notching is all-or-nothing inside the 45 m/s window; there's no partial doppler model.
+- A missile's lock state on clients updates at the 20 Hz snapshot rate.
+- TURN still isn't configured (Day 5 issue).
+
+### Next steps (Day 8)
+
+- Progression, unlocks, Firebase.
+
 ## Day 6: Lobby, voting, teams, match flow (2026-10-15)
 
 ### Done
@@ -43,7 +88,7 @@ Repo: https://github.com/singha105/red-vs-blue-skies
 
 ### Next steps (Day 7)
 
-- Missiles and countermeasures (part A); the remaining jet models (part B).
+- Missiles and countermeasures (part A); the remaining jet models (part B). Done, see Day 7.
 
 ## Day 5: Multiplayer (2026-10-14)
 
