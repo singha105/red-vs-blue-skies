@@ -33,9 +33,13 @@ Repo: https://github.com/singha105/red-vs-blue-skies
 - The host's tab must stay visible (Day 5 issue). The lobby says so.
 - TURN still isn't configured: phones on mobile data may not connect until the Metered key is added.
 
+### Manual test
+
+- 2026-10-15, user: one player on Chrome and one on Safari. It works. This is the first check of the room flow on Safari/WebKit; the Playwright multiplayer tests only cover Chromium.
+
 ### Still to do for Day 6's done-when
 
-- Run [`docs/MULTIPLAYER_TEST.md`](MULTIPLAYER_TEST.md) on three real devices: two full matches in a row without reloading.
+- A three-device run (2 laptops + a phone) of [`docs/MULTIPLAYER_TEST.md`](MULTIPLAYER_TEST.md): two full matches in a row without reloading. The phone part also covers touch and iPhone Safari's lock-screen behaviour.
 
 ### Next steps (Day 7)
 
