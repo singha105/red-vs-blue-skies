@@ -3,9 +3,9 @@
 import { readStorage, writeStorage } from '../core/storage';
 import type { EraId, GameData, Plane } from '../data/types';
 import type { BotDifficulty } from '../game/world';
+import { isUnlocked } from '../game/unlocks';
 import { escapeHtml as esc } from './hud';
 
-export const OPEN_TIERS = 3;
 const KEY = 'rvbs.solo.v1';
 
 export interface SoloChoice {
@@ -27,7 +27,7 @@ function loadChoice(data: GameData): SoloChoice {
   }
 }
 
-function gunsSummary(plane: Plane, data: GameData): string {
+export function gunsSummary(plane: Plane, data: GameData): string {
   return plane.guns
     .map((g) => {
       const gun = data.guns.find((x) => x.id === g.type);
@@ -44,7 +44,7 @@ export function createSoloSetup(
   handlers: { onStart(choice: SoloChoice): void; onBack(): void; onHangar(choice: SoloChoice): void },
 ): { dispose(): void } {
   const choice = loadChoice(data);
-  const unlocked = (p: Plane): boolean => opts.allUnlocked || p.tier <= OPEN_TIERS;
+  const unlocked = (p: Plane): boolean => isUnlocked(p, opts.allUnlocked);
   const el = document.createElement('section');
   el.className = 'setup';
   el.setAttribute('aria-label', 'Solo match setup');
