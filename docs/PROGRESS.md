@@ -3,6 +3,52 @@
 Live: https://singha105.github.io/red-vs-blue-skies/ (`?debug=1` shows the FPS counter)
 Repo: https://github.com/singha105/red-vs-blue-skies
 
+## Day 4: Blender pipeline and first planes (2026-10-14)
+
+### Done
+
+- **Plane kit** (`tools/blender/plane_kit.py`, Blender 5.0 headless): fuselage lofted through elliptical sections; wings with tapered / elliptical / gull planforms, sweep, dihedral, cranked outer panels, biplane and triplane stacking with interplane and cabane struts; tail with stabiliser (sweep, anhedral, high-mounted), single or twin fins; radial cowls, inline noses, jet nose intakes, side intakes, exhaust nozzles; separate `prop` (blades + spinner) pivoting at the hub; canopies (open cockpit, teardrop, framed tandem); gun hump; pylons. Four materials (BODY, TEAM, GLASS, DARK) with per-face vertex colours: camo patches, underside colour, team paint on fuselage band / wingtips / fin / cowl as the spec says. No insignia.
+- **Empties**: `prop`, `muzzle_N` (with gun-mount index), `pylon_N`, `exhaust_N`.
+- **Specs** in real metres (Wikipedia dimensions, sensible guesses elsewhere) for Sopwith Camel, Fokker Dr.I, Spitfire Mk V, F4U-4 Corsair, MiG-15bis, F-4E Phantom II.
+- **Weapons kit**: missile_ir_small, missile_ir_large, missile_radar_medium, missile_radar_long, rocket, bomb_250, drop_tank (46–62 triangles each).
+- **Previews** (`tools/blender/previews/<id>.png`): Workbench, front / side / top / three-quarter at 512 px each, team paint shown blue.
+- **Review loop** against one Wikimedia Commons three-view per plane (`tools/blender/refs/`, gitignored): Camel and Dr.I and MiG-15 passed first time; Spitfire canopy moved back over the wing (pass 2); Corsair wing broadened, straight leading edge, deeper fuselage, team band fixed (pass 2); F-4E fuselage widened and deepened, bigger intakes, longer wing root (passes 2 and 3). Kit fixes found along the way: preview side-view camera roll, duplicate faces, fin team paint, paint-band edges.
+- **`npm run models`**: clean rebuild in ~6 s of Blender time, meshopt compression (node names, materials and vertex colours preserved), writes `public/models/<era>/<id>.glb`, `public/models/manifest.json`, `src/data/planeModels.json`, prints sizes. Fails if a model is over its triangle budget.
+- **In game**: GLTFLoader + meshopt decoder, converted to Lambert materials, TEAM tinted red/blue, props spin with throttle, muzzle flashes at every muzzle while firing, smoke from exhaust empties, placeholder until loaded or for unmodelled planes, only the current era's models are fetched. Bullets now leave from the model's muzzles; hit spheres scale with each plane's real length and span (Camel vs Phantom); chase camera distance scales with plane length. The title screen flies the real Spitfire.
+- **Hangar**: Solo setup → Hangar: the selected plane turning in the sky, drag (mouse or finger) to rotate, pinch / wheel to zoom, Blue/Red paint toggle, full stats.
+- **Tests**: 45 Vitest (adds model files exist and match planes.json paths, triangle budgets, every gun mount has a muzzle, bullets spawn at model muzzles, hit spheres scale with size, manifest sizes). 18 Playwright (adds hangar loads the real model and turns on drag on both viewports, WW1 match flies Camel/Dr.I models with props and muzzles).
+
+### Model sizes
+
+| Model | Era | Triangles | Size |
+| --- | --- | --- | --- |
+| f4e | cold_war | 461 | 13.5 KB |
+| f4u4 | late_ww2 | 375 | 14.8 KB |
+| fokker_dr1 | ww1 | 328 | 12.5 KB |
+| mig15bis | early_jets | 307 | 11.1 KB |
+| sopwith_camel | ww1 | 334 | 12.3 KB |
+| spitfire_mk5 | early_ww2 | 347 | 14.7 KB |
+| bomb_250 | weapon | 54 | 4.3 KB |
+| drop_tank | weapon | 46 | 4.1 KB |
+| missile_ir_large | weapon | 62 | 4.3 KB |
+| missile_ir_small | weapon | 62 | 4.3 KB |
+| missile_radar_long | weapon | 62 | 4.3 KB |
+| missile_radar_medium | weapon | 62 | 4.3 KB |
+| rocket | weapon | 54 | 4.2 KB |
+
+**Total model size: 108.7 KB** for 6 planes and 7 weapons (about 13 KB per plane, so all 60 planes ≈ 0.8 MB).
+
+### Known issues
+
+- Low triangle counts (300–460) leave room for more detail later; shapes are deliberately simple and flat-shaded.
+- Planes without a model still use the box placeholder (54 of 60). Days 7 and 9 model the rest with the same kit.
+- Rounded wingtips and tails are approximated with straight segments; Dr.I's comma rudder is a trapezoid.
+- The F-4 reference drawing was an F-4K (close relative); shape differences are minor at this detail level.
+
+### Next steps (Day 5)
+
+- Multiplayer: Transport interface, PeerJS host/join with room codes and QR, STUN + Metered TURN, input/snapshot protocol, prediction and interpolation. **Needs the Metered API key from you.**
+
 ## Day 3: Guns, damage, bots: playable solo (2026-10-14)
 
 ### Done
@@ -32,15 +78,11 @@ Repo: https://github.com/singha105/red-vs-blue-skies
 
 ### Known issues
 
-- Missile and Flare buttons do nothing yet (Day 7). Planes are still the box placeholder (Day 4).
+- Missile and Flare buttons do nothing yet (Day 7). ~~Planes are still the box placeholder~~ (first six modelled Day 4).
 - Wrecks that are still falling when the 5 s respawn comes up explode in mid-air.
 - Bots don't use the player's spawn-protection rules beyond not shooting protected planes; no bot-to-bot formation or teamwork.
 - `?timescale=` and `?matchtime=` are debug-only test knobs.
 - Still not tried on a real phone.
-
-### Next steps (Day 4)
-
-- Blender plane kit and first six models, weapon models, `npm run models`, GLTF loading with team tint, hangar screen.
 
 ## Day 2: Flight model, controls, first map (2026-10-14)
 

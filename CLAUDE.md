@@ -23,6 +23,7 @@ Always read docs/PROGRESS.md first. It says where the last session stopped.
 | `npx playwright test` | Builds, serves (port 4187), and runs the browser tests: Desktop Chrome, iPhone 13 landscape (WebKit), and `perf` (GPU Chromium fps budget). Screenshots go to `tests/screenshots/` |
 | `npx playwright test --project perf` | Just the fps budget: high ≥ 55 fps, low ≥ 30 fps under 4× CPU throttling at phone size |
 | `npm run icons` | Regenerate the PWA roundel icons in `public/icons/` |
+| `npm run models` | Clean rebuild of every plane spec + weapon with headless Blender, meshopt-compress with gltf-transform, write `public/models/<era>/<id>.glb`, `public/models/manifest.json`, `src/data/planeModels.json` and previews; prints sizes. `npm run models -- f4e weapons` rebuilds only some |
 
 The Mac has 8 GB RAM: don't leave dev servers running, and stop any server you start when you're done.
 
@@ -50,7 +51,10 @@ public/
   fonts/         self-hosted OFL fonts (no third-party font requests)
   manifest.webmanifest, sw.js
 tools/
-  blender/       headless Blender scripts and plane specs (Day 4+)
+  blender/       plane_kit.py (parametric generator), weapons_kit.py, render_preview.py, build_all.py,
+                 specs/<id>.json (one per plane, real metres), previews/<id>.png (committed),
+                 refs/ (reference drawings, gitignored, never shipped), build/ (raw output, gitignored)
+  build-models.mjs  the npm run models driver
   make-icons.mjs icon generator
 tests/
   unit/          Vitest
@@ -100,7 +104,17 @@ Push to `main` → `.github/workflows/deploy.yml` runs unit tests, builds, and d
 
 The service worker (`public/sw.js`) is network-first, so a normal reload picks up new deploys. If a phone shows an old version, bump `CACHE` in `sw.js`.
 
+## 3D models
+
+- Blender: `/Applications/Blender.app/Contents/MacOS/Blender` (5.0), always `--background --factory-startup`. Override with `BLENDER=/path`.
+- Every model is reproducible from `tools/blender/specs/<id>.json` + the kits. Never hand-edit .glb files or download models; fix the spec or kit and rerun `npm run models`.
+- Frame: models face +Z, +Y up, +X is the left wing; real metres; origin at mid-fuselage. Materials BODY, TEAM (white, tinted red/blue in game), GLASS, DARK; colours are vertex colours.
+- Named nodes the game uses: `prop` (spins about its local Z), `muzzle_N`, `pylon_N`, `exhaust_N`. Spec guns carry a `mount` index into the plane's `guns` list in planes.json.
+- Budgets: 1,200 triangles for props, 1,500 for jets (build fails above). Current models are ~300–460.
+- To add a plane: write its spec, `npm run models -- <id>`, look at `tools/blender/previews/<id>.png` next to a reference in `tools/blender/refs/`, adjust, repeat (up to 3 passes).
+- In game: `src/render/models.ts` loads only the current era's models; planes without one use the box placeholder. Hit spheres and muzzle positions come from `src/data/planeModels.json`.
+
 ## Tools on this machine
 
-- Node via Homebrew. Blender 5.0 at `/Applications/Blender.app/Contents/MacOS/Blender` (not on PATH; always run with `--background`).
+- Node via Homebrew. Blender 5.0 (see 3D models above; not on PATH).
 - `gh` is logged in as singha105.
