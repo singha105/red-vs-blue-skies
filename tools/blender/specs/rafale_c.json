@@ -1,0 +1,160 @@
+{
+  "id": "rafale_c",
+  "era": "modern",
+  "lengthM": 15.27,
+  "wingspanM": 10.8,
+  "fuselage": {
+    "sides": 10,
+    "sections": [
+      [
+        0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.04,
+        0.48,
+        0.496,
+        -0.031
+      ],
+      [
+        0.12,
+        0.96,
+        0.961,
+        0.0
+      ],
+      [
+        0.22,
+        1.28,
+        1.317,
+        0.046
+      ],
+      [
+        0.35,
+        1.52,
+        1.55,
+        0.062
+      ],
+      [
+        0.55,
+        1.6,
+        1.55,
+        0.062
+      ],
+      [
+        0.75,
+        1.472,
+        1.395,
+        0.062
+      ],
+      [
+        0.9,
+        1.248,
+        1.209,
+        0.062
+      ],
+      [
+        1.0,
+        1.056,
+        1.023,
+        0.062
+      ]
+    ]
+  },
+  "wing": [
+    {
+      "planform": "tapered",
+      "rootChordM": 7.0,
+      "tipChordM": 1.0,
+      "positionAlongLength": 0.45,
+      "mount": "low",
+      "sweepDeg": 48,
+      "dihedralDeg": 0,
+      "thickness": 0.045
+    },
+    {
+      "planform": "tapered",
+      "spanM": 4.0,
+      "rootChordM": 1.6,
+      "tipChordM": 0.6,
+      "positionAlongLength": 0.3,
+      "mount": "high",
+      "sweepDeg": 45,
+      "dihedralDeg": 0,
+      "thickness": 0.05
+    }
+  ],
+  "tail": {
+    "type": "fin_only",
+    "stabSpanM": 0.1,
+    "stab": {
+      "rootChordM": 0.1,
+      "tipChordM": 0.1,
+      "sweepDeg": 0,
+      "positionAlongLength": 0.9
+    },
+    "finHeightM": 2.6,
+    "fin": {
+      "rootChordM": 3.8,
+      "tipChordM": 1.0,
+      "sweepDeg": 50,
+      "positionAlongLength": 0.66
+    }
+  },
+  "engine": {
+    "type": "side_intakes",
+    "fromT": 0.3,
+    "toT": 0.5,
+    "widthM": 0.7,
+    "heightM": 0.9,
+    "yOffsetM": -0.5,
+    "taperM": 0.7
+  },
+  "exhausts": [
+    {
+      "t": 1.0,
+      "radiusM": 0.4,
+      "lengthM": 0.5,
+      "xM": 0.5
+    }
+  ],
+  "canopy": {
+    "type": "teardrop",
+    "positionAlongLength": 0.17,
+    "lengthM": 2.4,
+    "widthM": 0.72,
+    "heightM": 0.62
+  },
+  "guns": [
+    {
+      "at": "fuselage",
+      "t": 0.4,
+      "xM": 0.75,
+      "yOffsetM": -0.3,
+      "mount": 0
+    }
+  ],
+  "pylons": [
+    {
+      "at": "wing",
+      "spanFraction": 0.5
+    },
+    {
+      "at": "wing",
+      "spanFraction": 1.0
+    },
+    {
+      "at": "fuselage",
+      "t": 0.55,
+      "xM": 0.6,
+      "yOffsetM": -0.85
+    }
+  ],
+  "colors": {
+    "body": "#8d959b",
+    "camo": "#79838a",
+    "underside": "#b4bcc1",
+    "teamBand": "aft_fuselage_wingtips_fin"
+  }
+}

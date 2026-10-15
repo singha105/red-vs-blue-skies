@@ -405,7 +405,8 @@ class Plane:
         st = []
         for s in (0.0, 1.0):
             st.append((s * half, lerp(root, tip, s), le0 - math.tan(sweep) * s * half, y0 + math.tan(dih) * s * half))
-        self.surface(st, 0.08, team_tip="stab_tips" in self.team)
+        if t.get("type") != "fin_only":  # tailless deltas (Mirage, Gripen, Rafale, Typhoon) have no stabiliser
+            self.surface(st, 0.08, team_tip="stab_tips" in self.team)
         # Fin(s).
         fin_h = t.get("finHeightM", 1.2)
         fin = t.get("fin", {})
@@ -463,11 +464,27 @@ class Plane:
                     if side < 0:
                         idx.reverse()
                     self.mb.f(idx, "BODY", self.col_body if k != 2 else self.col_under)
+        if kind == "chin_intake":
+            # One intake under the nose, centred (F-16, F-8, Typhoon): a duct that fairs into the belly.
+            a, b = e.get("fromT", 0.2), e.get("toT", 0.5)
+            iw, ih = e.get("widthM", 0.9), e.get("heightM", 0.7)
+            w, h, y = self.section_at(a + 0.02)
+            yc = y - h / 2 + e.get("yOffsetM", -0.2)
+            za, zb = self.z_at(a), self.z_at(b)
+            keep = e.get("taperM", 0.5)
+            pts = [(iw / 2, yc + ih / 2, za), (-iw / 2, yc + ih / 2, za), (-iw / 2, yc - ih / 2, za), (iw / 2, yc - ih / 2, za)]
+            f = [self.mb.v(p) for p in pts]
+            ytop = yc + ih / 2
+            bk = [self.mb.v((p[0] * keep, ytop + (p[1] - ytop) * keep, zb)) for p in pts]
+            self.mb.f(list(reversed(f)), "DARK", self.col_dark)
+            for k in range(4):
+                k2 = (k + 1) % 4
+                self.mb.f([f[k], f[k2], bk[k2], bk[k]], "BODY", self.col_body if k != 2 else self.col_under)
         for ex in self.s.get("exhausts", []):
             self.nozzle(ex)
         if kind in ("inline_nose", "radial_cowl", "rotary") and e.get("propBlades"):
             self.propeller(e, nose_z, y0)
-        if not self.s.get("exhausts"):
+        if not self.s.get("exhausts") and not any(p.get("exhaust") for p in self.s.get("pods", [])):
             # Smoke point for prop planes: just behind the engine.
             self.exhausts.append((0.0, y0, nose_z - e.get("cowlLengthM", 1.0) - 0.4))
 
@@ -569,6 +586,33 @@ class Plane:
         if len(rings[-1]) > 1:
             self.mb.f(rings[-1], "BODY", self.col_body)
 
+    def pods(self):
+        """Cylinders beside the fuselage: engine nacelles on the wings (Meteor) or tail booms (Vampire)."""
+        for pd in self.s.get("pods", []):
+            x, r = pd["xM"], pd.get("radiusM", 0.5)
+            za, zb = self.z_at(pd["fromT"]), self.z_at(pd["toT"])
+            ya = pd.get("yM", 0.0)
+            yb = pd.get("yEndM", ya)
+            rb = pd.get("endRadiusM", r * 0.7)
+            K = pd.get("sides", 8)
+            for side in (1, -1):
+                cx = x * side
+                front = [self.mb.v((cx + r * math.cos(2 * math.pi * k / K), ya + r * math.sin(2 * math.pi * k / K), za)) for k in range(K)]
+                back = [self.mb.v((cx + rb * math.cos(2 * math.pi * k / K), yb + rb * math.sin(2 * math.pi * k / K), zb)) for k in range(K)]
+                for k in range(K):
+                    k2 = (k + 1) % K
+                    idx = [front[k2], front[k], back[k], back[k2]]
+                    if side < 0:
+                        idx.reverse()
+                    a = 2 * math.pi * (k + 0.5) / K
+                    mat, col = self.paint(None, (math.cos(a), math.sin(a), 0), (k, side, x, 7))
+                    self.mb.f(idx, mat, col)
+                inlet = pd.get("intake", False)
+                self.mb.f(front if side < 0 else list(reversed(front)), "DARK" if inlet else "BODY", self.col_dark if inlet else self.col_body)
+                self.mb.f(back if side < 0 else list(reversed(back)), "DARK", self.col_dark)
+                if pd.get("exhaust"):
+                    self.exhausts.append((cx, yb, zb))
+
     def hump(self):
         """Optional fairing over the guns (the Camel's hump)."""
         hp = self.s.get("hump")
@@ -626,6 +670,7 @@ class Plane:
         self.tail()
         self.engine()
         self.canopy()
+        self.pods()
         self.hump()
         self.guns()
         self.pylons_()

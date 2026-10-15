@@ -1,0 +1,131 @@
+{
+  "id": "meteor_f8",
+  "era": "early_jets",
+  "lengthM": 13.59,
+  "wingspanM": 11.32,
+  "fuselage": {
+    "sides": 10,
+    "sections": [
+      [
+        0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.04,
+        0.42,
+        0.544,
+        -0.034
+      ],
+      [
+        0.12,
+        0.84,
+        1.054,
+        0.0
+      ],
+      [
+        0.22,
+        1.12,
+        1.445,
+        0.051
+      ],
+      [
+        0.35,
+        1.33,
+        1.7,
+        0.068
+      ],
+      [
+        0.55,
+        1.4,
+        1.7,
+        0.068
+      ],
+      [
+        0.75,
+        1.288,
+        1.53,
+        0.068
+      ],
+      [
+        0.9,
+        1.092,
+        1.326,
+        0.068
+      ],
+      [
+        1.0,
+        0.924,
+        1.122,
+        0.068
+      ]
+    ]
+  },
+  "wing": {
+    "planform": "tapered",
+    "rootChordM": 3.6,
+    "tipChordM": 1.6,
+    "positionAlongLength": 0.42,
+    "mount": "mid",
+    "sweepDeg": 5,
+    "dihedralDeg": 4,
+    "thickness": 0.12
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 5.2,
+    "stab": {
+      "rootChordM": 1.6,
+      "tipChordM": 0.8,
+      "sweepDeg": 10,
+      "positionAlongLength": 0.85,
+      "yM": 1.4
+    },
+    "finHeightM": 2.2,
+    "fin": {
+      "rootChordM": 2.1,
+      "tipChordM": 1.0,
+      "sweepDeg": 30,
+      "positionAlongLength": 0.82
+    }
+  },
+  "engine": {
+    "type": "inline_nose"
+  },
+  "pods": [
+    {
+      "xM": 2.3,
+      "yM": 0.0,
+      "fromT": 0.33,
+      "toT": 0.62,
+      "radiusM": 0.62,
+      "endRadiusM": 0.42,
+      "intake": true,
+      "exhaust": true
+    }
+  ],
+  "canopy": {
+    "type": "teardrop",
+    "positionAlongLength": 0.2,
+    "lengthM": 1.8,
+    "widthM": 0.75,
+    "heightM": 0.6
+  },
+  "guns": [
+    {
+      "at": "fuselage",
+      "t": 0.12,
+      "xM": 0.45,
+      "yOffsetM": -0.3,
+      "mount": 0
+    }
+  ],
+  "pylons": [],
+  "colors": {
+    "body": "#6f7566",
+    "camo": "#4f5a4b",
+    "underside": "#b9c1c4",
+    "teamBand": "aft_fuselage_wingtips_fin"
+  }
+}

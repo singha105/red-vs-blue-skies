@@ -1,0 +1,113 @@
+{
+  "id": "f86f",
+  "era": "early_jets",
+  "lengthM": 11.44,
+  "wingspanM": 11.31,
+  "fuselage": {
+    "sides": 10,
+    "sections": [
+      [
+        0,
+        1.044,
+        1.188,
+        0.0
+      ],
+      [
+        0.06,
+        1.247,
+        1.452,
+        0.0
+      ],
+      [
+        0.25,
+        1.45,
+        1.732,
+        0.066
+      ],
+      [
+        0.5,
+        1.45,
+        1.65,
+        0.066
+      ],
+      [
+        0.75,
+        1.189,
+        1.32,
+        0.066
+      ],
+      [
+        0.95,
+        0.899,
+        0.99,
+        0.066
+      ],
+      [
+        1.0,
+        0.812,
+        0.907,
+        0.066
+      ]
+    ]
+  },
+  "wing": {
+    "planform": "tapered",
+    "rootChordM": 3.0,
+    "tipChordM": 1.3,
+    "positionAlongLength": 0.36,
+    "mount": "low",
+    "sweepDeg": 35,
+    "dihedralDeg": 3,
+    "thickness": 0.09
+  },
+  "tail": {
+    "type": "conventional",
+    "stabSpanM": 3.8,
+    "stab": {
+      "rootChordM": 1.4,
+      "tipChordM": 0.7,
+      "sweepDeg": 35,
+      "positionAlongLength": 0.83
+    },
+    "finHeightM": 2.0,
+    "fin": {
+      "rootChordM": 2.5,
+      "tipChordM": 1.0,
+      "sweepDeg": 45,
+      "positionAlongLength": 0.71
+    }
+  },
+  "engine": {
+    "type": "jet_nose_intake"
+  },
+  "exhausts": [
+    {
+      "t": 1.0,
+      "radiusM": 0.4,
+      "lengthM": 0.5
+    }
+  ],
+  "canopy": {
+    "type": "teardrop",
+    "positionAlongLength": 0.25,
+    "lengthM": 1.9,
+    "widthM": 0.72,
+    "heightM": 0.6
+  },
+  "guns": [
+    {
+      "at": "fuselage",
+      "t": 0.08,
+      "xM": 0.55,
+      "yOffsetM": 0.0,
+      "mount": 0
+    }
+  ],
+  "pylons": [],
+  "colors": {
+    "body": "#c3c7cb",
+    "camo": "#b6bbc0",
+    "underside": "#cdd1d5",
+    "teamBand": "aft_fuselage_wingtips_fin"
+  }
+}

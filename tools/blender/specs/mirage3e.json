@@ -1,0 +1,130 @@
+{
+  "id": "mirage3e",
+  "era": "cold_war",
+  "lengthM": 15.03,
+  "wingspanM": 8.22,
+  "fuselage": {
+    "sides": 10,
+    "sections": [
+      [
+        0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.05,
+        0.42,
+        0.527,
+        -0.031
+      ],
+      [
+        0.15,
+        0.84,
+        1.023,
+        0.031
+      ],
+      [
+        0.28,
+        1.148,
+        1.426,
+        0.078
+      ],
+      [
+        0.45,
+        1.4,
+        1.55,
+        0.062
+      ],
+      [
+        0.7,
+        1.344,
+        1.426,
+        0.031
+      ],
+      [
+        0.9,
+        1.12,
+        1.209,
+        0.031
+      ],
+      [
+        1.0,
+        0.98,
+        1.054,
+        0.031
+      ]
+    ]
+  },
+  "wing": {
+    "planform": "tapered",
+    "rootChordM": 7.6,
+    "tipChordM": 0.6,
+    "positionAlongLength": 0.41,
+    "mount": "low",
+    "sweepDeg": 60,
+    "dihedralDeg": -1,
+    "thickness": 0.045
+  },
+  "tail": {
+    "type": "fin_only",
+    "stabSpanM": 0.1,
+    "stab": {
+      "rootChordM": 0.1,
+      "tipChordM": 0.1,
+      "sweepDeg": 0,
+      "positionAlongLength": 0.9
+    },
+    "finHeightM": 2.6,
+    "fin": {
+      "rootChordM": 4.4,
+      "tipChordM": 1.0,
+      "sweepDeg": 58,
+      "positionAlongLength": 0.62
+    }
+  },
+  "engine": {
+    "type": "side_intakes",
+    "fromT": 0.3,
+    "toT": 0.5,
+    "widthM": 0.6,
+    "heightM": 1.0,
+    "yOffsetM": 0.0,
+    "taperM": 0.5
+  },
+  "exhausts": [
+    {
+      "t": 1.0,
+      "radiusM": 0.5,
+      "lengthM": 0.5
+    }
+  ],
+  "canopy": {
+    "type": "framed",
+    "positionAlongLength": 0.22,
+    "lengthM": 2.0,
+    "widthM": 0.7,
+    "heightM": 0.55
+  },
+  "guns": [
+    {
+      "at": "fuselage",
+      "t": 0.33,
+      "xM": 0.55,
+      "yOffsetM": -0.55,
+      "mount": 0
+    }
+  ],
+  "pylons": [
+    {
+      "at": "wing",
+      "spanFraction": 0.65
+    }
+  ],
+  "colors": {
+    "body": "#8d959b",
+    "camo": "#79838a",
+    "underside": "#b4bcc1",
+    "teamBand": "aft_fuselage_wingtips_fin"
+  }
+}

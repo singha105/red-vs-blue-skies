@@ -1,5 +1,47 @@
 {
   "planes": {
+    "f104g": {
+      "file": "models/cold_war/f104g.glb",
+      "era": "cold_war",
+      "bytes": 12112,
+      "tris": 375
+    },
+    "f14a": {
+      "file": "models/cold_war/f14a.glb",
+      "era": "cold_war",
+      "bytes": 13504,
+      "tris": 455
+    },
+    "f15a": {
+      "file": "models/cold_war/f15a.glb",
+      "era": "cold_war",
+      "bytes": 12992,
+      "tris": 401
+    },
+    "f15c": {
+      "file": "models/modern/f15c.glb",
+      "era": "modern",
+      "bytes": 12992,
+      "tris": 401
+    },
+    "f16a": {
+      "file": "models/cold_war/f16a.glb",
+      "era": "cold_war",
+      "bytes": 12852,
+      "tris": 411
+    },
+    "f16c_b50": {
+      "file": "models/modern/f16c_b50.glb",
+      "era": "modern",
+      "bytes": 12852,
+      "tris": 411
+    },
+    "f22a": {
+      "file": "models/modern/f22a.glb",
+      "era": "modern",
+      "bytes": 12840,
+      "tris": 385
+    },
     "f4e": {
       "file": "models/cold_war/f4e.glb",
       "era": "cold_war",
@@ -12,17 +54,125 @@
       "bytes": 15112,
       "tris": 375
     },
+    "f5e": {
+      "file": "models/cold_war/f5e.glb",
+      "era": "cold_war",
+      "bytes": 12460,
+      "tris": 391
+    },
+    "f8": {
+      "file": "models/early_jets/f8.glb",
+      "era": "early_jets",
+      "bytes": 11996,
+      "tris": 343
+    },
+    "f84g": {
+      "file": "models/early_jets/f84g.glb",
+      "era": "early_jets",
+      "bytes": 11852,
+      "tris": 367
+    },
+    "f86f": {
+      "file": "models/early_jets/f86f.glb",
+      "era": "early_jets",
+      "bytes": 11200,
+      "tris": 311
+    },
+    "fa18c": {
+      "file": "models/modern/fa18c.glb",
+      "era": "modern",
+      "bytes": 13164,
+      "tris": 437
+    },
     "fokker_dr1": {
       "file": "models/ww1/fokker_dr1.glb",
       "era": "ww1",
       "bytes": 12756,
       "tris": 328
     },
+    "hunter_f6": {
+      "file": "models/early_jets/hunter_f6.glb",
+      "era": "early_jets",
+      "bytes": 12204,
+      "tris": 369
+    },
+    "jas39c": {
+      "file": "models/modern/jas39c.glb",
+      "era": "modern",
+      "bytes": 12720,
+      "tris": 401
+    },
+    "meteor_f8": {
+      "file": "models/early_jets/meteor_f8.glb",
+      "era": "early_jets",
+      "bytes": 12120,
+      "tris": 367
+    },
     "mig15bis": {
       "file": "models/early_jets/mig15bis.glb",
       "era": "early_jets",
       "bytes": 11332,
       "tris": 307
+    },
+    "mig17f": {
+      "file": "models/early_jets/mig17f.glb",
+      "era": "early_jets",
+      "bytes": 11652,
+      "tris": 327
+    },
+    "mig19s": {
+      "file": "models/early_jets/mig19s.glb",
+      "era": "early_jets",
+      "bytes": 12104,
+      "tris": 349
+    },
+    "mig21f13": {
+      "file": "models/cold_war/mig21f13.glb",
+      "era": "cold_war",
+      "bytes": 11424,
+      "tris": 327
+    },
+    "mig23mld": {
+      "file": "models/cold_war/mig23mld.glb",
+      "era": "cold_war",
+      "bytes": 12620,
+      "tris": 411
+    },
+    "mig29a": {
+      "file": "models/modern/mig29a.glb",
+      "era": "modern",
+      "bytes": 13800,
+      "tris": 469
+    },
+    "mirage2000_5": {
+      "file": "models/modern/mirage2000_5.glb",
+      "era": "modern",
+      "bytes": 12116,
+      "tris": 345
+    },
+    "mirage3e": {
+      "file": "models/cold_war/mirage3e.glb",
+      "era": "cold_war",
+      "bytes": 11524,
+      "tris": 335
+    },
+    "mirage_f1c": {
+      "file": "models/cold_war/mirage_f1c.glb",
+      "era": "cold_war",
+      "bytes": 12260,
+      "tris": 375
+    },
+    "p80": {
+      "file": "models/early_jets/p80.glb",
+      "era": "early_jets",
+      "bytes": 12608,
+      "tris": 409
+    },
+    "rafale_c": {
+      "file": "models/modern/rafale_c.glb",
+      "era": "modern",
+      "bytes": 13212,
+      "tris": 423
     },
     "sopwith_camel": {
       "file": "models/ww1/sopwith_camel.glb",
@@ -35,6 +185,24 @@
       "era": "early_ww2",
       "bytes": 15052,
       "tris": 347
+    },
+    "su27s": {
+      "file": "models/modern/su27s.glb",
+      "era": "modern",
+      "bytes": 13896,
+      "tris": 469
+    },
+    "typhoon": {
+      "file": "models/modern/typhoon.glb",
+      "era": "modern",
+      "bytes": 12924,
+      "tris": 397
+    },
+    "vampire": {
+      "file": "models/early_jets/vampire.glb",
+      "era": "early_jets",
+      "bytes": 11052,
+      "tris": 303
     }
   },
   "weapons": {
@@ -74,5 +242,5 @@
       "tris": 54
     }
   },
-  "totalBytes": 111336
+  "totalBytes": 460388
 }
