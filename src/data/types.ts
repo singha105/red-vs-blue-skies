@@ -84,6 +84,8 @@ export interface Plane {
   verify: boolean;
   /** Multiplier on the range at which enemies can radar-lock this plane (F-22A: 0.5). */
   radarSignature?: number;
+  /** Unguided rockets and bombs on the pylons (Late WW2 attackers), released with the missile button. */
+  ordnance?: { rockets: number; bombs: number };
 }
 
 export interface MissileClass {
@@ -147,6 +149,80 @@ export interface GameMode {
   zones?: number;
   captureAltitudeM?: number;
   tickets?: number;
+  /** Air Domination: zone radius, seconds for one plane to capture, tickets drained per held zone per second. */
+  zoneRadiusM?: number;
+  captureS?: number;
+  drainPerZonePerS?: number;
+  /** Tickets a team loses each time one of its planes goes down (ticket modes). */
+  ticketsPerDeath?: number;
+  /** Bomber Escort: bombers per wave, pause between waves, points for a bomber over the target or shot down,
+   *  points per plane kill, and how close to the target a bomber must pass to drop. */
+  formation?: number;
+  waveGapS?: number;
+  pointsDelivered?: number;
+  pointsDowned?: number;
+  pointsPerKill?: number;
+  dropRadiusM?: number;
+}
+
+export const UNIT_KINDS = ['truck', 'tank', 'bunker', 'aa', 'ship', 'carrier', 'depot'] as const;
+export type UnitKind = (typeof UNIT_KINDS)[number];
+
+/** A ground target (Ground Strike, Carrier Strike, the Bomber Escort depot). HP is for Late WW2 and scales per era. */
+export interface UnitDef {
+  id: UnitKind;
+  name: string;
+  hp: number;
+  /** Hit sphere radius; long units (ships) get a row of spheres along lengthM. */
+  radiusM: number;
+  lengthM?: number;
+  /** Tickets the owning team loses when it is destroyed (Ground Strike). */
+  tickets: number;
+  speedKmh: number;
+}
+
+/** Guns that aren't on fighters: AA sites and bomber gunners. They fire in bursts with imperfect lead. */
+export interface TurretDef {
+  rangeM: number;
+  roundsPerS: number;
+  muzzleVelocityMs: number;
+  damage: number;
+  spreadDeg: number;
+  leadQuality: number;
+  burstS: number;
+  pauseS: number;
+}
+
+export interface OrdnanceDef {
+  /** Rocket motor speed added to the plane's (0 for bombs, which just fall). */
+  speedMs: number;
+  /** Damage at the centre, falling off to zero at splashM. */
+  damage: number;
+  splashM: number;
+  /** Seconds between releases while the button is held. */
+  intervalS: number;
+}
+
+export interface BomberDef {
+  /** Model id in planeModels.json (public/models/bombers). */
+  id: string;
+  name: string;
+  eras: EraId[];
+  speedKmh: number;
+  /** Late WW2 HP; scaled per era like ground units. */
+  hp: number;
+  altitudeM: number;
+  /** A missile hit removes its damage % of this many HP (not of the bomber's whole HP). */
+  missileHp: number;
+}
+
+export interface ObjectivesFile {
+  eraHpScale: Record<EraId, number>;
+  units: UnitDef[];
+  aa: TurretDef;
+  gunners: TurretDef;
+  ordnance: { rocket: OrdnanceDef; bomb: OrdnanceDef };
+  bombers: BomberDef[];
 }
 
 export interface Gun {
@@ -169,4 +245,5 @@ export interface GameData {
   missiles: MissilesFile;
   maps: GameMap[];
   modes: GameMode[];
+  objectives: ObjectivesFile;
 }

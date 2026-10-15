@@ -107,8 +107,65 @@ function openOcean(map: GameMap): Terrain {
   };
 }
 
-/** Builds the heightmap for a map. Canyon and mesa generators arrive on Day 9; until then they use islands. */
+/** The canyon's centreline in Mountain Valley: a meander that passes through x = 0 and ±3,500 m (the zones). */
+export function canyonCentreZ(x: number): number {
+  return 900 * (1 + 0.3 * Math.cos(x / 2600)) * Math.sin((Math.PI * x) / 3500) + 260 * Math.sin((2 * Math.PI * x) / 3500);
+}
+
+/**
+ * Mountain Valley: ridged mountains (300–1,250 m) with one winding canyon carved through them from west to east,
+ * deep enough to fly along below the rims, with a river on its floor. The three zones sit on the canyon floor.
+ */
+function canyonValley(map: GameMap): Terrain {
+  const noise = makeNoise(map.seed);
+  const half = map.sizeM / 2;
+  const heightAt = (x: number, z: number): number => {
+    // Ridged noise: sharp crests, rounded valleys.
+    const r1 = 1 - Math.abs(fbm(noise, x / 2300 + 4.1, z / 2300 - 7.7, 4) * 1.6);
+    const r2 = 1 - Math.abs(fbm(noise, x / 900 - 2.3, z / 900 + 5.2, 3) * 1.6);
+    const mountains = 320 + 700 * clamp(r1, 0, 1) ** 1.6 + 220 * clamp(r2, 0, 1) ** 2;
+    // Distance to the centreline, corrected for its slope so the canyon keeps its width through the bends.
+    const zc = canyonCentreZ(x);
+    const slope = (canyonCentreZ(x + 5) - canyonCentreZ(x - 5)) / 10;
+    const d = Math.abs(z - zc) / Math.sqrt(1 + slope * slope);
+    const wobble = fbm(noise, x / 700 + 13.3, 0.5, 2) * 90;
+    const floorHalf = 280 + wobble;
+    const rimHalf = 820 + wobble;
+    const floor = 45 + fbm(noise, x / 1500, z / 1500 + 3.3, 2) * 20;
+    // Steep walls: most of the drop happens near the floor, with a ledge halfway up.
+    const t = smoothstep(rimHalf, floorHalf, d);
+    const wall = t < 0.5 ? smoothstep(0, 0.5, t) * 0.55 : 0.55 + smoothstep(0.62, 1, t) * 0.45;
+    let h = mountains + (floor - mountains) * wall;
+    // The river: a narrow channel below sea level in the middle of the floor.
+    const river = smoothstep(70, 25, d);
+    h = h + (-14 - h) * river;
+    return clamp(h, SEA_FLOOR, 1400);
+  };
+  return { sizeM: map.sizeM, half, heightAt, surfaceAt: (x, z) => Math.max(SEA_LEVEL, heightAt(x, z)) };
+}
+
+/** Desert Mesas: terraced noise. Each band of the noise becomes a flat step with a cliff up to the next, so
+ *  plateaus come out flat-topped, on a desert floor around 45 m. */
+function desertMesas(map: GameMap): Terrain {
+  const noise = makeNoise(map.seed);
+  const half = map.sizeM / 2;
+  const STEP_M = 115;
+  const heightAt = (x: number, z: number): number => {
+    const v = fbm(noise, x / 2100 + 1.7, z / 2100 - 4.4, 4) * 1.9 + fbm(noise, x / 600, z / 600, 2) * 0.25 + 0.25;
+    const level = Math.max(0, v) * 3.6;
+    const k = Math.floor(level);
+    const f = level - k;
+    const terrace = k + smoothstep(0.8, 0.95, f);
+    const dunes = fbm(noise, x / 350 - 9.1, z / 350 + 2.2, 2) * 6;
+    return 45 + terrace * STEP_M + dunes;
+  };
+  return { sizeM: map.sizeM, half, heightAt, surfaceAt: (x, z) => Math.max(SEA_LEVEL, heightAt(x, z)) };
+}
+
+/** Builds the heightmap for a map. */
 export function createTerrain(map: GameMap): Terrain {
   if (map.terrain === 'ocean') return openOcean(map);
+  if (map.terrain === 'canyon') return canyonValley(map);
+  if (map.terrain === 'mesas') return desertMesas(map);
   return islandChain(map);
 }

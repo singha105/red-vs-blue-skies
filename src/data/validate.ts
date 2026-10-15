@@ -3,11 +3,12 @@ import {
   ERA_IDS,
   GUN_TYPES,
   MISSILE_CLASS_IDS,
+  UNIT_KINDS,
   type EraId,
   type GameData,
 } from './types';
 
-export const DATA_FILES = ['guns.json', 'eras.json', 'planes.json', 'missiles.json', 'maps.json', 'modes.json'] as const;
+export const DATA_FILES = ['guns.json', 'eras.json', 'planes.json', 'missiles.json', 'maps.json', 'modes.json', 'objectives.json'] as const;
 export type DataFileName = (typeof DATA_FILES)[number];
 
 export interface DataError {
@@ -310,6 +311,14 @@ export function validateGameData(raw: RawData): ValidationResult {
     }
     c.bool(o, 'verify', p);
     if (o['radarSignature'] !== undefined) c.num(o, 'radarSignature', p, 0.1, 1);
+    if (o['ordnance'] !== undefined) {
+      const ord = c.obj(o['ordnance'], `${p}.ordnance`);
+      if (ord) {
+        c.num(ord, 'rockets', `${p}.ordnance`, 0, 12, true);
+        c.num(ord, 'bombs', `${p}.ordnance`, 0, 4, true);
+      }
+      if (missiles.length > 0) c.fail(`${p}.ordnance`, 'a plane carries missiles or ordnance, not both (one button fires them)');
+    }
     if (era && tier !== null) {
       const set = tiersByEra.get(era) ?? new Set<number>();
       if (set.has(tier)) c.fail(`${p}.tier`, `era ${era} already has a tier ${tier} plane`);
@@ -370,13 +379,92 @@ export function validateGameData(raw: RawData): ValidationResult {
     c.bool(o, 'default', p);
     c.bool(o, 'playable', p);
     c.num(o, 'timeLimitS', p, 60, 3600, true);
-    for (const k of ['killLimit', 'zones', 'captureAltitudeM', 'tickets']) {
+    for (const k of ['killLimit', 'zones', 'captureAltitudeM', 'tickets', 'zoneRadiusM', 'ticketsPerDeath', 'formation', 'pointsDelivered', 'pointsDowned', 'pointsPerKill', 'dropRadiusM']) {
       if (o[k] !== undefined) c.num(o, k, p, 1, 10000, true);
+    }
+    for (const k of ['captureS', 'drainPerZonePerS', 'waveGapS']) {
+      if (o[k] !== undefined) c.num(o, k, p, 0.01, 600);
+    }
+    // A playable mode needs its rules' numbers.
+    if (o['playable'] === true) {
+      const need: Record<string, string[]> = {
+        air_domination: ['zones', 'captureAltitudeM', 'tickets', 'zoneRadiusM', 'captureS', 'drainPerZonePerS', 'ticketsPerDeath'],
+        ground_strike: ['tickets', 'ticketsPerDeath'],
+        bomber_escort: ['formation', 'waveGapS', 'pointsDelivered', 'pointsDowned', 'pointsPerKill', 'dropRadiusM'],
+      };
+      for (const k of need[String(o['id'])] ?? []) if (o[k] === undefined) c.fail(`${p}.${k}`, `${String(o['id'])} needs ${k} to be playable`);
     }
   });
   c.uniqueIds(modes, 'modes');
   if (modes.filter((m) => isObj(m) && m['default'] === true).length !== 1) c.fail('modes', 'exactly one mode must be default');
   if (!modes.some((m) => isObj(m) && m['default'] === true && m['playable'] === true)) c.fail('modes', 'the default mode must be playable');
+
+  // objectives.json: ground units, AA, bomber gunners, rockets and bombs, AI bombers
+  c.at('objectives.json');
+  const obj = c.obj(raw['objectives.json'], 'objectives');
+  if (obj) {
+    const scale = c.obj(obj['eraHpScale'], 'eraHpScale');
+    if (scale) for (const era of ERA_IDS) c.num(scale, era, 'eraHpScale', 0.01, 10);
+    const units = c.arr(obj['units'], 'units') ?? [];
+    const kinds = new Set<string>();
+    units.forEach((u, i) => {
+      const p = `units[${i}]`;
+      const o = c.obj(u, p);
+      if (!o) return;
+      const id = c.oneOf(o, 'id', p, UNIT_KINDS);
+      if (id) kinds.add(id);
+      c.str(o, 'name', p);
+      c.num(o, 'hp', p, 1, 100000);
+      c.num(o, 'radiusM', p, 1, 100);
+      if (o['lengthM'] !== undefined) c.num(o, 'lengthM', p, 1, 400);
+      c.num(o, 'tickets', p, 0, 1000, true);
+      c.num(o, 'speedKmh', p, 0, 100);
+    });
+    for (const k of UNIT_KINDS) if (!kinds.has(k)) c.fail('units', `missing unit "${k}"`);
+    for (const key of ['aa', 'gunners']) {
+      const t = c.obj(obj[key], key);
+      if (!t) continue;
+      c.num(t, 'rangeM', key, 50, 5000);
+      c.num(t, 'roundsPerS', key, 0.1, 60);
+      c.num(t, 'muzzleVelocityMs', key, 100, 2000);
+      c.num(t, 'damage', key, 0, 100);
+      c.num(t, 'spreadDeg', key, 0, 10);
+      c.num(t, 'leadQuality', key, 0, 1);
+      c.num(t, 'burstS', key, 0.1, 30);
+      c.num(t, 'pauseS', key, 0, 30);
+    }
+    const ord = c.obj(obj['ordnance'], 'ordnance');
+    if (ord) {
+      for (const key of ['rocket', 'bomb']) {
+        const t = c.obj(ord[key], `ordnance.${key}`);
+        if (!t) continue;
+        c.num(t, 'speedMs', `ordnance.${key}`, 0, 2000);
+        c.num(t, 'damage', `ordnance.${key}`, 1, 100000);
+        c.num(t, 'splashM', `ordnance.${key}`, 1, 500);
+        c.num(t, 'intervalS', `ordnance.${key}`, 0.05, 10);
+      }
+    }
+    const bombers = c.arr(obj['bombers'], 'bombers') ?? [];
+    const covered = new Set<string>();
+    bombers.forEach((b, i) => {
+      const p = `bombers[${i}]`;
+      const o = c.obj(b, p);
+      if (!o) return;
+      c.str(o, 'id', p, ID);
+      c.str(o, 'name', p);
+      const eras = c.arr(o['eras'], `${p}.eras`) ?? [];
+      eras.forEach((e, j) => {
+        if (typeof e !== 'string' || !(ERA_IDS as readonly string[]).includes(e)) c.fail(`${p}.eras[${j}]`, `unknown era ${describe(e)}`);
+        else if (covered.has(e)) c.fail(`${p}.eras[${j}]`, `era ${e} already has a bomber`);
+        else covered.add(e);
+      });
+      c.num(o, 'speedKmh', p, 50, 1500);
+      c.num(o, 'hp', p, 1, 100000);
+      c.num(o, 'altitudeM', p, 200, 12000);
+      c.num(o, 'missileHp', p, 1, 100000);
+    });
+    for (const era of ERA_IDS) if (!covered.has(era)) c.fail('bombers', `no bomber for era ${era}`);
+  }
 
   if (c.errors.length > 0) return { ok: false, errors: c.errors };
   return {
@@ -388,6 +476,7 @@ export function validateGameData(raw: RawData): ValidationResult {
       missiles: raw['missiles.json'],
       maps: raw['maps.json'],
       modes: raw['modes.json'],
+      objectives: raw['objectives.json'],
     } as GameData,
   };
 }

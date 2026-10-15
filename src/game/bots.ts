@@ -11,6 +11,7 @@ import { leadPoint } from './ballistics';
 import { neutralInput, type ControlInput } from './controls';
 import type { PlaneState } from './flight';
 import { inbound } from './missiles';
+import { isBomber, unitDef, type GroundUnit } from './objectives';
 import { add, clamp, cross, dirFromYawPitch, dot, FORWARD, len, normalize, rotate, scale, yawPitchFromDir, type Vec3 } from './math';
 import { random, type BotDifficulty, type WorldContext, type WorldState } from './world';
 
@@ -68,7 +69,12 @@ export interface BotBrain {
   /** The missile button was pressed last tick (launches need a fresh press). */
   missilePressed: boolean;
   /** What the bot is doing this tick (for debugging and tests). */
-  mode: 'dead' | 'terrain' | 'edge' | 'defend' | 'evade' | 'attack' | 'patrol';
+  mode: 'dead' | 'terrain' | 'edge' | 'defend' | 'evade' | 'attack' | 'patrol' | 'capture' | 'strike' | 'escort';
+  /** Some bots play the objective (capture zones, strike ground targets, chase or guard bombers); the rest dogfight. */
+  role: 'fighter' | 'objective';
+  /** Zone or ground unit being worked on (−1 none), and seconds of climbing away after a strike pass. */
+  goal: number;
+  pullOut: number;
 }
 
 export function createBrain(id: string, difficulty: BotDifficulty): BotBrain {
@@ -93,17 +99,25 @@ export function createBrain(id: string, difficulty: BotDifficulty): BotBrain {
     missileIn: 3,
     missilePressed: false,
     mode: 'patrol',
+    // Two bots in five play the objective (from the id, so it's stable for the match).
+    role: Number(id.replace(/\D/g, '')) % 5 < 2 ? 'objective' : 'fighter',
+    goal: -1,
+    pullOut: 0,
   };
 }
 
 const DEG = Math.PI / 180;
 
+const LOOK_AHEAD = [1.5, 3, 5];
+/** Shorter look-ahead while diving on a ground target, so the bot gets into gun range before pulling out. */
+const STRIKE_LOOK_AHEAD = [1.2, 2.4];
+
 /** Time for the plane to need to start pulling up, using look-ahead points along its velocity. */
-function terrainThreat(me: PlaneState, ctx: WorldContext): number {
+function terrainThreat(me: PlaneState, ctx: WorldContext, striking = false): number {
   const speed = len(me.vel);
   const margin = 140 + speed * 0.5;
   let worst = 0;
-  for (const t of [1.5, 3, 5]) {
+  for (const t of striking ? STRIKE_LOOK_AHEAD : LOOK_AHEAD) {
     const p = add(me.pos, scale(me.vel, t));
     const clearance = p[1] - ctx.terrain.surfaceAt(p[0], p[2]);
     if (clearance < margin) worst = Math.max(worst, (margin - clearance) / margin);
@@ -142,8 +156,12 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
   brain.evadeFor = Math.max(0, brain.evadeFor - dt);
   brain.reactIn = Math.max(0, brain.reactIn - dt);
 
+  const objectives = world.objectives;
+  const striking = brain.role === 'objective' && objectives.mode === 'ground_strike' && brain.pullOut <= 0 && brain.goal >= 0;
+  brain.pullOut = Math.max(0, brain.pullOut - dt);
+
   // 1. Terrain.
-  const threat = terrainThreat(me, ctx);
+  const threat = terrainThreat(me, ctx, striking);
   if (threat > 0) {
     const flat = normalize([me.vel[0], 0, me.vel[2]]);
     const { yaw } = yawPitchFromDir(flat);
@@ -226,7 +244,8 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
       const threatening = d < 1500 && dot(eNose, scale(to, 1 / d)) > 0.94;
       // Targets ahead of our nose are cheaper to reach than ones we'd have to turn around for.
       const ahead = dot(nose, scale(to, -1 / d));
-      const score = d * (1.5 - 0.5 * ahead) - (threatening ? 700 : 0) - (e.id === brain.targetId ? 400 : 0);
+      let score = d * (1.5 - 0.5 * ahead) - (threatening ? 700 : 0) - (e.id === brain.targetId ? 400 : 0);
+      score += modeTargetBonus(world, ctx, brain, me, e);
       if (score < bestScore) {
         bestScore = score;
         best = e;
@@ -245,7 +264,19 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
     brain.aimErrIn = Math.max(0.25, skill.reactionS);
   }
 
-  // 6. Attack.
+  // 6. The objective: capture a zone, strike a ground target, or stay with the bombers.
+  if (!aim && brain.role === 'objective') {
+    const obj = objectiveSteer(world, ctx, brain, me, target, dt);
+    if (obj) {
+      aim = obj.aim;
+      throttle = obj.throttle;
+      fire = obj.fire;
+      missile = obj.missile;
+      brain.mode = obj.mode;
+    }
+  }
+
+  // 7. Attack.
   if (!aim && target) {
     brain.mode = 'attack';
     const to: Vec3 = [target.pos[0] - me.pos[0], target.pos[1] - me.pos[1], target.pos[2] - me.pos[2]];
@@ -290,9 +321,9 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
       }
     }
   }
-  brain.missilePressed = missile;
+  if (!(brain.mode === 'strike')) brain.missilePressed = missile;
 
-  // 7. Patrol.
+  // 8. Patrol.
   if (!aim) {
     brain.mode = 'patrol';
     const to: Vec3 = [brain.patrol[0] - me.pos[0], brain.patrol[1] - me.pos[1], brain.patrol[2] - me.pos[2]];
@@ -310,4 +341,160 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
 
   const steer = aimControl(me, aim, brain.pd, dt);
   return { ...steer, throttle, fire, missile, flare, target: brain.mode === 'attack' || brain.mode === 'evade' ? brain.targetId : null };
+}
+
+/** Target preference by mode: interceptors go for the bombers, escorts and defenders for whoever threatens theirs. */
+function modeTargetBonus(world: WorldState, ctx: WorldContext, brain: BotBrain, me: PlaneState, e: PlaneState): number {
+  const o = world.objectives;
+  if (o.escort) {
+    if (isBomber(world, e.id)) return brain.role === 'objective' ? -4000 : -1500;
+    // Escorts: enemies close to our bombers come first.
+    if (o.escort.escort === me.team) {
+      for (const b of world.planes) {
+        if (b.alive && b.team === me.team && isBomber(world, b.id) && len([b.pos[0] - e.pos[0], b.pos[1] - e.pos[1], b.pos[2] - e.pos[2]]) < 2500) return -1200;
+      }
+    }
+    return 0;
+  }
+  if (o.mode === 'ground_strike') {
+    // Defenders: low enemies near our ground targets are the strikers.
+    const agl = e.pos[1] - ctx.terrain.surfaceAt(e.pos[0], e.pos[2]);
+    if (agl > 1500) return 0;
+    for (const u of o.units) if (u.alive && u.target && u.team === me.team && Math.hypot(u.pos[0] - e.pos[0], u.pos[2] - e.pos[2]) < 2500) return -900;
+    return 0;
+  }
+  if (o.mode === 'air_domination') {
+    // Enemies sitting low in a zone are capturing it.
+    const agl = e.pos[1] - ctx.terrain.surfaceAt(e.pos[0], e.pos[2]);
+    for (const z of o.zones) if (agl < o.rules.captureAltitudeM * 1.5 && Math.hypot(z.x - e.pos[0], z.z - e.pos[2]) < o.rules.zoneRadiusM) return -1000;
+  }
+  return 0;
+}
+
+interface ObjectiveSteer {
+  aim: Vec3;
+  throttle: number;
+  fire: boolean;
+  missile: boolean;
+  mode: BotBrain['mode'];
+}
+
+/** The objective bots' job for this tick, or null to dogfight (an enemy close and pointed at us wins over it). */
+function objectiveSteer(world: WorldState, ctx: WorldContext, brain: BotBrain, me: PlaneState, target: PlaneState | null, dt: number): ObjectiveSteer | null {
+  const o = world.objectives;
+  if (target) {
+    const to: Vec3 = [me.pos[0] - target.pos[0], me.pos[1] - target.pos[1], me.pos[2] - target.pos[2]];
+    const d = len(to);
+    const tNose = rotate(target.quat, FORWARD);
+    // Someone on our tail, or (escort duty) any enemy near: fight.
+    if (d < 1100 && dot(tNose, scale(to, 1 / d)) > 0.85) return null;
+    if (o.escort && d < 1800) return null;
+  }
+  if (o.mode === 'air_domination' && o.zones.length > 0) return captureSteer(world, ctx, brain, me);
+  if (o.mode === 'ground_strike') return strikeSteer(world, ctx, brain, me, dt);
+  if (o.escort && o.escort.escort === me.team) return escortSteer(world, me);
+  return null;
+}
+
+function captureSteer(world: WorldState, ctx: WorldContext, brain: BotBrain, me: PlaneState): ObjectiveSteer | null {
+  const o = world.objectives;
+  const want = (zi: number): boolean => {
+    const z = o.zones[zi]!;
+    const mine = me.team === 'blue' ? z.progress >= 1 : z.progress <= -1;
+    return !mine;
+  };
+  if (brain.goal < 0 || brain.goal >= o.zones.length || !want(brain.goal)) {
+    let best = -1;
+    let bestD = Infinity;
+    o.zones.forEach((z, i) => {
+      if (!want(i)) return;
+      // Spread out: bots with even ids prefer the far zones a little.
+      const d = Math.hypot(z.x - me.pos[0], z.z - me.pos[2]) * (Number(brain.id.replace(/\D/g, '')) % 2 ? 1 : 0.8 + 0.1 * i);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    });
+    brain.goal = best;
+  }
+  if (brain.goal < 0) return null;
+  const z = o.zones[brain.goal]!;
+  const r = o.rules.zoneRadiusM;
+  const d = Math.hypot(z.x - me.pos[0], z.z - me.pos[2]);
+  // Circle inside the zone, low enough to count (150 m over the ground ahead).
+  let gx = z.x;
+  let gz = z.z;
+  if (d < r * 1.2) {
+    const a = Math.atan2(me.pos[2] - z.z, me.pos[0] - z.x) + 0.6;
+    gx = z.x + Math.cos(a) * r * 0.5;
+    gz = z.z + Math.sin(a) * r * 0.5;
+  }
+  const ground = Math.max(ctx.terrain.surfaceAt(gx, gz), ctx.terrain.surfaceAt(me.pos[0] + me.vel[0] * 3, me.pos[2] + me.vel[2] * 3));
+  const height = d < r * 2.5 ? ground + Math.min(150, o.rules.captureAltitudeM * 0.5) : Math.max(me.pos[1], ground + 600);
+  return { aim: normalize([gx - me.pos[0], height - me.pos[1], gz - me.pos[2]]), throttle: d < r * 1.5 ? 0.7 : 1, fire: false, missile: false, mode: 'capture' };
+}
+
+function strikeSteer(world: WorldState, ctx: WorldContext, brain: BotBrain, me: PlaneState, dt: number): ObjectiveSteer | null {
+  const units = world.objectives.units;
+  let u: GroundUnit | undefined = units[brain.goal];
+  if (!u || !u.alive || u.team === me.team || !u.target) {
+    let best: GroundUnit | null = null;
+    let bestD = Infinity;
+    for (const c of units) {
+      if (!c.alive || !c.target || c.team === me.team) continue;
+      const d = Math.hypot(c.pos[0] - me.pos[0], c.pos[2] - me.pos[2]);
+      if (d < bestD) {
+        bestD = d;
+        best = c;
+      }
+    }
+    brain.goal = best ? best.id : -1;
+    u = best ?? undefined;
+  }
+  if (!u) return null;
+  const speedMs = unitDef(ctx, u.kind).speedKmh / 3.6;
+  const uVel: Vec3 = [Math.sin(u.heading) * speedMs, 0, Math.cos(u.heading) * speedMs];
+  const dx = u.pos[0] - me.pos[0];
+  const dz = u.pos[2] - me.pos[2];
+  const flat = Math.hypot(dx, dz);
+  const agl = me.pos[1] - ctx.terrain.surfaceAt(me.pos[0], me.pos[2]);
+  const nose = rotate(me.quat, FORWARD);
+  // Climbing away after a pass.
+  if (brain.pullOut > 0) {
+    const away = normalize([nose[0], 0, nose[2]]);
+    return { aim: normalize([away[0], 0.55, away[2]]), throttle: 1, fire: false, missile: false, mode: 'strike' };
+  }
+  // Far out: fly over at a safe height, then roll in.
+  if (flat > 2400 || (agl < 500 && flat > 1200)) {
+    const h = Math.max(ctx.terrain.surfaceAt(u.pos[0], u.pos[2]) + 900, ctx.terrain.surfaceAt(me.pos[0], me.pos[2]) + 500);
+    return { aim: normalize([dx, h - me.pos[1], dz]), throttle: 1, fire: false, missile: false, mode: 'strike' };
+  }
+  // Diving on it: lead the guns, rockets inside 900 m, bombs when nearly overhead and low.
+  const mv = 800;
+  const lead = leadPoint(me.pos, me.vel, [u.pos[0], u.pos[1] + 2, u.pos[2]], uVel, mv);
+  const dir = normalize([lead[0] - me.pos[0], lead[1] - me.pos[1], lead[2] - me.pos[2]]);
+  const dist = len([u.pos[0] - me.pos[0], u.pos[1] - me.pos[1], u.pos[2] - me.pos[2]]);
+  const offNose = Math.acos(clamp(dot(nose, dir), -1, 1));
+  const fire = dist < 1000 && offNose < 0.06;
+  const rocketsReady = me.rockets > 0 && dist < 900 && offNose < 0.05;
+  const bombReady = me.rockets === 0 && me.bombs > 0 && dist < 650 && offNose < 0.12;
+  const missile = rocketsReady || bombReady;
+  if (dist < 260 || agl < 160) brain.pullOut = 4;
+  void dt;
+  return { aim: dir, throttle: 0.75, fire, missile, mode: 'strike' };
+}
+
+function escortSteer(world: WorldState, me: PlaneState): ObjectiveSteer | null {
+  // Fly a few hundred metres above and behind the lead bomber.
+  const lead = world.planes.find((p) => p.alive && p.team === me.team && isBomber(world, p.id));
+  if (!lead) return null;
+  const back = normalize([-lead.vel[0], 0, -lead.vel[2]]);
+  const slot = (Number(me.id.replace(/\D/g, '')) % 4) - 1.5;
+  const side: Vec3 = [-back[2], 0, back[0]];
+  const goal: Vec3 = [lead.pos[0] + back[0] * 500 + side[0] * slot * 250, lead.pos[1] + 350, lead.pos[2] + back[2] * 500 + side[2] * slot * 250];
+  const to: Vec3 = [goal[0] - me.pos[0], goal[1] - me.pos[1], goal[2] - me.pos[2]];
+  const d = len(to);
+  // Close enough: match the bombers' heading instead of chasing the point.
+  const aim = d < 400 ? normalize(add(normalize(lead.vel), scale(normalize(to), 0.3))) : normalize(to);
+  return { aim, throttle: d < 400 ? 0.6 : 1, fire: false, missile: false, mode: 'escort' };
 }

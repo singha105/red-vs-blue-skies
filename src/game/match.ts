@@ -6,6 +6,7 @@ import { botInput, createBrain, type BotBrain } from './bots';
 import type { ControlInput } from './controls';
 import type { Team } from './flight';
 import { balanceBots, TEAM_SIZE, type BotLineup } from './teams';
+import { bomberInputs, checkEnd, initObjectives, isBomber, type ModeId } from './objectives';
 import { addPilot, createWorld, random, spawnPlane, stepWorld, type BotDifficulty, type WorldContext, type WorldState } from './world';
 
 export { TEAM_SIZE };
@@ -19,6 +20,8 @@ export interface SoloOptions {
   era: EraId;
   planeId: string;
   difficulty: BotDifficulty;
+  /** Game mode (default Team Deathmatch). */
+  mode?: ModeId;
   playerName?: string;
   /** Touch aim assist for the player (0 = off). */
   assist?: number;
@@ -53,6 +56,8 @@ export interface MatchOptions {
   era: EraId;
   difficulty: BotDifficulty;
   humans: HumanSlot[];
+  /** Game mode (default Team Deathmatch). */
+  mode?: ModeId;
   timeLimitS?: number;
   killLimit?: number;
   seed?: number;
@@ -65,9 +70,10 @@ export interface MatchOptions {
 /** A 10 vs 10 Team Deathmatch: the given humans plus bots in every empty slot. */
 export function createMatch(ctx: WorldContext, opts: MatchOptions): Match {
   const world = createWorld(ctx, opts.seed ?? (Date.now() & 0xffffffff));
-  const mode = ctx.data.modes.find((m) => m.id === 'tdm');
+  const modeId: ModeId = opts.mode ?? 'tdm';
+  const mode = ctx.data.modes.find((m) => m.id === modeId);
   world.match = {
-    mode: 'tdm',
+    mode: modeId,
     timeLeftS: opts.timeLimitS ?? mode?.timeLimitS ?? 600,
     killLimit: opts.killLimit ?? mode?.killLimit ?? 50,
     score: { red: 0, blue: 0 },
@@ -91,6 +97,8 @@ export function createMatch(ctx: WorldContext, opts: MatchOptions): Match {
     for (const team of ['blue', 'red'] as Team[]) for (const planeId of lineup[team]) addBot(match, ctx, team, planeId);
     match.lineup = lineup;
   }
+  // Zones, ground targets and bomber pilots go in after the players, so the roster starts with the players.
+  initObjectives(world, ctx, modeId, opts.era);
   world.events = [];
   return match;
 }
@@ -118,7 +126,7 @@ function addBot(match: Match, ctx: WorldContext, team: Team, planeId: string): s
 export function rebalanceBots(match: Match, ctx: WorldContext): BotLineup | null {
   const w = match.world;
   const bots: Record<Team, string[]> = { blue: [], red: [] };
-  for (const p of w.planes) if (w.pilots[p.id]?.bot) bots[p.team].push(p.id);
+  for (const p of w.planes) if (w.pilots[p.id]?.bot && !isBomber(w, p.id)) bots[p.team].push(p.id);
   if (bots.blue.length + bots.red.length === 0) return null;
   // Humans flying now count with their current plane; bots are re-picked.
   const humans = w.planes.filter((p) => !w.pilots[p.id]?.bot).map((p) => ({ team: p.team, br: ctx.planeDefs.get(w.respawnPlane[p.id] ?? p.planeId)?.br ?? 1 }));
@@ -134,9 +142,9 @@ export function addHumanToMatch(match: Match, ctx: WorldContext, human: HumanSlo
   const w = match.world;
   const humans = (team: Team): number => w.planes.filter((p) => p.team === team && !w.pilots[p.id]?.bot).length;
   const order: Team[] = humans('blue') <= humans('red') ? ['blue', 'red'] : ['red', 'blue'];
-  const size = (team: Team): number => w.planes.filter((p) => p.team === team).length;
+  const size = (team: Team): number => w.planes.filter((p) => p.team === team && !isBomber(w, p.id)).length;
   for (const team of order) {
-    const bot = w.planes.find((p) => p.team === team && w.pilots[p.id]?.bot);
+    const bot = w.planes.find((p) => p.team === team && w.pilots[p.id]?.bot && !isBomber(w, p.id));
     if (!bot) {
       // Bots off: just add a seat if the team has room.
       if (size(team) >= TEAM_SIZE) continue;
@@ -144,12 +152,16 @@ export function addHumanToMatch(match: Match, ctx: WorldContext, human: HumanSlo
       spawnPlane(w, ctx, { id: human.id, team, planeId: human.planeId, assist: human.assist ?? 0 });
       return team;
     }
+    // The newcomer takes the bot's place in the roster order (bombers stay at the end).
+    const at = w.planes.findIndex((p) => p.id === bot.id);
     w.planes = w.planes.filter((p) => p.id !== bot.id);
     delete w.pilots[bot.id];
     delete w.stats[bot.id];
     match.brains = match.brains.filter((b) => b.id !== bot.id);
     addPilot(w, { id: human.id, name: human.name, team, bot: false });
     spawnPlane(w, ctx, { id: human.id, team, planeId: human.planeId, assist: human.assist ?? 0 });
+    const added = w.planes.pop()!;
+    w.planes.splice(at, 0, added);
     return team;
   }
   return null;
@@ -169,6 +181,7 @@ export function createSoloMatch(ctx: WorldContext, opts: SoloOptions): Match {
     era: opts.era,
     difficulty: opts.difficulty,
     humans: [{ id: PLAYER_ID, name: opts.playerName ?? 'You', planeId: opts.planeId, team: 'blue', assist: opts.assist ?? 0 }],
+    ...(opts.mode ? { mode: opts.mode } : {}),
     ...(opts.timeLimitS !== undefined ? { timeLimitS: opts.timeLimitS } : {}),
     ...(opts.killLimit !== undefined ? { killLimit: opts.killLimit } : {}),
     ...(opts.seed !== undefined ? { seed: opts.seed } : {}),
@@ -184,12 +197,9 @@ export function stepMatch(match: Match, ctx: WorldContext, humanInputs: Record<s
   }
   const inputs: Record<string, ControlInput> = { ...humanInputs };
   for (const brain of match.brains) inputs[brain.id] = botInput(w, ctx, brain, dt);
+  bomberInputs(w, ctx, dt, inputs);
   stepWorld(w, ctx, inputs, dt);
 
-  const m = w.match;
-  m.timeLeftS = Math.max(0, m.timeLeftS - dt);
-  if (m.score.red >= m.killLimit || m.score.blue >= m.killLimit || m.timeLeftS <= 0) {
-    m.state = 'ended';
-    m.winner = m.score.red === m.score.blue ? 'draw' : m.score.red > m.score.blue ? 'red' : 'blue';
-  }
+  w.match.timeLeftS = Math.max(0, w.match.timeLeftS - dt);
+  checkEnd(w);
 }

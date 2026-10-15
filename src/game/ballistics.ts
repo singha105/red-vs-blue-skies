@@ -192,6 +192,8 @@ export function stepBullets(
   spheresFor: (p: PlaneState) => Record<Part, { c: Vec3; r: number }> & { bound?: number },
   surfaceAt: (x: number, z: number) => number,
   dt: number,
+  /** Ground targets: called for each segment before the ground test; true means the bullet hit one. */
+  hitsGround?: (b: Bullet, p0: Vec3, p1: Vec3) => boolean,
 ): BulletHit[] {
   const hits: BulletHit[] = [];
   let write = 0;
@@ -201,7 +203,9 @@ export function stepBullets(
     b.vel[1] -= G * dt;
     const p1: Vec3 = [p0[0] + b.vel[0] * dt, p0[1] + b.vel[1] * dt, p0[2] + b.vel[2] * dt];
     b.life -= dt;
-    let consumed = b.life <= 0 || p1[1] <= surfaceAt(p1[0], p1[2]);
+    let consumed = b.life <= 0;
+    if (!consumed && hitsGround && hitsGround(b, p0, p1)) consumed = true;
+    if (!consumed && p1[1] <= surfaceAt(p1[0], p1[2])) consumed = true;
 
     if (!consumed) {
       const mid: Vec3 = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, (p0[2] + p1[2]) / 2];

@@ -387,6 +387,7 @@
       { "type": "mg_13", "count": 2, "ammoPerGun": 475 }
     ],
     "missiles": [],
+    "ordnance": { "rockets": 2, "bombs": 1 },
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/late_ww2/fw190a8.glb",
     "verify": false
@@ -403,6 +404,7 @@
       { "type": "mg_50", "count": 8, "ammoPerGun": 425 }
     ],
     "missiles": [],
+    "ordnance": { "rockets": 8, "bombs": 2 },
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/late_ww2/p47d.glb",
     "verify": false
@@ -419,6 +421,7 @@
       { "type": "mg_50", "count": 6, "ammoPerGun": 400 }
     ],
     "missiles": [],
+    "ordnance": { "rockets": 8, "bombs": 2 },
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/late_ww2/f4u4.glb",
     "verify": false

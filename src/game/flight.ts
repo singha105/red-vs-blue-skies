@@ -82,6 +82,10 @@ export interface PlaneState {
   cmCooldown: number;
   /** Missile button held last tick: launches need a fresh press. */
   missileHeld: boolean;
+  /** Unguided rockets and bombs left (Late WW2 attackers), and the release interval timer. */
+  rockets: number;
+  bombs: number;
+  ordnanceCooldown: number;
 }
 
 /** Derived flight numbers for one plane type. Computed once from planes.json + eras.json. */
