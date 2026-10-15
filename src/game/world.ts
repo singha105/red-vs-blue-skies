@@ -6,6 +6,7 @@ import { neutralInput } from './controls';
 import { edgeTurnInput, flightParams, stepPlane, stepWreck, type FlightParams, type PlaneState, type Team } from './flight';
 import { normalize, quatLookRotation, scale, type Vec3 } from './math';
 import { createTerrain, type Terrain } from './terrain';
+import { SP_ASSIST, SP_KILL, spawnCost } from './unlocks';
 
 export const RESPAWN_S = 5;
 /** JSON has no Infinity, so "never" and "no limit" are large finite numbers. */
@@ -34,6 +35,27 @@ export interface PilotStats {
   deaths: number;
   assists: number;
   damage: number;
+  /** Damage dealt in percent of the victims' max HP (1 RP per 1%). */
+  damagePct: number;
+  /** RP from kills, with the underdog multiplier applied. */
+  killRp: number;
+  /** Kills in the current life, and the best life so far (Ace award). */
+  lifeKills: number;
+  bestLifeKills: number;
+  /** Spawn points earned in this match, minus what respawns cost. */
+  sp: number;
+}
+
+export const newStats = (): PilotStats => ({ kills: 0, deaths: 0, assists: 0, damage: 0, damagePct: 0, killRp: 0, lifeKills: 0, bestLifeKills: 0, sp: 0 });
+
+/** Kill RP multiplier from GAME_DESIGN: shooting down a much better plane pays more. */
+export function underdogMultiplier(killerTier: number, victimTier: number): number {
+  const d = victimTier - killerTier;
+  if (d >= 3) return 3;
+  if (d === 2) return 2;
+  if (d <= -3) return 0.25;
+  if (d === -2) return 0.5;
+  return 1;
 }
 
 export type GameEvent =
@@ -66,6 +88,12 @@ export interface WorldState {
   /** Seeded RNG state, so every peer that replays the same inputs gets the same result. */
   rng: number;
   nextBulletId: number;
+  /** Tier of the plane each pilot is flying (for the kill RP multiplier). */
+  tiers: Record<string, number>;
+  /** Plane to use at each pilot's next respawn (respawn screen choice, or the bot balancer). */
+  respawnPlane: Record<string, string>;
+  /** Humans pay spawn points for every spawn after the first. */
+  spawnRules: boolean;
 }
 
 /** Non-serializable helpers built from the data files; every peer rebuilds the same thing from the map id. */
@@ -110,6 +138,9 @@ export function createWorld(ctx: WorldContext, seed = 1): WorldState {
     match: { mode: 'free', timeLeftS: NO_LIMIT, killLimit: NO_LIMIT, score: { red: 0, blue: 0 }, state: 'playing', winner: null },
     rng: seed >>> 0,
     nextBulletId: 1,
+    tiers: {},
+    respawnPlane: {},
+    spawnRules: false,
   };
 }
 
@@ -124,7 +155,31 @@ export function random(world: WorldState): number {
 
 export function addPilot(world: WorldState, pilot: Pilot): void {
   world.pilots[pilot.id] = pilot;
-  world.stats[pilot.id] ??= { kills: 0, deaths: 0, assists: 0, damage: 0 };
+  world.stats[pilot.id] ??= newStats();
+}
+
+/** The era's tier-1 plane: always free, so a pilot with no spawn points can still fly. */
+export function reservePlane(ctx: WorldContext, era: string): string {
+  const pool = ctx.data.planes.filter((p) => p.era === era).sort((a, b) => a.tier - b.tier);
+  return pool[0]!.id;
+}
+
+/** Which plane a pilot respawns in, paying spawn points for it (humans only, when spawn rules are on).
+ *  The tier-1 reserve is always free. */
+export function respawnPlaneFor(world: WorldState, ctx: WorldContext, plane: PlaneState): string {
+  const wanted = world.respawnPlane[plane.id] ?? plane.planeId;
+  const pilot = world.pilots[plane.id];
+  if (!world.spawnRules || !pilot || pilot.bot) return wanted;
+  const def = ctx.planeDefs.get(wanted) ?? ctx.planeDefs.get(plane.planeId)!;
+  const reserve = reservePlane(ctx, def.era);
+  if (def.id === reserve) return reserve;
+  const st = world.stats[plane.id];
+  const cost = spawnCost(def.tier);
+  if (st && st.sp >= cost) {
+    st.sp -= cost;
+    return def.id;
+  }
+  return reserve;
 }
 
 /** Index of a plane among its team, for spreading spawn positions so teammates don't overlap. */
@@ -180,6 +235,7 @@ export function spawnPlane(
     assist: opts.assist ?? 0,
     firing: false,
   };
+  world.tiers[opts.id] = def.tier;
   const existing = world.planes.findIndex((p) => p.id === opts.id);
   if (existing >= 0) world.planes[existing] = state;
   else world.planes.push(state);
@@ -197,7 +253,10 @@ export function applyDamage(world: WorldState, victim: PlaneState, shooter: stri
     victim.lastHitBy = shooter;
     victim.lastHitAt = world.time;
     const st = world.stats[shooter];
-    if (st) st.damage += dealt;
+    if (st) {
+      st.damage += dealt;
+      st.damagePct += (dealt / victim.maxHp) * 100;
+    }
   }
   if (part) {
     victim.partDamage[part] += amount;
@@ -225,16 +284,28 @@ function killPlane(world: WorldState, victim: PlaneState, weapon: string, shotDo
     .map(([id]) => id);
 
   const vs = world.stats[victim.id];
-  if (vs) vs.deaths++;
+  if (vs) {
+    vs.deaths++;
+    vs.lifeKills = 0;
+  }
   if (killer) {
     const ks = world.stats[killer];
-    if (ks) ks.kills++;
+    if (ks) {
+      ks.kills++;
+      ks.lifeKills++;
+      ks.bestLifeKills = Math.max(ks.bestLifeKills, ks.lifeKills);
+      ks.killRp += 100 * underdogMultiplier(world.tiers[killer] ?? 1, world.tiers[victim.id] ?? 1);
+      ks.sp += SP_KILL;
+    }
     const killerTeam = world.pilots[killer]?.team;
     if (killerTeam && killerTeam !== victim.team) world.match.score[killerTeam]++;
   }
   for (const id of assists) {
     const st = world.stats[id];
-    if (st) st.assists++;
+    if (st) {
+      st.assists++;
+      st.sp += SP_ASSIST;
+    }
   }
   world.events.push({ t: 'kill', killer, victim: victim.id, weapon: shotDown || killer ? weapon : 'crash', assists });
 }
@@ -260,7 +331,7 @@ export function stepWorld(world: WorldState, ctx: WorldContext, inputs: Record<s
       plane.respawnIn -= dt;
       if (plane.respawnIn <= 0) {
         if (plane.wreck) world.events.push({ t: 'explode', pos: [...plane.pos] });
-        spawnPlane(world, ctx, { id: plane.id, team: plane.team, planeId: plane.planeId, assist: plane.assist });
+        spawnPlane(world, ctx, { id: plane.id, team: plane.team, planeId: respawnPlaneFor(world, ctx, plane), assist: plane.assist });
       }
       continue;
     }

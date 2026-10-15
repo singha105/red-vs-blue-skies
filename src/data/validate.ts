@@ -368,6 +368,7 @@ export function validateGameData(raw: RawData): ValidationResult {
     c.str(o, 'name', p);
     c.str(o, 'description', p);
     c.bool(o, 'default', p);
+    c.bool(o, 'playable', p);
     c.num(o, 'timeLimitS', p, 60, 3600, true);
     for (const k of ['killLimit', 'zones', 'captureAltitudeM', 'tickets']) {
       if (o[k] !== undefined) c.num(o, k, p, 1, 10000, true);
@@ -375,6 +376,7 @@ export function validateGameData(raw: RawData): ValidationResult {
   });
   c.uniqueIds(modes, 'modes');
   if (modes.filter((m) => isObj(m) && m['default'] === true).length !== 1) c.fail('modes', 'exactly one mode must be default');
+  if (!modes.some((m) => isObj(m) && m['default'] === true && m['playable'] === true)) c.fail('modes', 'the default mode must be playable');
 
   if (c.errors.length > 0) return { ok: false, errors: c.errors };
   return {

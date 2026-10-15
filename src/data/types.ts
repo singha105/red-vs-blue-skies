@@ -139,6 +139,8 @@ export interface GameMode {
   id: 'tdm' | 'air_domination' | 'ground_strike' | 'bomber_escort';
   name: string;
   default: boolean;
+  /** False until the mode's rules exist (Day 9); the lobby vote shows it as coming soon. */
+  playable: boolean;
   description: string;
   timeLimitS: number;
   killLimit?: number;
