@@ -6,6 +6,7 @@ import { neutralInput, type ControlInput } from '../game/controls';
 import type { Team } from '../game/flight';
 import { addHumanToMatch, botTakeOver, createMatch, rebalanceBots, stepMatch, type Match } from '../game/match';
 import { computeResults, type MatchResults } from '../game/results';
+import { lockSeeker, missileTypeIds } from '../game/missiles';
 import { createWorldContext, type GameEvent, type WorldContext } from '../game/world';
 import {
   CHAT_MAX,
@@ -20,6 +21,7 @@ import {
   MSG_INPUT,
   MSG_PING,
   MSG_PONG,
+  NO_WEAPONS,
   SNAPSHOT_HZ,
   VOTE_CATEGORIES,
   type ClientMsg,
@@ -29,6 +31,7 @@ import {
   type RoomSettings,
   type RoomState,
   type RosterEntry,
+  type SnapshotContext,
   type VoteCategory,
 } from './protocol';
 import { createRoom, type Room } from './room';
@@ -84,6 +87,8 @@ export interface HostServer {
   readonly match: Match | null;
   readonly ctx: WorldContext | null;
   readonly counters: NetCounters;
+  /** The latest input from a remote player (tests and debugging). */
+  inputOf(playerId: string): ControlInput | null;
   readonly results: MatchResults | null;
   room(): RoomState;
   // Host-only controls (the host's UI calls these directly).
@@ -325,7 +330,9 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
       const decoded = decodeInput(data);
       if (!decoded || decoded.seq <= c.lastSeq) return; // late or duplicate packet
       c.lastSeq = decoded.seq;
-      c.input = decoded.input;
+      // The target arrives as a roster slot; the roster is the world's plane order.
+      const target = decoded.targetSlot > 0 ? match?.world.planes[decoded.targetSlot - 1]?.id ?? null : null;
+      c.input = { ...decoded.input, target };
       counters.inputsAccepted++;
     } else if (type === MSG_PING || type === MSG_PONG) {
       const p = decodePing(data);
@@ -336,6 +343,15 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
   });
 
   const ticksPerSnapshot = Math.round(60 / SNAPSHOT_HZ);
+  const snapshotContexts = new WeakMap<WorldContext, SnapshotContext>();
+  const snapshotContext = (c: WorldContext): SnapshotContext => {
+    let sc = snapshotContexts.get(c);
+    if (!sc) {
+      sc = { missileTypes: missileTypeIds(c.data), lockIsRadar: (p) => lockSeeker(c, p) === 'radar' };
+      snapshotContexts.set(c, sc);
+    }
+    return sc;
+  };
 
   const stepTheMatch = (m: Match, c: WorldContext, t: number, dt: number): void => {
     // Players who left more than 10 s ago are handed to a bot.
@@ -389,7 +405,9 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
         const snap = encodeSnapshot(
           { rosterVersion, tick: w.tick, ackSeq: rec.lastSeq, timeLeftS: w.match.timeLeftS, score: w.match.score, ended: w.match.state === 'ended' },
           w.planes,
-          own?.ammo ?? [],
+          own ? { ammo: own.ammo, missiles: own.missiles, flares: own.flares, chaff: own.chaff, lockMount: own.lockMount } : NO_WEAPONS,
+          w.missiles,
+          snapshotContext(c),
         );
         send(rec.peerId, 'unreliable', snap);
       }
@@ -417,6 +435,10 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
       return results;
     },
     counters,
+    inputOf(playerId) {
+      for (const rec of clients.values()) if (rec.playerId === playerId) return rec.input;
+      return null;
+    },
     room: () => room.state(now()),
     startVote: () => room.startVote(now()),
     override: (cat, id) => {

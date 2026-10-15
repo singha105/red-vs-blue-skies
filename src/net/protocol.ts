@@ -1,15 +1,21 @@
 // Wire protocol. Binary for the hot path (inputs 30/s up, snapshots 20/s down), JSON for rare events.
 //
-// Input (10 bytes):  u8 type=1 | u32 seq | i8 pitch | i8 roll | i8 yaw | u8 throttle | u8 buttons
+// Input (11 bytes):  u8 type=1 | u32 seq | i8 pitch | i8 roll | i8 yaw | u8 throttle | u8 buttons | u8 target slot
 // Ping/pong (11 B):  u8 type=3|4 | u16 id | f64 sender time (echoed back unchanged)
-// Snapshot:          header 15 B + 22 B per plane + own ammo trailer
+// Snapshot:          header 15 B + 24 B per plane + 1 B + 17 B per missile + own weapons trailer
 //   header: u8 type=2 | u8 roster version | u32 tick | u32 ack seq | u16 time left ×10 | u8 red | u8 blue | u8 state | u8 count
 //   plane:  u8 flags | u8 damage flags | i16 x×2 | u16 (y+2000)×2 | i16 z×2 | u32 quat (smallest three)
 //           | i16 vx×20 | i16 vy×20 | i16 vz×20 | u8 hp | u8 throttle×255 | u8 respawn×10 | u8 g×10
-//   trailer: u8 n | u16 ammo × n (the receiving player's own guns)
-// 20 planes ≈ 460 bytes per snapshot ≈ 9 KB/s per client at 20 Hz.
+//           | u8 lock target slot | u8 lock (bit 7 radar, bits 0–6 progress×127)
+//   missile: u16 id | u8 type | u8 owner slot | u8 target slot (0 none, 255 a decoy) | i16 x×2 | u16 (y+2000)×2
+//           | i16 z×2 | i16 vx×20 | i16 vy×20 | i16 vz×20
+//   trailer: u8 n | u16 ammo × n | u8 m | u8 missiles × m | u8 flares | u8 chaff | u8 lock mount + 1 (the receiving
+//            player's own weapons)
+// "Slot" is a plane's index in the roster + 1 (0 = none). 20 planes ≈ 500 bytes per snapshot ≈ 10 KB/s per client
+// at 20 Hz, plus 17 bytes per missile in the air. Flares and chaff are reliable events, simulated locally.
 import type { ControlInput } from '../game/controls';
 import type { PlaneState, Team } from '../game/flight';
+import type { MissileState } from '../game/missiles';
 import type { Quat, Vec3 } from '../game/math';
 import type { EraId } from '../data/types';
 import type { MatchResults } from '../game/results';
@@ -22,7 +28,11 @@ export const MSG_PONG = 4;
 
 export const SNAPSHOT_HZ = 20;
 export const INPUT_HZ = 30;
-export const PLANE_BYTES = 22;
+export const PLANE_BYTES = 24;
+export const MISSILE_BYTES = 17;
+const INPUT_BYTES = 11;
+/** Missile target byte for "chasing a flare or chaff". */
+const DECOY_SLOT = 255;
 const HEADER_BYTES = 15;
 
 // ---------------------------------------------------------------- reliable (JSON) messages
@@ -140,8 +150,9 @@ export function decodeJson<T>(data: unknown): T | null {
 
 const clampNum = (v: unknown, lo: number, hi: number): number => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : 0);
 
-export function encodeInput(seq: number, i: ControlInput): ArrayBuffer {
-  const b = new ArrayBuffer(10);
+/** `targetSlot`: the picked missile target's roster index + 1, or 0 for none. */
+export function encodeInput(seq: number, i: ControlInput, targetSlot = 0): ArrayBuffer {
+  const b = new ArrayBuffer(INPUT_BYTES);
   const v = new DataView(b);
   v.setUint8(0, MSG_INPUT);
   v.setUint32(1, seq >>> 0);
@@ -150,12 +161,14 @@ export function encodeInput(seq: number, i: ControlInput): ArrayBuffer {
   v.setInt8(7, Math.round(clampNum(i.yaw, -1, 1) * 127));
   v.setUint8(8, Math.round(clampNum(i.throttle, 0, 1) * 255));
   v.setUint8(9, (i.fire ? 1 : 0) | (i.missile ? 2 : 0) | (i.flare ? 4 : 0));
+  v.setUint8(10, targetSlot >= 0 && targetSlot <= 254 ? targetSlot : 0);
   return b;
 }
 
-/** Decodes and clamps a client's input. Anything malformed comes back as null. */
-export function decodeInput(data: ArrayBuffer): { seq: number; input: ControlInput } | null {
-  if (data.byteLength !== 10) return null;
+/** Decodes and clamps a client's input. Anything malformed comes back as null. The target comes back as a
+ *  slot (the host maps it to a plane id); `input.target` is null. */
+export function decodeInput(data: ArrayBuffer): { seq: number; input: ControlInput; targetSlot: number } | null {
+  if (data.byteLength !== INPUT_BYTES) return null;
   const v = new DataView(data);
   if (v.getUint8(0) !== MSG_INPUT) return null;
   const buttons = v.getUint8(9);
@@ -169,7 +182,9 @@ export function decodeInput(data: ArrayBuffer): { seq: number; input: ControlInp
       fire: (buttons & 1) !== 0,
       missile: (buttons & 2) !== 0,
       flare: (buttons & 4) !== 0,
+      target: null,
     },
+    targetSlot: v.getUint8(10),
   };
 }
 
@@ -247,7 +262,32 @@ export interface SnapshotPlane {
   throttle: number;
   respawnIn: number;
   g: number;
+  /** Roster slot of the plane this one is locking (0 = none), how far along, and whether it's a radar lock. */
+  lockSlot: number;
+  lockProgress: number;
+  lockRadar: boolean;
 }
+
+export interface SnapshotMissile {
+  id: number;
+  type: string;
+  ownerSlot: number;
+  /** 0 = lost, 255 = chasing a decoy, else the target's slot. */
+  targetSlot: number;
+  pos: Vec3;
+  vel: Vec3;
+}
+
+/** The receiving player's own weapons. */
+export interface OwnWeapons {
+  ammo: readonly number[];
+  missiles: readonly number[];
+  flares: number;
+  chaff: number;
+  lockMount: number;
+}
+
+export const NO_WEAPONS: OwnWeapons = { ammo: [], missiles: [], flares: 0, chaff: 0, lockMount: -1 };
 
 export interface Snapshot {
   rosterVersion: number;
@@ -257,7 +297,15 @@ export interface Snapshot {
   score: Record<Team, number>;
   ended: boolean;
   planes: SnapshotPlane[];
-  ownAmmo: number[];
+  missiles: SnapshotMissile[];
+  own: OwnWeapons;
+}
+
+/** What the snapshot encoder needs to know beyond the planes: missile type ids (index = wire type) and which
+ *  planes are locking with a radar. */
+export interface SnapshotContext {
+  missileTypes: readonly string[];
+  lockIsRadar(p: PlaneState): boolean;
 }
 
 const i16 = (v: number): number => Math.max(-32768, Math.min(32767, Math.round(v)));
@@ -267,10 +315,18 @@ const u8 = (v: number): number => Math.max(0, Math.min(255, Math.round(v)));
 export function encodeSnapshot(
   s: { rosterVersion: number; tick: number; ackSeq: number; timeLeftS: number; score: Record<Team, number>; ended: boolean },
   planes: readonly PlaneState[],
-  ownAmmo: readonly number[],
+  own: OwnWeapons,
+  missiles: readonly MissileState[] = [],
+  sc: SnapshotContext = { missileTypes: [], lockIsRadar: () => false },
 ): ArrayBuffer {
-  const n = Math.min(255, planes.length);
-  const buf = new ArrayBuffer(HEADER_BYTES + n * PLANE_BYTES + 1 + ownAmmo.length * 2);
+  const n = Math.min(127, planes.length);
+  const nm = Math.min(255, missiles.length);
+  const slotOf = (id: string | null): number => {
+    if (id === null) return 0;
+    const i = planes.findIndex((p) => p.id === id);
+    return i >= 0 && i < n ? i + 1 : 0;
+  };
+  const buf = new ArrayBuffer(HEADER_BYTES + n * PLANE_BYTES + 1 + nm * MISSILE_BYTES + 1 + own.ammo.length * 2 + 1 + own.missiles.length + 3);
   const v = new DataView(buf);
   v.setUint8(0, MSG_SNAPSHOT);
   v.setUint8(1, s.rosterVersion & 0xff);
@@ -296,18 +352,40 @@ export function encodeSnapshot(
     v.setUint8(o + 19, u8(p.throttle * 255));
     v.setUint8(o + 20, u8(p.respawnIn * 10));
     v.setUint8(o + 21, u8(p.g * 10));
+    const lockSlot = p.lockProgress > 0 ? slotOf(p.lockTarget) : 0;
+    v.setUint8(o + 22, lockSlot);
+    v.setUint8(o + 23, lockSlot ? (sc.lockIsRadar(p) ? 128 : 0) | Math.round(Math.min(1, Math.max(0, p.lockProgress)) * 127) : 0);
     o += PLANE_BYTES;
   }
-  v.setUint8(o, ownAmmo.length);
-  o++;
-  for (const a of ownAmmo) {
+  v.setUint8(o++, nm);
+  for (let i = 0; i < nm; i++) {
+    const m = missiles[i]!;
+    v.setUint16(o, m.id & 0xffff);
+    v.setUint8(o + 2, Math.max(0, sc.missileTypes.indexOf(m.type)));
+    v.setUint8(o + 3, slotOf(m.owner));
+    v.setUint8(o + 4, m.target === null ? 0 : m.target.startsWith('d') ? DECOY_SLOT : slotOf(m.target));
+    v.setInt16(o + 5, i16(m.pos[0] * 2));
+    v.setUint16(o + 7, u16((m.pos[1] + 2000) * 2));
+    v.setInt16(o + 9, i16(m.pos[2] * 2));
+    v.setInt16(o + 11, i16(m.vel[0] * 20));
+    v.setInt16(o + 13, i16(m.vel[1] * 20));
+    v.setInt16(o + 15, i16(m.vel[2] * 20));
+    o += MISSILE_BYTES;
+  }
+  v.setUint8(o++, own.ammo.length);
+  for (const a of own.ammo) {
     v.setUint16(o, u16(a));
     o += 2;
   }
+  v.setUint8(o++, own.missiles.length);
+  for (const m of own.missiles) v.setUint8(o++, u8(m));
+  v.setUint8(o++, u8(own.flares));
+  v.setUint8(o++, u8(own.chaff));
+  v.setUint8(o++, u8(own.lockMount + 1));
   return buf;
 }
 
-export function decodeSnapshot(data: ArrayBuffer): Snapshot | null {
+export function decodeSnapshot(data: ArrayBuffer, missileTypes: readonly string[] = []): Snapshot | null {
   if (data.byteLength < HEADER_BYTES + 1) return null;
   const v = new DataView(data);
   if (v.getUint8(0) !== MSG_SNAPSHOT) return null;
@@ -336,13 +414,36 @@ export function decodeSnapshot(data: ArrayBuffer): Snapshot | null {
       throttle: v.getUint8(o + 19) / 255,
       respawnIn: v.getUint8(o + 20) / 10,
       g: v.getUint8(o + 21) / 10,
+      lockSlot: v.getUint8(o + 22),
+      lockProgress: (v.getUint8(o + 23) & 127) / 127,
+      lockRadar: (v.getUint8(o + 23) & 128) !== 0,
     });
     o += PLANE_BYTES;
   }
-  const ownAmmo: number[] = [];
-  const na = o < data.byteLength ? v.getUint8(o) : 0;
-  o++;
-  for (let i = 0; i < na && o + 2 <= data.byteLength; i++, o += 2) ownAmmo.push(v.getUint16(o));
+  const missiles: SnapshotMissile[] = [];
+  const nm = v.getUint8(o++);
+  if (data.byteLength < o + nm * MISSILE_BYTES + 1) return null;
+  for (let i = 0; i < nm; i++) {
+    missiles.push({
+      id: v.getUint16(o),
+      type: missileTypes[v.getUint8(o + 2)] ?? '',
+      ownerSlot: v.getUint8(o + 3),
+      targetSlot: v.getUint8(o + 4),
+      pos: [v.getInt16(o + 5) / 2, v.getUint16(o + 7) / 2 - 2000, v.getInt16(o + 9) / 2],
+      vel: [v.getInt16(o + 11) / 20, v.getInt16(o + 13) / 20, v.getInt16(o + 15) / 20],
+    });
+    o += MISSILE_BYTES;
+  }
+  const byte = (): number => (o < data.byteLength ? v.getUint8(o++) : 0);
+  const ammo: number[] = [];
+  const na = byte();
+  for (let i = 0; i < na && o + 2 <= data.byteLength; i++, o += 2) ammo.push(v.getUint16(o));
+  const ownMissiles: number[] = [];
+  const nom = byte();
+  for (let i = 0; i < nom; i++) ownMissiles.push(byte());
+  const flares = byte();
+  const chaff = byte();
+  const lockMount = byte() - 1;
   return {
     rosterVersion: v.getUint8(1),
     tick: v.getUint32(2),
@@ -351,9 +452,12 @@ export function decodeSnapshot(data: ArrayBuffer): Snapshot | null {
     score: { red: v.getUint8(12), blue: v.getUint8(13) },
     ended: (countByte & 0x80) !== 0,
     planes,
-    ownAmmo,
+    missiles,
+    own: { ammo, missiles: ownMissiles, flares, chaff, lockMount },
   };
 }
+
+export const DECOY_TARGET_SLOT = DECOY_SLOT;
 
 /** Cleans a callsign: 2–16 visible characters, no markup. */
 export function cleanCallsign(raw: unknown): string {

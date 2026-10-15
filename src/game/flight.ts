@@ -70,6 +70,18 @@ export interface PlaneState {
   assist: number;
   /** Guns firing this tick (drives muzzle flashes). */
   firing: boolean;
+  /** Missiles left per missile mount (same order as planes.json missiles). */
+  missiles: number[];
+  flares: number;
+  chaff: number;
+  /** Who our seeker is locking (or has locked), with which mount, and how far along (0–1). */
+  lockTarget: string | null;
+  lockMount: number;
+  lockProgress: number;
+  missileCooldown: number;
+  cmCooldown: number;
+  /** Missile button held last tick: launches need a fresh press. */
+  missileHeld: boolean;
 }
 
 /** Derived flight numbers for one plane type. Computed once from planes.json + eras.json. */

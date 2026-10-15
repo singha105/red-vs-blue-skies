@@ -1,14 +1,16 @@
 // Bot pilots. They read the world and return a ControlInput, exactly like a human's devices do; they never
 // touch plane state. Steering goes through the same mouse-aim autopilot the player uses.
 //
-// Priorities each tick: don't hit the ground → stay on the map → break away when being shot →
-// attack the chosen target (pure pursuit far away, lead pursuit in gun range, throttle back to avoid
-// overshooting) → otherwise patrol.
+// Priorities each tick: don't hit the ground → stay on the map → defend against an inbound missile (flares and
+// a break for IR, a notch and chaff for radar) → break away when being shot → attack the chosen target (pure
+// pursuit far away, lead pursuit in gun range, throttle back to avoid overshooting; missiles once locked at a
+// good range) → otherwise patrol.
 import type { Plane } from '../data/types';
 import { aimControl, createAimPd, type AimPdState } from './autopilot';
 import { leadPoint } from './ballistics';
 import { neutralInput, type ControlInput } from './controls';
 import type { PlaneState } from './flight';
+import { inbound } from './missiles';
 import { add, clamp, cross, dirFromYawPitch, dot, FORWARD, len, normalize, rotate, scale, yawPitchFromDir, type Vec3 } from './math';
 import { random, type BotDifficulty, type WorldContext, type WorldState } from './world';
 
@@ -27,12 +29,16 @@ export interface BotSkill {
   evadeChance: number;
   /** Fraction of the time the trigger is actually held when a shot is lined up. */
   triggerDuty: number;
+  /** Chance of noticing an inbound missile (the warning), and how well the bot then defends (0–1). */
+  missileAwareness: number;
+  /** Seconds between the bot's own missile launches. */
+  missileIntervalS: number;
 }
 
 export const BOT_SKILL: Record<BotDifficulty, BotSkill> = {
-  easy: { reactionS: 1.0, aimErrorDeg: 2.5, fireMissM: 16, fireRangeM: 500, leadQuality: 0.75, evadeChance: 0.3, triggerDuty: 0.35 },
-  normal: { reactionS: 0.45, aimErrorDeg: 0.6, fireMissM: 11, fireRangeM: 1050, leadQuality: 0.97, evadeChance: 0.6, triggerDuty: 0.85 },
-  hard: { reactionS: 0.2, aimErrorDeg: 0.3, fireMissM: 8, fireRangeM: 1150, leadQuality: 1, evadeChance: 0.85, triggerDuty: 1 },
+  easy: { reactionS: 1.0, aimErrorDeg: 2.5, fireMissM: 16, fireRangeM: 500, leadQuality: 0.75, evadeChance: 0.3, triggerDuty: 0.35, missileAwareness: 0.35, missileIntervalS: 14 },
+  normal: { reactionS: 0.45, aimErrorDeg: 0.6, fireMissM: 11, fireRangeM: 1050, leadQuality: 0.97, evadeChance: 0.6, triggerDuty: 0.85, missileAwareness: 0.7, missileIntervalS: 8 },
+  hard: { reactionS: 0.2, aimErrorDeg: 0.3, fireMissM: 8, fireRangeM: 1150, leadQuality: 1, evadeChance: 0.85, triggerDuty: 1, missileAwareness: 0.95, missileIntervalS: 5 },
 };
 
 /** A bot's private memory. Plain data so it can live next to the world state. */
@@ -52,8 +58,17 @@ export interface BotBrain {
   triggerOn: boolean;
   triggerIn: number;
   pd: AimPdState;
+  /** Inbound missiles already noticed (or missed) by id, so each gets one awareness roll. */
+  seenMissiles: number[];
+  /** Missile being defended against, or -1. */
+  defending: number;
+  /** Side of the beam to notch toward (+1 / −1), picked once per missile. */
+  notchSide: number;
+  missileIn: number;
+  /** The missile button was pressed last tick (launches need a fresh press). */
+  missilePressed: boolean;
   /** What the bot is doing this tick (for debugging and tests). */
-  mode: 'dead' | 'terrain' | 'edge' | 'evade' | 'attack' | 'patrol';
+  mode: 'dead' | 'terrain' | 'edge' | 'defend' | 'evade' | 'attack' | 'patrol';
 }
 
 export function createBrain(id: string, difficulty: BotDifficulty): BotBrain {
@@ -72,6 +87,11 @@ export function createBrain(id: string, difficulty: BotDifficulty): BotBrain {
     triggerOn: false,
     triggerIn: 0,
     pd: createAimPd(),
+    seenMissiles: [],
+    defending: -1,
+    notchSide: 1,
+    missileIn: 3,
+    missilePressed: false,
     mode: 'patrol',
   };
 }
@@ -112,6 +132,8 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
   const speed = len(me.vel);
   let throttle = 1;
   let fire = false;
+  let flare = false;
+  let missile = false;
   let aim: Vec3 | null = null;
 
   // Taking hits?
@@ -136,7 +158,43 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
     brain.mode = 'edge';
   }
 
-  // 3. Break turn when shot.
+  // 3. Inbound missile: each one gets a single roll to be noticed (the launch warning).
+  brain.missileIn = Math.max(0, brain.missileIn - dt);
+  const threats = inbound(world, me.id);
+  for (const m of threats) {
+    if (brain.seenMissiles.includes(m.id)) continue;
+    brain.seenMissiles.push(m.id);
+    if (brain.seenMissiles.length > 16) brain.seenMissiles.shift();
+    if (random(world) < skill.missileAwareness) {
+      brain.defending = m.id;
+      brain.notchSide = random(world) < 0.5 ? 1 : -1;
+    }
+  }
+  const threat3 = threats.find((m) => m.id === brain.defending) ?? null;
+  if (!threat3) brain.defending = -1;
+  if (threat3) {
+    const md = ctx.missileDefs.get(threat3.type);
+    const radar = md ? ctx.missileClasses.get(md.class)?.seeker === 'radar' : false;
+    const rel: Vec3 = [me.pos[0] - threat3.pos[0], me.pos[1] - threat3.pos[1], me.pos[2] - threat3.pos[2]];
+    const d = len(rel);
+    const flatLos = normalize([rel[0], 0, rel[2]]);
+    // The beam: 90° to the missile's line of sight, level (a notch for radar, a hard crossing break for IR).
+    const beam: Vec3 = scale([flatLos[2], 0, -flatLos[0]], brain.notchSide);
+    if (!aim) {
+      brain.mode = 'defend';
+      // Sloppier pilots hold the beam less precisely.
+      const slop = (1 - skill.missileAwareness) * 0.6;
+      aim = normalize(add(beam, scale(flatLos, slop)));
+      if (me.pos[1] > 1200 && !radar) aim = normalize(add(aim, [0, -0.25, 0])); // trade height for speed
+    }
+    if (radar) flare = d < 3000;
+    else {
+      flare = d < 1800;
+      throttle = d < 2500 ? 0.55 : 1; // out of afterburner so the flares look hotter than the engine
+    }
+  }
+
+  // 4. Break turn when shot.
   if (!aim && hurt && brain.evadeFor <= 0 && me.lastHitBy && random(world) < skill.evadeChance) {
     const attacker = world.planes.find((p) => p.id === me.lastHitBy);
     const behind = attacker ? dot(nose, normalize([attacker.pos[0] - me.pos[0], attacker.pos[1] - me.pos[1], attacker.pos[2] - me.pos[2]])) < 0.2 : false;
@@ -154,7 +212,7 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
     brain.mode = 'evade';
   }
 
-  // 4. Pick a target: nearest enemy, preferring ones that are threatening us, sticking with the current one.
+  // 5. Pick a target: nearest enemy, preferring ones that are threatening us, sticking with the current one.
   brain.retargetIn -= dt;
   let target = brain.targetId ? world.planes.find((p) => p.id === brain.targetId && p.alive) ?? null : null;
   if (!target || brain.retargetIn <= 0) {
@@ -187,7 +245,7 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
     brain.aimErrIn = Math.max(0.25, skill.reactionS);
   }
 
-  // 5. Attack.
+  // 6. Attack.
   if (!aim && target) {
     brain.mode = 'attack';
     const to: Vec3 = [target.pos[0] - me.pos[0], target.pos[1] - me.pos[1], target.pos[2] - me.pos[2]];
@@ -221,9 +279,20 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
     const offNose = Math.acos(clamp(dot(nose, leadDir), -1, 1));
     const cone = Math.atan(skill.fireMissM / Math.max(dist, 1));
     fire = brain.reactIn <= 0 && brain.triggerOn && dist < skill.fireRangeM && offNose < cone && target.protectedFor <= 0;
-  }
 
-  // 6. Patrol.
+    // Missiles: once the seeker is locked, inside the missile's comfortable range and outside gun range.
+    if (me.lockTarget === target.id && me.lockProgress >= 1 && me.lockMount >= 0 && brain.missileIn <= 0 && brain.reactIn <= 0 && target.protectedFor <= 0) {
+      const md = ctx.missileDefs.get(def.missiles[me.lockMount]?.type ?? '');
+      const already = world.missiles.some((m) => m.owner === me.id && m.target === target.id);
+      if (md && !already && dist > Math.max(md.minRangeM * 1.3, 600) && dist < md.maxRangeM * 0.75) {
+        missile = !brain.missilePressed;
+        if (missile) brain.missileIn = skill.missileIntervalS * (0.7 + random(world) * 0.6);
+      }
+    }
+  }
+  brain.missilePressed = missile;
+
+  // 7. Patrol.
   if (!aim) {
     brain.mode = 'patrol';
     const to: Vec3 = [brain.patrol[0] - me.pos[0], brain.patrol[1] - me.pos[1], brain.patrol[2] - me.pos[2]];
@@ -240,5 +309,5 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
   if (speed < p.stallSpeedMs * 1.5) throttle = 1;
 
   const steer = aimControl(me, aim, brain.pd, dt);
-  return { ...steer, throttle, fire, missile: false, flare: false };
+  return { ...steer, throttle, fire, missile, flare, target: brain.mode === 'attack' || brain.mode === 'evade' ? brain.targetId : null };
 }

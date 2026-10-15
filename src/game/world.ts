@@ -1,10 +1,11 @@
 // The world: planes, bullets, pilots, scores. stepWorld is the one place the simulation advances.
-import type { GameData, GameMap, Gun, Plane } from '../data/types';
+import type { GameData, GameMap, Gun, Missile, MissileClass, Plane } from '../data/types';
 import { fireGuns, hitSpheres, stepBullets, type Bullet, type Part } from './ballistics';
 import type { ControlInput } from './controls';
 import { neutralInput } from './controls';
 import { edgeTurnInput, flightParams, stepPlane, stepWreck, type FlightParams, type PlaneState, type Team } from './flight';
 import { normalize, quatLookRotation, scale, type Vec3 } from './math';
+import { stepMissiles, stepWeapons, type Decoy, type MissileContext, type MissileEvent, type MissileState } from './missiles';
 import { createTerrain, type Terrain } from './terrain';
 import { SP_ASSIST, SP_KILL, spawnCost } from './unlocks';
 
@@ -62,7 +63,8 @@ export type GameEvent =
   | { t: 'hit'; shooter: string; victim: string; part: Part; damage: number; pos: Vec3 }
   | { t: 'kill'; killer: string | null; victim: string; weapon: string; assists: string[] }
   | { t: 'explode'; pos: Vec3 }
-  | { t: 'spawn'; id: string };
+  | { t: 'spawn'; id: string }
+  | MissileEvent;
 
 export interface MatchState {
   mode: 'tdm' | 'free';
@@ -80,6 +82,10 @@ export interface WorldState {
   mapId: string;
   planes: PlaneState[];
   bullets: Bullet[];
+  /** Guided missiles in flight, and live flares and chaff. Ids for both come from nextMissileId. */
+  missiles: MissileState[];
+  decoys: Decoy[];
+  nextMissileId: number;
   /** Events from the latest step only; read them after each stepWorld. */
   events: GameEvent[];
   pilots: Record<string, Pilot>;
@@ -103,6 +109,8 @@ export interface WorldContext {
   planeDefs: Map<string, Plane>;
   params: Map<string, FlightParams>;
   guns: Map<string, Gun>;
+  missileDefs: Map<string, Missile>;
+  missileClasses: Map<string, MissileClass>;
   data: GameData;
 }
 
@@ -121,6 +129,8 @@ export function createWorldContext(data: GameData, mapId: string): WorldContext 
     planeDefs: new Map(data.planes.map((p) => [p.id, p])),
     params,
     guns: new Map(data.guns.map((g) => [g.id, g])),
+    missileDefs: new Map(data.missiles.missiles.map((m) => [m.id, m])),
+    missileClasses: new Map(data.missiles.classes.map((c) => [c.id, c])),
     data,
   };
 }
@@ -132,6 +142,9 @@ export function createWorld(ctx: WorldContext, seed = 1): WorldState {
     mapId: ctx.map.id,
     planes: [],
     bullets: [],
+    missiles: [],
+    decoys: [],
+    nextMissileId: 1,
     events: [],
     pilots: {},
     stats: {},
@@ -234,6 +247,15 @@ export function spawnPlane(
     gunHeat: def.guns.map(() => 0),
     assist: opts.assist ?? 0,
     firing: false,
+    missiles: def.missiles.map((m) => m.count),
+    flares: def.countermeasures.flares,
+    chaff: def.countermeasures.chaff,
+    lockTarget: null,
+    lockMount: -1,
+    lockProgress: 0,
+    missileCooldown: 0,
+    cmCooldown: 0,
+    missileHeld: false,
   };
   world.tiers[opts.id] = def.tier;
   const existing = world.planes.findIndex((p) => p.id === opts.id);
@@ -323,6 +345,14 @@ export function stepWorld(world: WorldState, ctx: WorldContext, inputs: Record<s
     random: () => random(world),
     enemies: [] as PlaneState[],
   };
+  const mc: MissileContext = {
+    missileDefs: ctx.missileDefs,
+    missileClasses: ctx.missileClasses,
+    planeDefs: ctx.planeDefs,
+    surfaceAt: ctx.terrain.surfaceAt,
+    random: () => random(world),
+  };
+  const missileEvents = world.events as MissileEvent[];
 
   for (let i = 0; i < world.planes.length; i++) {
     const plane = world.planes[i]!;
@@ -359,7 +389,18 @@ export function stepWorld(world: WorldState, ctx: WorldContext, inputs: Record<s
       if (fireGuns(plane, def, fc, dt, world.bullets) > 0) plane.protectedFor = 0;
       plane.firing = plane.ammo.some((a) => a > 0);
     }
+    const before = world.events.length;
+    stepWeapons(world, mc, plane, input, dt, missileEvents);
+    // Launching a missile gives up spawn protection too.
+    for (let k = before; k < world.events.length; k++) if (world.events[k]!.t === 'launch') plane.protectedFor = 0;
   }
+
+  stepMissiles(world, mc, dt, missileEvents, (victim, shooter, fraction, weapon) => {
+    if (!victim.alive || victim.protectedFor > 0) return;
+    const damage = fraction * victim.maxHp;
+    world.events.push({ t: 'hit', shooter, victim: victim.id, part: 'fuselage', damage, pos: [...victim.pos] });
+    applyDamage(world, victim, shooter, damage, null, weapon);
+  });
 
   const hits = stepBullets(
     world.bullets,

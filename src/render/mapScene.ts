@@ -2,6 +2,7 @@
 import { Color, DirectionalLight, Fog, HemisphereLight, Object3D, PerspectiveCamera, Scene, Vector3, type WebGLRenderer } from 'three';
 import { QUALITY, type QualityLevel } from '../core/quality';
 import type { GameMap } from '../data/types';
+import { SUN_DIR } from '../game/sun';
 import type { Terrain } from '../game/terrain';
 import { createClouds } from './clouds';
 import { createOcean } from './ocean';
@@ -24,7 +25,7 @@ export function createMapScene(map: GameMap, terrain: Terrain): MapScene {
   const fog = new Fog(horizon, 3000, 10000);
   scene.fog = fog;
 
-  const sunDir = new Vector3(-0.45, 0.75, 0.48).normalize();
+  const sunDir = new Vector3(...SUN_DIR);
   scene.add(createSky(map, sunDir));
   const ocean = createOcean(map, sunDir);
   scene.add(ocean.mesh);

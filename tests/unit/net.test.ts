@@ -11,6 +11,7 @@ import {
   decodeSnapshot,
   encodeInput,
   encodeSnapshot,
+  NO_WEAPONS,
   packQuat,
   PLANE_BYTES,
   unpackQuat,
@@ -19,6 +20,7 @@ import { createRoom, PARTY_MAX, TEAMS_S, voteCounts } from '../../src/net/room';
 import { makeRoomCode, parseRoomCode, ROOM_ALPHABET } from '../../src/net/roomCode';
 import { brGap } from '../../src/game/teams';
 import type { Quat } from '../../src/game/math';
+import type { MissileState } from '../../src/game/missiles';
 
 const result = loadGameData();
 if (!result.ok) throw new Error('data invalid');
@@ -121,12 +123,13 @@ describe('protocol', () => {
     start(r);
     r.step(30);
     const w = r.server.match!.world;
-    const buf = encodeSnapshot({ rosterVersion: 1, tick: w.tick, ackSeq: 7, timeLeftS: 432.1, score: { red: 3, blue: 5 }, ended: false }, w.planes, [120, 1400]);
-    expect(buf.byteLength).toBeLessThan(15 + 20 * PLANE_BYTES + 8);
+    const buf = encodeSnapshot({ rosterVersion: 1, tick: w.tick, ackSeq: 7, timeLeftS: 432.1, score: { red: 3, blue: 5 }, ended: false }, w.planes, { ammo: [120, 1400], missiles: [2, 4], flares: 24, chaff: 23, lockMount: 1 });
+    expect(buf.byteLength).toBeLessThan(15 + 20 * PLANE_BYTES + 16);
     const s = decodeSnapshot(buf)!;
     expect(s.planes).toHaveLength(20);
     expect(s.ackSeq).toBe(7);
-    expect(s.ownAmmo).toEqual([120, 1400]);
+    expect(s.own).toEqual({ ammo: [120, 1400], missiles: [2, 4], flares: 24, chaff: 23, lockMount: 1 });
+    expect(s.missiles).toEqual([]);
     expect(s.score).toEqual({ red: 3, blue: 5 });
     w.planes.forEach((p, i) => {
       expect(dist(s.planes[i]!.pos, p.pos)).toBeLessThan(0.5);
@@ -135,8 +138,56 @@ describe('protocol', () => {
     });
   });
 
+  it('missiles, locks and the input target byte round-trip', async () => {
+    const r = await rig({ clients: 1 });
+    r.step(5);
+    start(r);
+    r.step(30);
+    const w = r.server.match!.world;
+    const [a, b] = [w.planes[0]!, w.planes[5]!];
+    a.lockTarget = b.id;
+    a.lockMount = 0;
+    a.lockProgress = 0.5;
+    const types = ['aim9l', 'aim120b'];
+    const missiles: MissileState[] = [
+      { id: 300, type: 'aim120b', owner: a.id, team: a.team, target: b.id, pos: [1234.5, 2500, -4321], vel: [800, -20.5, 300], age: 1, blind: 0, rolled: [], boost: 900 },
+      { id: 301, type: 'aim9l', owner: b.id, team: b.team, target: 'd17', pos: [0, 100, 0], vel: [0, 0, -1200], age: 1, blind: 0, rolled: [], boost: 900 },
+      { id: 302, type: 'aim9l', owner: b.id, team: b.team, target: null, pos: [0, 100, 0], vel: [0, 0, 0], age: 1, blind: 0, rolled: [], boost: 900 },
+    ];
+    const buf = encodeSnapshot({ rosterVersion: 1, tick: 1, ackSeq: 1, timeLeftS: 1, score: { red: 0, blue: 0 }, ended: false }, w.planes, NO_WEAPONS, missiles, {
+      missileTypes: types,
+      lockIsRadar: (p) => p === a,
+    });
+    const s = decodeSnapshot(buf, types)!;
+    expect(s.planes[0]).toMatchObject({ lockSlot: 6, lockRadar: true });
+    expect(s.planes[0]!.lockProgress).toBeCloseTo(0.5, 1);
+    expect(s.planes[5]!.lockSlot).toBe(0);
+    expect(s.missiles.map((m) => [m.id, m.type, m.ownerSlot, m.targetSlot])).toEqual([
+      [300, 'aim120b', 1, 6],
+      [301, 'aim9l', 6, 255],
+      [302, 'aim9l', 6, 0],
+    ]);
+    expect(dist(s.missiles[0]!.pos, missiles[0]!.pos)).toBeLessThan(0.5);
+    expect(dist(s.missiles[0]!.vel, missiles[0]!.vel)).toBeLessThan(0.05);
+    expect(dist(s.missiles[1]!.vel, missiles[1]!.vel)).toBeLessThan(0.05);
+    expect(decodeInput(encodeInput(3, { ...neutralInput(), missile: true }, 7))!.targetSlot).toBe(7);
+  });
+
+  it("a client's picked target reaches the host as a plane id", async () => {
+    const r = await rig({ clients: 1 });
+    r.step(5);
+    start(r);
+    r.step(30);
+    const w = r.server.match!.world;
+    const me = r.clients[0]!;
+    const enemy = w.planes.find((p) => p.team !== w.planes.find((q) => q.id === me.playerId)!.team)!;
+    r.inputs[0] = { ...neutralInput(), target: enemy.id };
+    r.step(10);
+    expect(r.server.inputOf(me.playerId)?.target).toBe(enemy.id);
+  });
+
   it('inputs are clamped and malformed packets rejected', () => {
-    const d = decodeInput(encodeInput(9, { pitch: 7, roll: -3, yaw: Number.NaN, throttle: 2, fire: true, missile: false, flare: true }))!;
+    const d = decodeInput(encodeInput(9, { pitch: 7, roll: -3, yaw: Number.NaN, throttle: 2, fire: true, missile: false, flare: true, target: null }))!;
     expect(d.seq).toBe(9);
     expect(d.input).toMatchObject({ pitch: 1, roll: -1, yaw: 0, throttle: 1, fire: true, missile: false, flare: true });
     expect(decodeInput(new ArrayBuffer(4))).toBeNull();

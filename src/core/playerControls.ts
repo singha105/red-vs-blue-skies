@@ -19,6 +19,8 @@ export interface PlayerControls {
   fire: boolean;
   missile: boolean;
   flare: boolean;
+  /** Missile target picked by the player (R / tap / RB), or null for the weapons computer's choice. */
+  target: string | null;
   /** Keyboard/arrow overrides for this tick (−1..1, 0 = autopilot). */
   override: { pitch: number; roll: number; yaw: number };
   /** Move the aim (or the free-look camera) by angles in radians. Positive dx = right, dy = up. */
@@ -51,6 +53,7 @@ export function createPlayerControls(): PlayerControls {
     fire: false,
     missile: false,
     flare: false,
+    target: null,
     override: { pitch: 0, roll: 0, yaw: 0 },
     moveAim(dx, dy) {
       if (c.freeLook) {
@@ -95,7 +98,7 @@ export function createPlayerControls(): PlayerControls {
       // While flying on direct pitch control (arrow keys), keep the aim glued to the nose so the
       // autopilot doesn't yank the plane back when the key is released.
       if (o.pitch !== 0) followNose(plane);
-      return { ...steer, throttle: c.throttle, fire: c.fire, missile: c.missile, flare: c.flare };
+      return { ...steer, throttle: c.throttle, fire: c.fire, missile: c.missile, flare: c.flare, target: c.target };
     },
   };
   return c;

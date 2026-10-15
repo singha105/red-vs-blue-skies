@@ -706,7 +706,7 @@
       { "type": "cannon_30mm_aden_defa", "count": 2, "ammoPerGun": 125 }
     ],
     "missiles": [
-      { "type": "aim9b", "count": 2 }
+      { "type": "r550_magic", "count": 2 }
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/mirage3e.glb",

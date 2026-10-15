@@ -12,8 +12,10 @@ export interface ControlInput {
   fire: boolean;
   missile: boolean;
   flare: boolean;
+  /** Plane id picked as the missile target (R / tap / RB), or null to let the weapons computer choose. */
+  target: string | null;
 }
 
 export function neutralInput(throttle = 0.8): ControlInput {
-  return { pitch: 0, roll: 0, yaw: 0, throttle, fire: false, missile: false, flare: false };
+  return { pitch: 0, roll: 0, yaw: 0, throttle, fire: false, missile: false, flare: false, target: null };
 }

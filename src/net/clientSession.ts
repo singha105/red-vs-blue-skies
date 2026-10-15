@@ -10,6 +10,7 @@ import { fireGuns, stepBullets, type HitSpheres } from '../game/ballistics';
 import { neutralInput, type ControlInput } from '../game/controls';
 import { edgeTurnInput, stepPlane, type PlaneState, type Team } from '../game/flight';
 import type { Quat, Vec3 } from '../game/math';
+import { missileTypeIds, stepDecoys, type MissileState } from '../game/missiles';
 import { addPilot, createWorld, createWorldContext, spawnPlane, type GameEvent, type PilotStats, type WorldContext, type WorldState } from '../game/world';
 import { lerp, nlerpQuat, type NetStats, type RenderPose, type Session } from '../app/session';
 import type { MatchResults } from '../game/results';
@@ -31,7 +32,9 @@ import {
   type HostMsg,
   type RoomState,
   type RosterEntry,
+  DECOY_TARGET_SLOT,
   type Snapshot,
+  type SnapshotMissile,
   type SnapshotPlane,
 } from './protocol';
 import { payloadBytes, type ClientTransport } from './transport';
@@ -104,8 +107,10 @@ export function createClientSession(
   let ended: Session['ended'] = null;
   const pendingEvents: GameEvent[] = [];
 
-  // Snapshot buffers per plane id, newest last.
+  // Snapshot buffers per plane id, newest last; missiles per snapshot.
   const buffers = new Map<string, Buffered[]>();
+  const missileSnaps: { tick: number; missiles: SnapshotMissile[] }[] = [];
+  const missileTypes = missileTypeIds(data);
   let latest: Snapshot | null = null;
   let serverTick = 0; // our running estimate of the host's current tick
   let synced = false;
@@ -149,6 +154,7 @@ export function createClientSession(
     world = w;
     own = w.planes.find((p) => p.id === playerId) ?? null;
     buffers.clear();
+    missileSnaps.length = 0;
     prevPose.clear();
   };
 
@@ -187,6 +193,19 @@ export function createClientSession(
     target.respawnIn = s.respawnIn;
     target.g = s.g;
     if (kinematics) target.throttle = s.throttle;
+    target.lockTarget = s.lockSlot ? roster[s.lockSlot - 1]?.id ?? null : null;
+    target.lockProgress = target.lockTarget ? s.lockProgress : 0;
+    // Others' mounts aren't sent, only the seeker kind: point at the first mount with that seeker.
+    if (target !== own) target.lockMount = target.lockTarget ? mountWithSeeker(target.planeId, s.lockRadar ? 'radar' : 'ir') : -1;
+  };
+
+  const mountWithSeeker = (planeId: string, seeker: 'ir' | 'radar'): number => {
+    const def = ctx?.planeDefs.get(planeId);
+    if (!def || !ctx) return -1;
+    return def.missiles.findIndex((m) => {
+      const md = ctx!.missileDefs.get(m.type);
+      return md ? ctx!.missileClasses.get(md.class)?.seeker === seeker : false;
+    });
   };
 
   /** Advance our own plane one tick with an input, exactly as the host's world does. */
@@ -209,7 +228,11 @@ export function createClientSession(
     const before: Vec3 = [...own.pos];
     const wasAlive = own.alive;
     copyFromSnapshot(own, sp, true);
-    own.ammo = s.ownAmmo.length ? [...s.ownAmmo] : own.ammo;
+    own.ammo = s.own.ammo.length ? [...s.own.ammo] : own.ammo;
+    own.missiles = [...s.own.missiles];
+    own.flares = s.own.flares;
+    own.chaff = s.own.chaff;
+    own.lockMount = s.own.lockMount;
     while (history.length && history[0]!.seq <= s.ackSeq) history.shift();
     if (own.alive) {
       // Replay what the host hasn't seen yet: each input lasted TICKS_PER_INPUT ticks.
@@ -248,6 +271,8 @@ export function createClientSession(
     }
     world.match.timeLeftS = s.timeLeftS;
     world.match.score = { ...s.score };
+    missileSnaps.push({ tick: s.tick, missiles: s.missiles });
+    while (missileSnaps.length > 6) missileSnaps.shift();
     s.planes.forEach((p, i) => {
       const id = roster[i]?.id;
       if (!id) return;
@@ -309,6 +334,8 @@ export function createClientSession(
         break;
       case 'events':
         pendingEvents.push(...m.events);
+        // Flares and chaff are only events on the wire; fly them locally (they're cosmetic here).
+        if (world) for (const e of m.events) if (e.t === 'decoy') world.decoys.push({ id: world.nextMissileId++, kind: e.kind, owner: e.owner, pos: [...e.pos], vel: [...e.vel], age: 0 });
         break;
       case 'stats':
         if (world) for (const [id, st] of Object.entries(m.stats)) world.stats[id] = st as PilotStats;
@@ -344,7 +371,7 @@ export function createClientSession(
     }
     const type = messageType(d);
     if (type === MSG_SNAPSHOT) {
-      const s = decodeSnapshot(d);
+      const s = decodeSnapshot(d, missileTypes);
       if (s) onSnapshot(s);
     } else if (type === MSG_PING || type === MSG_PONG) {
       const p = decodePing(d);
@@ -413,6 +440,43 @@ export function createClientSession(
       out.vel = [...a.p.vel];
     }
     copyFromSnapshot(out, a.p, false);
+  };
+
+  /** Missiles drawn at the same 100 ms delay as other planes: interpolated between snapshots by id. */
+  const sampleMissiles = (w: WorldState, tick: number): void => {
+    let ai = -1;
+    for (let i = missileSnaps.length - 1; i >= 0; i--) {
+      if (missileSnaps[i]!.tick <= tick) {
+        ai = i;
+        break;
+      }
+    }
+    if (ai < 0) {
+      w.missiles = [];
+      return;
+    }
+    const a = missileSnaps[ai]!;
+    const b = missileSnaps[ai + 1] ?? null;
+    const slotId = (slot: number): string | null => (slot === 0 ? null : slot === DECOY_TARGET_SLOT ? 'd0' : roster[slot - 1]?.id ?? null);
+    const out: MissileState[] = [];
+    for (const m of a.missiles) {
+      const nb = b?.missiles.find((x) => x.id === m.id);
+      let pos: Vec3;
+      let vel: Vec3;
+      if (b && nb) {
+        const t = (tick - a.tick) / (b.tick - a.tick);
+        pos = [lerp(m.pos[0], nb.pos[0], t), lerp(m.pos[1], nb.pos[1], t), lerp(m.pos[2], nb.pos[2], t)];
+        vel = [lerp(m.vel[0], nb.vel[0], t), lerp(m.vel[1], nb.vel[1], t), lerp(m.vel[2], nb.vel[2], t)];
+      } else {
+        const dt = Math.min(Math.max(0, tick - a.tick), MAX_EXTRAPOLATE_TICKS) / TICK_HZ;
+        pos = [m.pos[0] + m.vel[0] * dt, m.pos[1] + m.vel[1] * dt, m.pos[2] + m.vel[2] * dt];
+        vel = [...m.vel];
+      }
+      const owner = slotId(m.ownerSlot) ?? '';
+      const team = w.planes.find((p) => p.id === owner)?.team ?? 'red';
+      out.push({ id: m.id, type: m.type, owner, team, target: slotId(m.targetSlot), pos, vel, age: 0, blind: 0, rolled: [], boost: 0 });
+    }
+    w.missiles = out;
   };
 
   const api: ClientSession = {
@@ -488,7 +552,8 @@ export function createClientSession(
           seq++;
           history.push({ seq, input: current });
           while (history.length > 120) history.shift();
-          send('unreliable', encodeInput(seq, current));
+          const slot = current.target ? roster.findIndex((r) => r.id === current.target) + 1 : 0;
+          send('unreliable', encodeInput(seq, current, slot));
         }
         tickInInput = (tickInInput + 1) % TICKS_PER_INPUT;
         predictTick(own, current, dt);
@@ -504,6 +569,8 @@ export function createClientSession(
         const buf = buffers.get(p.id);
         if (buf && buf.length) sample(buf, renderTick, p);
       }
+      sampleMissiles(w, renderTick);
+      stepDecoys(w, dt);
 
       // Cosmetic tracers from every firing plane; the host decides what they hit.
       const fc = { guns: ctx.guns, nextBulletId: () => w.nextBulletId++, random: Math.random, enemies: [] as PlaneState[] };

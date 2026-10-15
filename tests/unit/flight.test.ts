@@ -45,6 +45,15 @@ function plane(planeId = 'spitfire_mk5', over: Partial<PlaneState> = {}): PlaneS
     gunHeat: [],
     assist: 0,
     firing: false,
+    missiles: [],
+    flares: 0,
+    chaff: 0,
+    lockTarget: null,
+    lockMount: -1,
+    lockProgress: 0,
+    missileCooldown: 0,
+    cmCooldown: 0,
+    missileHeld: false,
     ...over,
   };
 }

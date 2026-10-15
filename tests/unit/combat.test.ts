@@ -202,7 +202,7 @@ describe('bots', () => {
     const rng = m.world.rng;
     for (const brain of m.brains) {
       const input = botInput(m.world, ctx, brain, DT);
-      expect(Object.keys(input).sort()).toEqual(['fire', 'flare', 'missile', 'pitch', 'roll', 'throttle', 'yaw']);
+      expect(Object.keys(input).sort()).toEqual(['fire', 'flare', 'missile', 'pitch', 'roll', 'target', 'throttle', 'yaw']);
     }
     expect(JSON.stringify(m.world.planes)).toBe(before);
     expect(m.world.rng).not.toBe(Number.NaN);
