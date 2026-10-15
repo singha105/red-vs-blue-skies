@@ -3,6 +3,44 @@
 Live: https://singha105.github.io/red-vs-blue-skies/ (`?debug=1` shows the FPS counter)
 Repo: https://github.com/singha105/red-vs-blue-skies
 
+## Day 6: Lobby, voting, teams, match flow (2026-10-15)
+
+### Done
+
+- **Screen flow**: Title → callsign → Host / Join → lobby → vote → teams → plane select → match → results → back to the lobby on the same connection. The host owns every bit of state (`src/net/room.ts`, a pure state machine with injected time and randomness). Clients only send requests (ready, party, vote, pick, respawn, again, chat), and each is checked against the phase and the rules.
+- **Lobby**: player rows with a blue/red stripe (the teams as they'd be drawn now), ready tags, party tags, device and ping. Ready toggle. "Party up" with anyone (parties of up to 3; Leave party). Host controls: Start vote (shows how many are ready), Remove a player, bot difficulty, bots on/off, match length 5/10/15 min. Quick chat ("Need help!", "On my way", "Nice shot", "Good game") plus 80-character text chat, rate-limited and sanitised by the host. Chat also shows in the in-match kill feed.
+- **Vote**: era, map and mode chips with live counts and a 20 s timer, ending early once everyone has voted all three. Ties are broken at random. The host can switch to "Host pick" to override any category. Modes carry a new `playable` flag in modes.json: only TDM is playable, and the other three show as "coming soon" until Day 9. All four maps can be voted for. Mountain Valley and Desert Mesas use the island generator with their own seed and colours until Day 9's terrain, and Carrier Strike is open ocean.
+- **Teams** (`src/game/teams.ts`): humans split by headcount first, then research points (stubbed: 0, or `?rp=N` with debug). Parties stay together. A swap pass evens out the RP. Then `balanceBots` gives bots planes from the era so the team BR totals end within 10% (it aims for 3%): bots start near the humans' median tier, and the weaker team's bots step up or the stronger team's step down while that narrows the gap. Humans always fly what they picked. The BUILD_PLAN example (blue humans 7.9, red 6.4, 6 bots each) ends at **18.7 vs 18.4 (1.6%)**.
+- **Plane select**: the voted era's 10 planes as cards with a top-view silhouette rendered from the hangar model (`src/render/silhouettes.ts`, one render target, cached data URLs; placeholder shape until a model exists), tier, BR, top speed, turn rate and guns. Locked planes are greyed out with their RP cost (tiers 1–3 open, all with `?debug=1` on the host). You lock in with "Fly the …"; the screen ends when everyone has locked in or after 25 s. Anyone who didn't pick gets the best open plane.
+- **Spawn points** (`world.ts`, `unlocks.ts`): first spawn free; later spawns cost 100 + 50 × tier SP, earned at 100 per kill and 40 per assist (50 per capture once modes have zones). On the respawn screen a plane picker shows your SP and greys out what you can't afford. **Judgment call:** the era's tier-1 plane is a free reserve, so a pilot with no SP still flies (GAME_DESIGN updated). Applies to solo too.
+- **Results** (`src/game/results.ts`): the host computes them once and sends them to everyone. Winner, awards (MVP top score, Ace 5+ kills in one life, Wingman most assists, Survivor fewest deaths; awards need some kills, assists or damage, so a match where nothing happened gives none), both scoreboards with K / A / Dmg % / D / RP, your own RP, and the starting team BR. RP follows the GAME_DESIGN formula (underdog kill multiplier, assists, damage %, survival, +25% win, +20% MVP, 50 minimum), which reproduces the worked example's 1,038. The host's "Play again" takes everyone to the lobby without reconnecting. Clients can mark themselves ready for the next round, and the lobby comes back by itself after 60 s.
+- **Join in progress**: allowed in any phase. During a match you take a bot's seat on the team with fewer humans, and the remaining bots re-pick planes to keep the BR balanced (they switch at their next respawn). A respawn in a different plane updates the roster everywhere.
+- **Map per match**: the voted map is prepared during plane select. `main.ts` keeps one scene per map, so switching back is free.
+- **Phone layouts**: every room screen fits a 667 × 375 landscape phone. Two columns in the lobby, chat in one row, the share QR is replaced by a "Copy link" button in the header, and the results get the full height. Touch targets are 56 px.
+- **Tests**: 74 Vitest (adds 11 team/SP/RP tests: RP split, parties, max 10 per team, the BUILD_PLAN example, 500 random lobbies across all eras within 10%, createMatch's real team BR, kill/assist SP, reserve and paid respawns, underdog table, the worked RP example, awards; and 5 room tests: vote counts/ties/override/unplayable modes, early vote end, party limit and plane validation, **two full rounds over the fake network** with BR ≤ 10% each, respawn plane updates the roster). Playwright adds `multiplayer-loop.spec`: 3 Chromium contexts (host, laptop, 667 × 375 touch phone) play **the full loop twice** (ready, party, chat → vote → teams → pick → 30 s match with `?matchtime=30` → results with 10 rows per team and RP → Play again → lobby), asserting the party is on one team and team BR is within 10% in both matches (measured 2%). `multiplayer.spec` and the smoke test follow the new flow; the crash test checks the respawn picker and the free reserve.
+
+### Performance
+
+- Bundle: 223 KB gzip for the game plus 23 KB for PeerJS (only loaded to host or join). Total download is still about 1.2 MB.
+- Rendering 10 silhouettes takes about 150 ms once, when plane select opens; it's cached after that.
+
+### Known issues
+
+- In a 30 s test match nobody meets: teams spawn 13 km apart. Real matches are 5 to 15 minutes.
+- Most planes have no model yet (Days 7 and 9), so their silhouettes are the placeholder cross.
+- Research points are a stub (0 for everyone, `?rp=N` in debug) and aren't saved; Day 8 adds Firebase.
+- Mountain Valley and Desert Mesas look like islands until Day 9's terrain generators; Carrier Strike has no carriers yet.
+- The host's tab must stay visible (Day 5 issue). The lobby says so.
+- TURN still isn't configured: phones on mobile data may not connect until the Metered key is added.
+
+### Still to do for Day 6's done-when
+
+- Run [`docs/MULTIPLAYER_TEST.md`](MULTIPLAYER_TEST.md) on three real devices: two full matches in a row without reloading.
+
+### Next steps (Day 7)
+
+- Missiles and countermeasures (part A); the remaining jet models (part B).
+
 ## Day 5: Multiplayer (2026-10-14)
 
 ### Done

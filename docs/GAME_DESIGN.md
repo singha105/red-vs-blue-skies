@@ -104,7 +104,7 @@ Worked example: a tier-3 player gets 2 kills on tier-5 planes (100 × 2 × 2 = 4
 
 ### Spawn points (SP)
 
-Your first spawn is free with any unlocked plane. Later spawns cost 100 + 50 × tier SP. You earn SP in the match: 100 per kill, 40 per assist, 50 per capture.
+Your first spawn is free with any unlocked plane. Later spawns cost 100 + 50 × tier SP. You earn SP in the match: 100 per kill, 40 per assist, 50 per capture. The era's tier-1 plane is a free reserve: if you can't afford your pick, you respawn in it, so nobody is stuck on the ground (added Day 6). Bots don't use SP; they fly whatever the team balancer gives them.
 
 ### Team balance
 
@@ -113,6 +113,8 @@ Teams are auto-balanced by total Battle Rating, not just headcount. Humans fly w
 ## Modes
 
 Data: `src/data/modes.json`.
+
+Each mode has a `playable` flag; the lobby vote lists unplayable modes as "coming soon" (Day 9 builds them).
 
 - **Team Deathmatch** (`tdm`, default): first team to 50 kills, or most kills after 10 minutes.
 - **Air Domination** (`air_domination`): 3 zones; fly below 300 m over a zone to capture it; held zones drain enemy tickets.
@@ -131,6 +133,8 @@ About 16 × 16 km each, generated from a seed so they cost nothing to store. Dat
 ## Lobby flow
 
 Join by link → pick a callsign → 20-second vote on era, map and mode (ties broken randomly; the host can override) → teams auto-balanced by BR → pick a plane → fly. A match lasts 10 minutes, then the results screen shows RP earned, unlocks and awards.
+
+As built (Day 6): Title → callsign → Host / Join → lobby (ready toggle, parties of up to 3, chat; the host sets bot difficulty, bots on/off, match length 5/10/15 min, and can remove players) → vote (20 s, ends early when everyone has voted) → teams (5 s: humans split by headcount then RP, parties together) → plane select (25 s, ends when everyone locks in) → match → results (awards: MVP top score, Ace 5+ kills in one life, Wingman most assists, Survivor fewest deaths) → Play again returns everyone to the lobby on the same connection, or the lobby comes back by itself after 60 s.
 
 ## Networking model (summary)
 
