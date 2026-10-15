@@ -29,11 +29,33 @@ export interface Match {
   world: WorldState;
   brains: BotBrain[];
   playerId: string;
+  era: EraId;
+  difficulty: BotDifficulty;
+  nextBot: number;
 }
 
 export const PLAYER_ID = 'p1';
 
-export function createSoloMatch(ctx: WorldContext, opts: SoloOptions): Match {
+export interface HumanSlot {
+  id: string;
+  name: string;
+  planeId: string;
+  /** Leave out to auto-balance (alternating, blue first). */
+  team?: Team;
+  assist?: number;
+}
+
+export interface MatchOptions {
+  era: EraId;
+  difficulty: BotDifficulty;
+  humans: HumanSlot[];
+  timeLimitS?: number;
+  killLimit?: number;
+  seed?: number;
+}
+
+/** A 10 vs 10 Team Deathmatch: the given humans plus bots in every empty slot. */
+export function createMatch(ctx: WorldContext, opts: MatchOptions): Match {
   const world = createWorld(ctx, opts.seed ?? (Date.now() & 0xffffffff));
   const mode = ctx.data.modes.find((m) => m.id === 'tdm');
   world.match = {
@@ -44,30 +66,81 @@ export function createSoloMatch(ctx: WorldContext, opts: SoloOptions): Match {
     state: 'playing',
     winner: null,
   };
-
-  const player = ctx.planeDefs.get(opts.planeId);
-  if (!player || player.era !== opts.era) throw new Error(`plane ${opts.planeId} is not in era ${opts.era}`);
-  const eraPlanes = ctx.data.planes.filter((p) => p.era === opts.era);
-  // Bots fly planes within two tiers of the player's, so nobody is hopelessly outclassed.
-  const pool = eraPlanes.filter((p) => Math.abs(p.tier - player.tier) <= 2);
-
-  addPilot(world, { id: PLAYER_ID, name: opts.playerName ?? 'You', team: 'blue', bot: false });
-  spawnPlane(world, ctx, { id: PLAYER_ID, team: 'blue', planeId: opts.planeId, assist: opts.assist ?? 0 });
-
-  const brains: BotBrain[] = [];
-  let n = 0;
+  const match: Match = { world, brains: [], playerId: opts.humans[0]?.id ?? PLAYER_ID, era: opts.era, difficulty: opts.difficulty, nextBot: 0 };
+  const counts: Record<Team, number> = { blue: 0, red: 0 };
+  for (const h of opts.humans) {
+    const def = ctx.planeDefs.get(h.planeId);
+    if (!def || def.era !== opts.era) throw new Error(`plane ${h.planeId} is not in era ${opts.era}`);
+    const team = h.team ?? (counts.blue <= counts.red ? 'blue' : 'red');
+    if (counts[team] >= TEAM_SIZE) continue;
+    counts[team]++;
+    addPilot(world, { id: h.id, name: h.name, team, bot: false });
+    spawnPlane(world, ctx, { id: h.id, team, planeId: h.planeId, assist: h.assist ?? 0 });
+  }
   for (const team of ['blue', 'red'] as Team[]) {
-    const count = team === 'blue' ? TEAM_SIZE - 1 : TEAM_SIZE;
-    for (let i = 0; i < count; i++) {
-      const id = `b${++n}`;
-      const plane = pool[Math.floor(random(world) * pool.length)] ?? player;
-      addPilot(world, { id, name: CALLSIGNS[(n - 1) % CALLSIGNS.length]!, team, bot: true });
-      spawnPlane(world, ctx, { id, team, planeId: plane.id });
-      brains.push(createBrain(id, opts.difficulty));
+    while (counts[team] < TEAM_SIZE) {
+      addBot(match, ctx, team);
+      counts[team]++;
     }
   }
   world.events = [];
-  return { world, brains, playerId: PLAYER_ID };
+  return match;
+}
+
+/** Bots fly planes within two tiers of the humans' (median), so nobody is hopelessly outclassed. */
+function botPlane(match: Match, ctx: WorldContext): string {
+  const w = match.world;
+  const tiers = w.planes.filter((p) => !w.pilots[p.id]?.bot).map((p) => ctx.planeDefs.get(p.planeId)?.tier ?? 3);
+  const centre = tiers.length ? tiers.sort((a, b) => a - b)[Math.floor(tiers.length / 2)]! : 3;
+  const pool = ctx.data.planes.filter((p) => p.era === match.era && Math.abs(p.tier - centre) <= 2);
+  return pool[Math.floor(random(w) * pool.length)]?.id ?? pool[0]!.id;
+}
+
+function addBot(match: Match, ctx: WorldContext, team: Team): string {
+  const id = `b${++match.nextBot}`;
+  addPilot(match.world, { id, name: CALLSIGNS[(match.nextBot - 1) % CALLSIGNS.length]!, team, bot: true });
+  spawnPlane(match.world, ctx, { id, team, planeId: botPlane(match, ctx) });
+  match.brains.push(createBrain(id, match.difficulty));
+  return id;
+}
+
+/** Join in progress: the newcomer takes a bot's slot on the team with fewer humans. Returns their team, or null if full. */
+export function addHumanToMatch(match: Match, ctx: WorldContext, human: HumanSlot): Team | null {
+  const w = match.world;
+  const humans = (team: Team): number => w.planes.filter((p) => p.team === team && !w.pilots[p.id]?.bot).length;
+  const order: Team[] = humans('blue') <= humans('red') ? ['blue', 'red'] : ['red', 'blue'];
+  for (const team of order) {
+    const bot = w.planes.find((p) => p.team === team && w.pilots[p.id]?.bot);
+    if (!bot) continue;
+    w.planes = w.planes.filter((p) => p.id !== bot.id);
+    delete w.pilots[bot.id];
+    delete w.stats[bot.id];
+    match.brains = match.brains.filter((b) => b.id !== bot.id);
+    addPilot(w, { id: human.id, name: human.name, team, bot: false });
+    spawnPlane(w, ctx, { id: human.id, team, planeId: human.planeId, assist: human.assist ?? 0 });
+    return team;
+  }
+  return null;
+}
+
+/** A human left: a bot takes over their plane (and keeps their score). */
+export function botTakeOver(match: Match, id: string): void {
+  const pilot = match.world.pilots[id];
+  if (!pilot || pilot.bot) return;
+  pilot.bot = true;
+  pilot.name = `${pilot.name} (bot)`;
+  match.brains.push(createBrain(id, match.difficulty));
+}
+
+export function createSoloMatch(ctx: WorldContext, opts: SoloOptions): Match {
+  return createMatch(ctx, {
+    era: opts.era,
+    difficulty: opts.difficulty,
+    humans: [{ id: PLAYER_ID, name: opts.playerName ?? 'You', planeId: opts.planeId, team: 'blue', assist: opts.assist ?? 0 }],
+    ...(opts.timeLimitS !== undefined ? { timeLimitS: opts.timeLimitS } : {}),
+    ...(opts.killLimit !== undefined ? { killLimit: opts.killLimit } : {}),
+    ...(opts.seed !== undefined ? { seed: opts.seed } : {}),
+  });
 }
 
 /** One fixed step: bots decide, the world moves, the clock and kill limit are checked. */
