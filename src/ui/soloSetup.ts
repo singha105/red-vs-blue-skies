@@ -41,7 +41,7 @@ export function createSoloSetup(
   parent: HTMLElement,
   data: GameData,
   opts: { allUnlocked: boolean },
-  handlers: { onStart(choice: SoloChoice): void; onBack(): void },
+  handlers: { onStart(choice: SoloChoice): void; onBack(): void; onHangar(choice: SoloChoice): void },
 ): { dispose(): void } {
   const choice = loadChoice(data);
   const unlocked = (p: Plane): boolean => opts.allUnlocked || p.tier <= OPEN_TIERS;
@@ -83,7 +83,10 @@ export function createSoloSetup(
             .map((d) => `<button type="button" role="radio" aria-checked="${d === choice.difficulty}" data-diff="${d}">${d[0]!.toUpperCase()}${d.slice(1)}</button>`)
             .join('')}
         </div>
-        <button type="button" class="btn btn--primary" data-act="start">Start match</button>
+        <div class="setup__go">
+          <button type="button" class="btn btn--secondary" data-act="hangar">Hangar</button>
+          <button type="button" class="btn btn--primary" data-act="start">Start match</button>
+        </div>
       </footer>
     `;
     el.querySelector<HTMLElement>('[aria-checked="true"][data-plane]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
@@ -93,6 +96,10 @@ export function createSoloSetup(
     const t = e.target instanceof Element ? e.target.closest<HTMLElement>('button') : null;
     if (!t || t.hasAttribute('disabled')) return;
     if (t.dataset['act'] === 'back') return handlers.onBack();
+    if (t.dataset['act'] === 'hangar') {
+      writeStorage(KEY, JSON.stringify(choice));
+      return handlers.onHangar({ ...choice });
+    }
     if (t.dataset['act'] === 'start') {
       writeStorage(KEY, JSON.stringify(choice));
       return handlers.onStart({ ...choice });
