@@ -4,6 +4,17 @@ import { expect, type Browser, type Page } from '@playwright/test';
 // Against the live site (BASE_URL), or with PUBLIC_SIGNAL=1, use PeerJS's public signaling server exactly
 // like real players: an https page can't reach the local http one.
 export const PUBLIC = Boolean(process.env['PUBLIC_SIGNAL'] || process.env['BASE_URL']);
+/** The live site has no "all unlocked" (that's localhost-only), and tests never sign in, so a fresh player
+ * can only fly each era's tier-1 plane there. */
+export const LIVE = Boolean(process.env['BASE_URL']);
+export const TIER1: Record<string, string> = {
+  WW1: 'Fokker E.III',
+  'Early WW2': 'Boeing P-26',
+  'Late WW2': 'P-40E Warhawk',
+  'Early Jets': 'P-80 Shooting Star',
+  'Cold War': 'MiG-21F-13',
+  Modern: 'MiG-29A',
+};
 export const flags = (extra = ''): string => `debug=1&gfx=low${PUBLIC ? '' : '&signal=localhost:9187'}${extra}`;
 
 export const LAPTOP = { viewport: { width: 960, height: 540 } };
@@ -93,7 +104,8 @@ export async function voteAndPick(host: Page, all: Page[], era: string, planes: 
   await onPhase?.('select');
   for (let i = 0; i < all.length; i++) {
     const page = all[i]!;
-    await page.getByRole('radiogroup', { name: 'Plane' }).getByRole('radio', { name: new RegExp(planes[i]!) }).click();
+    const plane = LIVE ? (TIER1[era] ?? planes[i]!) : planes[i]!;
+    await page.getByRole('radiogroup', { name: 'Plane' }).getByRole('radio', { name: new RegExp(plane) }).click();
     await page.getByRole('button', { name: /^Fly the / }).click();
   }
   for (const page of all) await expect(page.locator('.hud')).toBeVisible({ timeout: 15_000 });

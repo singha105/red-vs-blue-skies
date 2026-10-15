@@ -9,6 +9,8 @@ export interface ResultsView {
   planeName(id: string): string;
   /** Replaces the headline, e.g. "Host left". */
   title?: string;
+  /** Whether your RP was saved (profile sync). */
+  save?: string;
 }
 
 export function headline(r: MatchResults, yourTeam: Team | null, title?: string): string {
@@ -47,6 +49,7 @@ export function resultsHtml(r: MatchResults, v: ResultsView): string {
   return `
     <h2 class="results__title results__title--${win ? 'win' : 'loss'}">${esc(title)}</h2>
     <p class="results__score"><span class="t-blue">${r.score.blue}</span> – <span class="t-red">${r.score.red}</span>${mine && !mine.bot ? ` <span class="results__rp">+${mine.rp.toLocaleString('en')} RP</span>` : ''}</p>
+    ${v.save ? `<p class="results__save" data-testid="save-state">${esc(v.save)}</p>` : ''}
     ${awards ? `<ul class="results__awards" aria-label="Awards">${awards}</ul>` : ''}
     <div class="results__tables">${table('blue')}${table('red')}</div>`;
 }
@@ -55,8 +58,8 @@ export function showResults(
   parent: HTMLElement,
   r: MatchResults,
   v: ResultsView & { againLabel?: string },
-  handlers: { onAgain(): void; onTitle(): void },
-): { dispose(): void } {
+  handlers: { onAgain(): void; onTitle(): void; onResearch?(): void },
+): { setSave(text: string): void; dispose(): void } {
   const el = document.createElement('section');
   el.className = 'results';
   el.setAttribute('aria-label', 'Match results');
@@ -64,6 +67,7 @@ export function showResults(
     ${resultsHtml(r, v)}
     <div class="results__actions">
       <button type="button" class="btn btn--primary" data-act="again">${esc(v.againLabel ?? 'Play again')}</button>
+      ${handlers.onResearch ? '<button type="button" class="btn btn--secondary" data-act="research">Research</button>' : ''}
       <button type="button" class="btn btn--secondary" data-act="title">Title screen</button>
     </div>
   `;
@@ -72,6 +76,13 @@ export function showResults(
     const t = e.target instanceof Element ? e.target.closest<HTMLElement>('[data-act]') : null;
     if (t?.dataset['act'] === 'again') handlers.onAgain();
     if (t?.dataset['act'] === 'title') handlers.onTitle();
+    if (t?.dataset['act'] === 'research') handlers.onResearch?.();
   });
-  return { dispose: () => el.remove() };
+  return {
+    setSave(text) {
+      const p = el.querySelector('.results__save');
+      if (p) p.textContent = text;
+    },
+    dispose: () => el.remove(),
+  };
 }

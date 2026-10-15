@@ -1,7 +1,7 @@
 // Respawn screen plane picker: the era's unlocked planes with their spawn-point cost. Ones you can't afford
 // are greyed out; the tier-1 reserve is always free, so nobody is ever stuck on the ground.
 import type { Plane } from '../data/types';
-import { isUnlocked, SP_ASSIST, SP_KILL, spawnCost } from '../game/unlocks';
+import { isUnlocked, SP_ASSIST, SP_KILL, spawnCost, type Unlocks } from '../game/unlocks';
 import type { Silhouettes } from '../render/silhouettes';
 import { escapeHtml as esc } from './hud';
 
@@ -12,10 +12,10 @@ export interface RespawnPicker {
 
 export function createRespawnPicker(
   parent: HTMLElement,
-  opts: { planes: readonly Plane[]; allUnlocked: boolean; silhouettes: Silhouettes },
+  opts: { planes: readonly Plane[]; unlocks: Unlocks; silhouettes: Silhouettes },
   onPick: (planeId: string) => void,
 ): RespawnPicker {
-  const list = opts.planes.filter((p) => isUnlocked(p, opts.allUnlocked)).sort((a, b) => a.tier - b.tier);
+  const list = opts.planes.filter((p) => isUnlocked(p, opts.unlocks)).sort((a, b) => a.tier - b.tier);
   const reserve = list[0]?.id ?? '';
   const el = document.createElement('div');
   el.className = 'respawn';

@@ -1,14 +1,18 @@
-// Title screen. Play Solo and Host / Join are stubs until Day 3 and Day 5.
+// Title screen: Play Solo, Host / Join, Research, Leaderboard, Settings, and your callsign and RP.
 
 export interface TitleHandlers {
   onSolo(): void;
   onHostJoin(): void;
   onSettings(): void;
+  onResearch(): void;
+  onLeaderboard(): void;
 }
 
 export interface TitleScreen {
   readonly el: HTMLElement;
   setNote(text: string): void;
+  /** Callsign, RP and sync state under the buttons. */
+  setProfile(html: string): void;
   dispose(): void;
 }
 
@@ -30,8 +34,13 @@ export function createTitleScreen(parent: HTMLElement, version: string, handlers
       <div class="title__buttons">
         <button type="button" class="btn btn--primary" data-action="solo">Play Solo</button>
         <button type="button" class="btn btn--secondary" data-action="host">Host / Join</button>
+      </div>
+      <div class="title__buttons title__buttons--small">
+        <button type="button" class="btn btn--secondary btn--small" data-action="research">Research</button>
+        <button type="button" class="btn btn--secondary btn--small" data-action="leaderboard">Leaderboard</button>
         <button type="button" class="btn btn--secondary btn--small" data-action="settings">Settings</button>
       </div>
+      <p class="title__profile" data-testid="title-profile"></p>
       <p class="title__note" role="status" aria-live="polite"></p>
     </div>
     <span class="version">v${version}</span>
@@ -45,6 +54,8 @@ export function createTitleScreen(parent: HTMLElement, version: string, handlers
     const action = target.dataset['action'];
     if (action === 'solo') handlers.onSolo();
     else if (action === 'settings') handlers.onSettings();
+    else if (action === 'research') handlers.onResearch();
+    else if (action === 'leaderboard') handlers.onLeaderboard();
     else handlers.onHostJoin();
   };
   el.addEventListener('click', onClick);
@@ -53,6 +64,10 @@ export function createTitleScreen(parent: HTMLElement, version: string, handlers
     el,
     setNote(text) {
       if (note) note.textContent = text;
+    },
+    setProfile(html) {
+      const p = el.querySelector('.title__profile');
+      if (p) p.innerHTML = html;
     },
     dispose() {
       el.removeEventListener('click', onClick);

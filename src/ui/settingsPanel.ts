@@ -1,7 +1,16 @@
-// Settings: graphics, sensitivity, touch aim assist, volume. Saved immediately.
+// Settings: graphics, sensitivity, touch aim assist, volume (saved immediately), and your account: progress
+// lives on an anonymous Firebase account until you link Google, which carries it to other devices.
 import { getSettings, updateSettings, type GraphicsLevel } from '../core/settings';
 
-export function openSettings(parent: HTMLElement, opts: { isTouch: boolean }): void {
+export interface AccountControls {
+  /** One line: who you're signed in as and whether progress is synced. */
+  describe(): string;
+  canLink(): boolean;
+  link(): Promise<string>;
+  onChange(fn: () => void): () => void;
+}
+
+export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; account?: AccountControls }): void {
   const s = getSettings();
   const el = document.createElement('div');
   el.className = 'modal';
@@ -25,6 +34,15 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean }): v
       <label class="field"><span>Volume <output data-o="volume">${Math.round(s.volume * 100)}%</output></span>
         <input type="range" data-k="volume" min="0" max="1" step="0.05" value="${s.volume}" />
       </label>
+      ${
+        opts.account
+          ? `<div class="field account"><span>Account</span>
+              <small class="account__who" data-testid="account"></small>
+              <button type="button" class="btn btn--secondary btn--small" data-act="link" hidden>Link Google account</button>
+              <small class="account__msg" role="status" aria-live="polite"></small>
+            </div>`
+          : ''
+      }
       <button type="button" class="btn btn--primary" data-act="close">Done</button>
     </div>
   `;
@@ -47,7 +65,32 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean }): v
       if (out) out.textContent = fmt[k]?.(v) ?? String(v);
     }
   });
-  const close = (): void => el.remove();
+  const acc = opts.account;
+  const who = el.querySelector<HTMLElement>('.account__who');
+  const linkBtn = el.querySelector<HTMLButtonElement>('[data-act="link"]');
+  const msg = el.querySelector<HTMLElement>('.account__msg');
+  const showAccount = (): void => {
+    if (!acc || !who || !linkBtn) return;
+    who.textContent = acc.describe();
+    linkBtn.hidden = !acc.canLink();
+  };
+  const off = acc?.onChange(showAccount);
+  showAccount();
+  // The popup has to open straight from the tap (iPhone Safari blocks it otherwise), so no await before link().
+  linkBtn?.addEventListener('click', () => {
+    if (!acc || !msg) return;
+    linkBtn.disabled = true;
+    msg.textContent = 'Opening Google sign-in…';
+    void acc.link().then((text) => {
+      msg.textContent = text;
+      linkBtn.disabled = false;
+      showAccount();
+    });
+  });
+  const close = (): void => {
+    off?.();
+    el.remove();
+  };
   el.querySelector('[data-act="close"]')!.addEventListener('click', close);
   el.addEventListener('click', (e) => {
     if (e.target === el) close();

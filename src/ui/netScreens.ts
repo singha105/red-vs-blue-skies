@@ -7,6 +7,10 @@ import { escapeHtml as esc } from './hud';
 const CALLSIGN_KEY = 'rvbs.callsign.v1';
 
 export const savedCallsign = (): string => readStorage(CALLSIGN_KEY) ?? '';
+/** A callsign from the profile (a second device after linking Google). */
+export const saveCallsign = (callsign: string): void => {
+  writeStorage(CALLSIGN_KEY, callsign);
+};
 
 export interface StatusScreen {
   setStatus(text: string, error?: boolean): void;

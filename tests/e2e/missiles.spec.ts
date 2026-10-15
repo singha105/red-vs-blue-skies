@@ -1,6 +1,7 @@
 // Modern-era missiles in the browser: pick a target (R on desktop, a tap on a phone), lock, fire, and defeat an
 // inbound missile with flares. Runs on Desktop Chrome and the iPhone 13 (touch) project.
 import { expect, test, type Page } from '@playwright/test';
+import { LIVE } from './netHelpers';
 
 const SHOTS = 'tests/screenshots';
 
@@ -32,11 +33,12 @@ test('Modern jets: pick a target, lock, fire, and beat an inbound missile with f
   await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
   await page.getByRole('button', { name: 'Play Solo' }).click();
   await page.getByRole('radio', { name: /Modern/ }).click();
-  await page.getByRole('radio', { name: /F-15C/ }).click();
+  // Live site: only tier 1 is open to a fresh player, and the MiG-29A also carries six (2 R-27R + 4 R-73).
+  await page.getByRole('radio', { name: LIVE ? /MiG-29A/ : /F-15C/ }).click();
   await page.getByRole('radio', { name: 'Easy' }).click();
   await page.getByRole('button', { name: 'Start match' }).click();
   await expect(page.locator('.hud')).toBeVisible();
-  await expect(page.getByTestId('loadout')).toContainText('AIM-120B ×4');
+  await expect(page.getByTestId('loadout')).toContainText(LIVE ? 'R-73 ×4' : 'AIM-120B ×4');
   await expect(page.getByTestId('loadout')).toContainText('Flares 24');
   // The F-15C's six missiles hang on its pylons (and other jets' on theirs).
   const pylons = () => page.evaluate(() => (window as unknown as { __rvbs: Hooks }).__rvbs.pylonMissiles());

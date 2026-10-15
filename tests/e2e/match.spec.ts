@@ -30,7 +30,7 @@ test('solo match: setup, 20 seconds of 10 v 10 with no errors', async ({ page },
   // Setup screen: eras, planes, difficulty.
   await expect(page.getByRole('radiogroup', { name: 'Era' })).toBeVisible();
   await page.getByRole('radio', { name: /Late WW2/ }).click();
-  await page.getByRole('radio', { name: /P-51D Mustang/ }).click();
+  await page.getByRole('radio', { name: process.env['BASE_URL'] ? /P-40E/ : /P-51D Mustang/ }).click(); // live: tier 1 only
   await page.getByRole('radio', { name: 'Easy' }).click();
   await page.screenshot({ path: `${SHOTS}/${info.project.name}-setup.png` });
   await page.getByRole('button', { name: 'Start match' }).click();

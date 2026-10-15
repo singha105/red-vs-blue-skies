@@ -6,7 +6,7 @@ import type { GameData, Plane } from '../data/types';
 import type { Team } from '../game/flight';
 import type { MatchResults } from '../game/results';
 import { brGap } from '../game/teams';
-import { isUnlocked, unlockCost } from '../game/unlocks';
+import { cleanUnlocks, isUnlocked, unlockCost } from '../game/unlocks';
 import type { ChatLine } from '../net/clientSession';
 import { adviseHost } from '../net/hostAdvice';
 import { QUICK_CHAT, VOTE_CATEGORIES, type ClientMsg, type RoomPlayer, type RoomSettings, type RoomState, type VoteCategory } from '../net/protocol';
@@ -35,6 +35,10 @@ export interface RoomViewDeps {
   host: HostControls | null;
   silhouettes: Silhouettes;
   onLeave(): void;
+  /** Open the research screen (lobby and results, between rounds). */
+  onResearch?(): void;
+  /** Whether your RP from the last match was saved. */
+  saveNote?(): string;
 }
 
 export interface RoomView {
@@ -152,7 +156,8 @@ export function createRoomView(parent: HTMLElement, deps: RoomViewDeps): RoomVie
     const list = data.planes.filter((p) => p.era === era).sort((a, b) => a.tier - b.tier);
     return list
       .map((p: Plane) => {
-        const open = isUnlocked(p, r.allUnlocked);
+        const mine = r.players.find((x) => x.id === deps.meId())?.unlocked;
+        const open = isUnlocked(p, r.allUnlocked ? 'all' : (mine ?? cleanUnlocks(null)));
         return `<button type="button" role="radio" class="pcard pcard--select" data-plane="${p.id}" aria-checked="false" ${open ? '' : 'disabled'}>
           <img class="pcard__img" alt="" src="${deps.silhouettes.get(p.id)}" width="80" height="80" />
           <span class="pcard__tier">Tier ${p.tier} · BR ${p.br.toFixed(1)}</span>
@@ -198,6 +203,8 @@ export function createRoomView(parent: HTMLElement, deps: RoomViewDeps): RoomVie
       .map(([v, l]) => `<button type="button" role="radio" data-set="${key}" data-value="${v}" aria-checked="${v === value}">${l}</button>`)
       .join('')}</div></div>`;
 
+  const researchBtn = deps.onResearch ? '<button type="button" class="btn btn--secondary btn--small" data-act="research">Research</button>' : '';
+
   const lobbyControls = (r: RoomState): string => {
     const s = r.settings;
     const ready = r.players.filter((p) => p.ready && !p.host).length;
@@ -208,11 +215,11 @@ export function createRoomView(parent: HTMLElement, deps: RoomViewDeps): RoomVie
           ${seg('Fill with bots', 'bots', [['on', 'On'], ['off', 'Off']], s.bots ? 'on' : 'off')}
           ${seg('Length', 'length', MATCH_LENGTHS_S.map((x) => [String(x), `${x / 60} min`] as [string, string]), String(s.matchLengthS))}
         </div>
-        <button type="button" class="btn btn--primary" data-act="start">Start vote${others ? ` (${ready}/${others} ready)` : ''}</button>`;
+        ${researchBtn}<button type="button" class="btn btn--primary" data-act="start">Start vote${others ? ` (${ready}/${others} ready)` : ''}</button>`;
     }
     const mine = me();
     return `<p class="rsettings__info">Bots ${esc(s.difficulty)}${s.bots ? '' : ' (off)'} · ${Math.round(s.matchLengthS / 60) || 1} min · the host starts the vote</p>
-      <button type="button" class="btn ${mine?.ready ? 'btn--secondary' : 'btn--primary'}" data-act="ready" aria-pressed="${Boolean(mine?.ready)}">${mine?.ready ? 'Ready ✓ (tap to undo)' : "I'm ready"}</button>`;
+      ${researchBtn}<button type="button" class="btn ${mine?.ready ? 'btn--secondary' : 'btn--primary'}" data-act="ready" aria-pressed="${Boolean(mine?.ready)}">${mine?.ready ? 'Ready ✓ (tap to undo)' : "I'm ready"}</button>`;
   };
 
   const voteRow = (r: RoomState, cat: VoteCategory): string => {
@@ -272,10 +279,10 @@ export function createRoomView(parent: HTMLElement, deps: RoomViewDeps): RoomVie
     const mine = me();
     const ready = r.players.filter((p) => !p.host && p.ready).length;
     const others = r.players.filter((p) => !p.host).length;
-    if (isHost) return `<button type="button" class="btn btn--primary" data-act="again">Play again${others ? ` (${ready}/${others} ready)` : ''}</button>`;
+    if (isHost) return `${researchBtn}<button type="button" class="btn btn--primary" data-act="again">Play again${others ? ` (${ready}/${others} ready)` : ''}</button>`;
     return mine?.ready
-      ? `<span class="rselect__wait">Waiting for the host to start the next round…</span>`
-      : `<button type="button" class="btn btn--primary" data-act="again">Play again</button>`;
+      ? `${researchBtn}<span class="rselect__wait">Waiting for the host to start the next round…</span>`
+      : `${researchBtn}<button type="button" class="btn btn--primary" data-act="again">Play again</button>`;
   };
 
   // ---------------------------------------------------------------- render
@@ -327,7 +334,7 @@ export function createRoomView(parent: HTMLElement, deps: RoomViewDeps): RoomVie
         part(
           body.querySelector('.rresults__table'),
           results
-            ? resultsHtml(results, { me: deps.meId(), planeName }) +
+            ? resultsHtml(results, { me: deps.meId(), planeName, save: deps.saveNote?.() ?? '' }) +
                 (results.br ? `<p class="rresults__br">Team BR at the start: blue ${results.br.blue.toFixed(1)}, red ${results.br.red.toFixed(1)} (${(brGap(results.br) * 100).toFixed(0)}% apart)</p>` : '')
             : '<p>Adding up the scores…</p>',
         );
@@ -365,6 +372,7 @@ export function createRoomView(parent: HTMLElement, deps: RoomViewDeps): RoomVie
       return;
     }
     if (t.dataset['chat']) return deps.request({ t: 'chat', text: t.dataset['chat'] });
+    if (act === 'research') return deps.onResearch?.();
     if (!r) return;
     if (act === 'start') return host?.startVote();
     if (act === 'ready') return deps.request({ t: 'ready', ready: !me()?.ready });

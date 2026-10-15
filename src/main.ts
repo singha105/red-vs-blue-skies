@@ -29,7 +29,7 @@ import { createHostServer, type HostOptions, type HostServer } from './net/hostS
 import { iceServers, turnConfigured } from './net/ice';
 import { makeRoomCode, parseRoomCode, shareLink } from './net/roomCode';
 import { combineHosts, type Network } from './net/transport';
-import { createCallsignScreen, createConnecting, createNetMenu, createNetOverlay, savedCallsign, type StatusScreen } from './ui/netScreens';
+import { createCallsignScreen, createConnecting, createNetMenu, createNetOverlay, saveCallsign, savedCallsign, type StatusScreen } from './ui/netScreens';
 import { createChaseCamera } from './render/chaseCamera';
 import { createEffects } from './render/effects';
 import { createMissileFx, type GlowSource } from './render/missiles';
@@ -52,6 +52,12 @@ import { createSoloSetup, type SoloChoice } from './ui/soloSetup';
 import { createHangarUi } from './ui/hangar';
 import { createTitleScreen } from './ui/title';
 import { createTouchControls, type TouchControls } from './ui/touchControls';
+import { createProfileStore } from './profile/store';
+import { openResearch } from './ui/research';
+import { openLeaderboard } from './ui/leaderboard';
+import type { AccountControls } from './ui/settingsPanel';
+import type { EraId } from './data/types';
+import type { MatchResults } from './game/results';
 
 const KILLCAM_S = 3;
 const RESULTS_DELAY_S = 2.5;
@@ -183,8 +189,70 @@ function boot(): void {
   let roomView: RoomView | null = null;
   let respawn: RespawnPicker | null = null;
   let callsign = savedCallsign();
-  // Research points: a local stub until Day 8 (?rp=N with ?debug=1 to test team balancing).
-  const stubRp = (): number => (env.debug && params.get('rp') ? Number(params.get('rp')) || 0 : 0);
+  // Progress: profile, research points and unlocks (Firebase, with an offline queue). Loads in the background.
+  const profile = createProfileStore({ callsign: savedCallsign });
+  /** What this player tells the host: everything earned (team balancing), unlocks, and the uid. */
+  let sentProfile = '';
+  const helloProfile = () => {
+    sentProfile = JSON.stringify([profile.earned(), profile.profile.unlocked]);
+    return { rp: profile.earned(), uid: profile.uid, unlocked: profile.profile.unlocked };
+  };
+  profile.onChange(() => {
+    // A second device picks up the callsign saved on the account.
+    if (!savedCallsign() && profile.status === 'online') {
+      saveCallsign(profile.profile.callsign);
+      callsign = profile.profile.callsign;
+    }
+    // Bought an unlock or saved RP between rounds: tell the host, so plane select and balancing see it.
+    const n = net;
+    const key = JSON.stringify([profile.earned(), profile.profile.unlocked]);
+    if (n && key !== sentProfile && n.client.phase !== 'connecting') {
+      sentProfile = key;
+      n.client.request({ t: 'profile', rp: profile.earned(), unlocked: profile.profile.unlocked });
+    }
+  });
+  const accountControls: AccountControls = {
+    describe() {
+      const a = profile.account;
+      if (profile.status === 'off') return 'Progress is saved on this device.';
+      if (!a) return profile.status === 'connecting' ? 'Connecting…' : "Offline. Progress is kept on this device and syncs when you're back online.";
+      return a.anonymous ? 'Guest account: progress is saved online, but only on this device until you link Google.' : `Linked to Google${a.email ? ` (${a.email})` : ''}. Sign in with it on any device.`;
+    },
+    canLink: () => profile.account?.anonymous === true,
+    link: () => profile.linkGoogle(),
+    onChange: (fn) => profile.onChange(fn),
+  };
+  let overlay: { dispose(): void } | null = null;
+  const closeOverlay = (): void => {
+    overlay?.dispose();
+    overlay = null;
+  };
+  const showResearch = (era?: EraId, onClose?: () => void): void => {
+    closeOverlay();
+    overlay = openResearch(ui, {
+      data,
+      store: profile,
+      silhouettes,
+      ...(era ? { era } : {}),
+      onClose: () => {
+        overlay = null;
+        onClose?.();
+      },
+    });
+  };
+  const profileLine = (): string => {
+    const p = profile.profile;
+    const pending = profile.pendingRp;
+    const state = profile.status === 'offline' ? ' · offline' : profile.status === 'connecting' ? ' · connecting…' : '';
+    return `<b>${esc(callsign || p.callsign)}</b> · ${p.rp.toLocaleString('en')} RP${pending > 0 ? ` <small>(+${pending.toLocaleString('en')} syncing)</small>` : ''}${state}`;
+  };
+  /** Save this player's row of a network match (host's results, or our own count if the host left). */
+  const recordNetMatch = (r: MatchResults, me: string): void => {
+    const client = net?.client;
+    const matchId = client?.matchId ?? lastNetMatch.id;
+    lastNetMatch.id = profile.recordMatch(matchId, r.rows.find((x) => x.id === me), r.winner, client?.participants ? [...client.participants] : []);
+  };
+  const lastNetMatch: { id: string | null } = { id: null };
   // When this tab was last hidden: a phone that was locked loses the connection itself, so "Host left" would be wrong.
   let hiddenAt = -Infinity;
   document.addEventListener('visibilitychange', () => {
@@ -199,6 +267,7 @@ function boot(): void {
   const planeName = (id: string): string => ctx.planeDefs.get(id)?.name ?? id;
 
   const clearScreen = (): void => {
+    closeOverlay();
     screen?.dispose();
     screen = null;
   };
@@ -241,17 +310,35 @@ function boot(): void {
     clearScreen();
     mode = 'title';
     titleShot.setVisible(true);
-    screen = createTitleScreen(ui, env.version, {
+    const title = createTitleScreen(ui, env.version, {
       onSolo: showSetup,
       onHostJoin: () => showCallsign(null),
-      onSettings: () => openSettings(ui, { isTouch: env.isTouch }),
+      onSettings: () => openSettings(ui, { isTouch: env.isTouch, account: accountControls }),
+      onResearch: () => showResearch(),
+      onLeaderboard: () => {
+        closeOverlay();
+        overlay = openLeaderboard(ui, profile, () => (overlay = null));
+      },
     });
+    title.setProfile(profileLine());
+    const off = profile.onChange(() => title.setProfile(profileLine()));
+    screen = {
+      dispose: () => {
+        off();
+        title.dispose();
+      },
+    };
   }
 
   function showSetup(): void {
     clearScreen();
     mode = 'setup';
-    screen = createSoloSetup(ui, data, { allUnlocked: env.debug }, { onStart: startSolo, onBack: showTitle, onHangar: showHangar });
+    screen = createSoloSetup(
+      ui,
+      data,
+      { unlocks: () => profile.unlocks() },
+      { onStart: startSolo, onBack: showTitle, onHangar: showHangar, onResearch: (era) => showResearch(era, showSetup) },
+    );
   }
 
   // --- Multiplayer: callsign → Host / Join → room (lobby, vote, teams, plane select, results).
@@ -281,6 +368,7 @@ function boot(): void {
       if (mode === 'room' && net) roomView?.update(room, net.client.results);
     },
     onResults: (r) => {
+      if (net) recordNetMatch(r, net.client.playerId);
       if (mode === 'room' && net?.client.room) roomView?.update(net.client.room, r);
     },
     onChat: (line) => {
@@ -288,6 +376,7 @@ function boot(): void {
       if (mode === 'match' && hud) hud.killFeed(`<b class="t-${line.team ?? 'none'}">${esc(line.from)}</b> ${esc(line.text)}`, false);
     },
     onStart: (s) => {
+      lastNetMatch.id = null;
       useMap(s.world.mapId);
       enterMatch(s);
     },
@@ -308,6 +397,7 @@ function boot(): void {
       onBack: showTitle,
       onContinue: (cs) => {
         callsign = cs;
+        profile.setCallsign(cs);
         if (room) void joinRoom(room);
         else showNetMenu(null);
       },
@@ -367,13 +457,14 @@ function boot(): void {
       const opts: HostOptions = {
         version: env.version,
         settings: { difficulty: 'normal', bots: true, matchLengthS: 600 },
-        allUnlocked: env.debug,
+        allUnlocked: env.allUnlocked,
+        record: profile.recorder,
         ...(matchTime ? { matchTimeS: matchTime } : {}),
       };
       const server = createHostServer(data, transport, opts);
       const loopClient = await loop.join(code);
       opts.hostPeerId = loopClient.id;
-      const client = createClientSession(loopClient, data, { version: env.version, callsign, device: deviceInfo(), rp: stubRp() }, clientEvents());
+      const client = createClientSession(loopClient, data, { version: env.version, callsign, device: deviceInfo(), ...helloProfile() }, clientEvents());
       net = {
         isHost: true,
         code,
@@ -405,7 +496,7 @@ function boot(): void {
         transport.close();
         return;
       }
-      const client = createClientSession(transport, data, { version: env.version, callsign, device: deviceInfo(), rp: stubRp() }, clientEvents());
+      const client = createClientSession(transport, data, { version: env.version, callsign, device: deviceInfo(), ...helloProfile() }, clientEvents());
       net = { isHost: false, code, client, server: null, loop: null, close: () => client.dispose() };
       window.setTimeout(() => {
         if (net?.client === client && client.phase === 'connecting') showNetMenu(code, 'The host did not answer. Check the code and try again.');
@@ -447,6 +538,8 @@ function boot(): void {
         : null,
       silhouettes,
       onLeave: () => showNetMenu(null),
+      onResearch: () => showResearch(n.client.room?.choice?.era),
+      saveNote: () => profile.saveText(lastNetMatch.id),
     });
     if (n.client.room) {
       if (n.client.room.choice) useMap(n.client.room.choice.mapId);
@@ -585,9 +678,10 @@ function boot(): void {
     }
     if (env.debug && s.net) netOverlay = createNetOverlay(ui);
     if (era) {
-      const allUnlocked = s.kind === 'solo' ? env.debug : (net?.client.room?.allUnlocked ?? false);
-      respawn = createRespawnPicker(ui, { planes: data.planes.filter((p) => p.era === era), allUnlocked, silhouettes }, (id) => session?.chooseRespawn(id));
+      const unlocks = s.kind === 'net' && net?.client.room?.allUnlocked ? 'all' : profile.unlocks();
+      respawn = createRespawnPicker(ui, { planes: data.planes.filter((p) => p.era === era), unlocks, silhouettes }, (id) => session?.chooseRespawn(id));
     }
+    profile.markMatchStart();
     desktop.setEnabled(true);
   }
 
@@ -605,10 +699,12 @@ function boot(): void {
     const results = computeResults(s.world);
     const me = s.playerId;
     const wasNet = s.kind === 'net';
+    // The host left: everyone keeps the points earned so far (counted here, still capped by the rules).
+    const saved = wasNet ? (recordNetMatch(results, me), lastNetMatch.id) : profile.recordSolo(results.rows.find((x) => x.id === me), results.winner);
     leaveMatch();
     closeNet();
     mode = 'results';
-    screen = showResults(
+    const resultsScreen = showResults(
       ui,
       results,
       {
@@ -616,12 +712,22 @@ function boot(): void {
         planeName,
         ...(hostLeft ? { title: weLeft ? 'Connection lost' : 'Host left' } : {}),
         ...(wasNet ? { againLabel: 'Play with friends' } : {}),
+        save: profile.saveText(saved),
       },
       {
         onAgain: () => (wasNet ? showNetMenu(null) : lastChoice ? startSolo(lastChoice) : showSetup()),
         onTitle: showTitle,
+        onResearch: () => showResearch(lastChoice?.era),
       },
     );
+    const view = resultsScreen;
+    const off = profile.onChange(() => view.setSave(profile.saveText(saved)));
+    screen = {
+      dispose: () => {
+        off();
+        view.dispose();
+      },
+    };
   }
 
   function scoreRows(): ScoreRow[] {
@@ -734,7 +840,12 @@ function boot(): void {
     frameEvents.length = 0;
   };
 
-  const fps = env.debug ? createFpsCounter(ui) : null;
+  // Firestore operations, for the Spark budget: this match (its saves included) and this session.
+  const firestoreLine = (): string => {
+    const u = profile.usage();
+    return `FS match ${u.match.reads}r+${u.match.ruleReads}rr/${u.match.writes}w · session ${u.session.reads}r+${u.session.ruleReads}rr/${u.session.writes}w`;
+  };
+  const fps = env.debug ? createFpsCounter(ui, firestoreLine) : null;
   let fpsAvg = 0;
 
   // Host: bytes/s sent to every peer, for the debug overlay.
@@ -1028,6 +1139,17 @@ function boot(): void {
     // Test and debugging hooks (Playwright reads these). Only with ?debug=1.
     (window as unknown as { __rvbs: unknown }).__rvbs = {
       mode: () => mode,
+      /** Progress: Firebase status, account, RP, unlocks, results waiting to sync. */
+      profile: () => ({
+        status: profile.status,
+        uid: profile.account?.uid ?? null,
+        anonymous: profile.account?.anonymous ?? null,
+        rp: profile.profile.rp,
+        unlocked: { ...profile.profile.unlocked },
+        stats: { ...profile.profile.stats },
+        pending: profile.pendingRp,
+        usage: profile.usage(),
+      }),
       models: () => [...visuals.values()].map((v) => ({ placeholder: v.placeholder, muzzles: v.muzzles.length, prop: v.prop !== null })),
       hangar: () => (mode === 'hangar' ? { planeId: hangar.planeId, placeholder: hangar.visual?.placeholder ?? true, yaw: hangar.yaw } : null),
       startSolo: (choice?: Partial<SoloChoice>) =>

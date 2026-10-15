@@ -1,9 +1,9 @@
-// Play Solo → pick an era, a plane and bot difficulty. Tiers 1–3 for now (all planes with ?debug=1);
-// Day 8 replaces the tier lock with real research unlocks.
+// Play Solo → pick an era, a plane and bot difficulty. Planes are open as far as you've researched each era
+// (everything with ?debug=1 on localhost).
 import { readStorage, writeStorage } from '../core/storage';
 import type { EraId, GameData, Plane } from '../data/types';
 import type { BotDifficulty } from '../game/world';
-import { isUnlocked } from '../game/unlocks';
+import { isUnlocked, unlockCost, type Unlocks } from '../game/unlocks';
 import { escapeHtml as esc } from './hud';
 
 const KEY = 'rvbs.solo.v1';
@@ -40,11 +40,11 @@ export function gunsSummary(plane: Plane, data: GameData): string {
 export function createSoloSetup(
   parent: HTMLElement,
   data: GameData,
-  opts: { allUnlocked: boolean; title?: string; intro?: string; startLabel?: string; hangar?: boolean },
-  handlers: { onStart(choice: SoloChoice): void; onBack(): void; onHangar(choice: SoloChoice): void },
+  opts: { unlocks: () => Unlocks; title?: string; intro?: string; startLabel?: string; hangar?: boolean },
+  handlers: { onStart(choice: SoloChoice): void; onBack(): void; onHangar(choice: SoloChoice): void; onResearch?(era: EraId): void },
 ): { dispose(): void } {
   const choice = loadChoice(data);
-  const unlocked = (p: Plane): boolean => isUnlocked(p, opts.allUnlocked);
+  const unlocked = (p: Plane): boolean => isUnlocked(p, opts.unlocks());
   const el = document.createElement('section');
   el.className = 'setup';
   el.setAttribute('aria-label', 'Solo match setup');
@@ -72,7 +72,7 @@ export function createSoloSetup(
               <span class="pcard__tier">Tier ${p.tier} · BR ${p.br.toFixed(1)}</span>
               <span class="pcard__name">${esc(p.name)}</span>
               <span class="pcard__stats">${p.stats.topSpeedKmh} km/h · ${esc(gunsSummary(p, data))}</span>
-              ${open ? '' : '<span class="pcard__lock">Locked</span>'}
+              ${open ? '' : `<span class="pcard__lock">Locked · ${unlockCost(p.tier).toLocaleString('en')} RP</span>`}
             </button>`;
           })
           .join('')}
@@ -84,6 +84,7 @@ export function createSoloSetup(
             .join('')}
         </div>
         <div class="setup__go">
+          ${handlers.onResearch ? '<button type="button" class="btn btn--secondary" data-act="research">Research</button>' : ''}
           ${opts.hangar === false ? '' : '<button type="button" class="btn btn--secondary" data-act="hangar">Hangar</button>'}
           <button type="button" class="btn btn--primary" data-act="start">${esc(opts.startLabel ?? 'Start match')}</button>
         </div>
@@ -96,6 +97,10 @@ export function createSoloSetup(
     const t = e.target instanceof Element ? e.target.closest<HTMLElement>('button') : null;
     if (!t || t.hasAttribute('disabled')) return;
     if (t.dataset['act'] === 'back') return handlers.onBack();
+    if (t.dataset['act'] === 'research') {
+      writeStorage(KEY, JSON.stringify(choice));
+      return handlers.onResearch?.(choice.era);
+    }
     if (t.dataset['act'] === 'hangar') {
       writeStorage(KEY, JSON.stringify(choice));
       return handlers.onHangar({ ...choice });

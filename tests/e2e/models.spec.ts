@@ -12,10 +12,12 @@ test('hangar shows the real model and turns it by dragging', async ({ page }, in
   await page.goto('./?debug=1');
   await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
   await page.getByRole('button', { name: 'Play Solo' }).click();
-  await page.getByRole('radio', { name: /Late WW2/ }).click();
-  await page.getByRole('radio', { name: /F4U-4 Corsair/ }).click();
+  // Live site: tier 1 only (a fresh player), so the MiG-21; locally ?debug=1 opens the Corsair.
+  const live = Boolean(process.env['BASE_URL']);
+  await page.getByRole('radio', { name: live ? /Cold War/ : /Late WW2/ }).click();
+  await page.getByRole('radio', { name: live ? /MiG-21F-13/ : /F4U-4 Corsair/ }).click();
   await page.getByRole('button', { name: 'Hangar' }).click();
-  await expect(page.getByRole('heading', { name: 'Vought F4U-4 Corsair' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: live ? 'Mikoyan-Gurevich MiG-21F-13' : 'Vought F4U-4 Corsair' })).toBeVisible();
   await expect.poll(async () => (await hangar(page))?.placeholder, { timeout: 10_000 }).toBe(false);
 
   const drag = page.getByTestId('hangar-drag');
