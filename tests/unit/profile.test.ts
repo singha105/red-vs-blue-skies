@@ -30,6 +30,8 @@ const row = (over: Partial<ResultRow> = {}): ResultRow => ({
   team: 'blue',
   bot: false,
   planeId: 'spitfire_mk5',
+  captures: 0,
+  groundKills: 0,
   kills: 4,
   deaths: 1,
   assists: 2,

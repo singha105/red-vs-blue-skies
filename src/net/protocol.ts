@@ -2,21 +2,27 @@
 //
 // Input (11 bytes):  u8 type=1 | u32 seq | i8 pitch | i8 roll | i8 yaw | u8 throttle | u8 buttons | u8 target slot
 // Ping/pong (11 B):  u8 type=3|4 | u16 id | f64 sender time (echoed back unchanged)
-// Snapshot:          header 15 B + 25 B per plane + 1 B + 17 B per missile + own weapons trailer
-//   header: u8 type=2 | u8 roster version | u32 tick | u32 ack seq | u16 time left ×10 | u8 red | u8 blue | u8 state | u8 count
+// Snapshot:          header 17 B + 25 B per plane + 1 B + 17 B per missile + objectives + own weapons trailer
+//   header: u8 type=2 | u8 roster version | u32 tick | u32 ack seq | u16 time left ×10 | u16 red | u16 blue
+//           | u8 state | u8 count   (red/blue: kills, tickets left or points, by mode)
 //   plane:  u8 flags | u8 damage flags | i16 x×2 | u16 (y+2000)×2 | i16 z×2 | u32 quat (smallest three)
 //           | i16 vx×20 | i16 vy×20 | i16 vz×20 | u8 hp | u8 throttle×255 | u8 respawn×10 | u8 g×10
 //           | u8 lock target slot | u8 lock (bit 7 radar, bits 0–6 progress×127)
-//           | u8 missiles left (mount 0 in bits 0–3, mount 1 in bits 4–7; drawn on the pylons)
+//           | u8 missiles left (mount 0 in bits 0–3, mount 1 in bits 4–7; drawn on the pylons), or for planes
+//             with ordnance, rockets in bits 0–3 and bombs in bits 4–7
 //   missile: u16 id | u8 type | u8 owner slot | u8 target slot (0 none, 255 a decoy) | i16 x×2 | u16 (y+2000)×2
 //           | i16 z×2 | i16 vx×20 | i16 vy×20 | i16 vz×20
-//   trailer: u8 n | u16 ammo × n | u8 m | u8 missiles × m | u8 flares | u8 chaff | u8 lock mount + 1 (the receiving
-//            player's own weapons)
+//   objectives: u8 zones | (i8 progress×127, u8 owner 0/1 red/2 blue) × zones | u8 units | u8 × units
+//            (bit 7 firing, bits 0–6 health %; 0 = destroyed). Unit positions follow from the clock and the layout.
+//   trailer: u8 n | u16 ammo × n | u8 m | u8 missiles × m | u8 flares | u8 chaff | u8 lock mount + 1 | u8 rockets
+//            | u8 bombs (the receiving player's own weapons)
 // "Slot" is a plane's index in the roster + 1 (0 = none). 20 planes ≈ 500 bytes per snapshot ≈ 10 KB/s per client
 // at 20 Hz, plus 17 bytes per missile in the air. Flares and chaff are reliable events, simulated locally.
 import type { ControlInput } from '../game/controls';
 import type { PlaneState, Team } from '../game/flight';
 import type { MissileState } from '../game/missiles';
+import type { GroundLayout } from '../game/groundLayout';
+import type { GroundUnit, ModeId, ZoneState } from '../game/objectives';
 import type { Quat, Vec3 } from '../game/math';
 import type { EraId } from '../data/types';
 import type { MatchResults } from '../game/results';
@@ -35,7 +41,7 @@ export const MISSILE_BYTES = 17;
 const INPUT_BYTES = 11;
 /** Missile target byte for "chasing a flare or chaff". */
 const DECOY_SLOT = 255;
-const HEADER_BYTES = 15;
+const HEADER_BYTES = 17;
 
 // ---------------------------------------------------------------- reliable (JSON) messages
 
@@ -133,7 +139,8 @@ export type HostMsg =
   | { t: 'room'; room: RoomState }
   | { t: 'results'; results: MatchResults }
   /** matchId: the Firestore match this round is saved under (null when the host is offline). */
-  | { t: 'start'; matchId?: string | null; uids?: string[]; era: string; mapId: string; you: string; rosterVersion: number; roster: RosterEntry[]; pilots: Pilot[]; killLimit: number; tick: number }
+  /** mode, layout (ground targets) and escort (Bomber Escort's flying team) let clients set up the same objectives. */
+  | { t: 'start'; matchId?: string | null; uids?: string[]; era: string; mapId: string; mode?: ModeId; layout?: GroundLayout | null; escort?: Team | null; you: string; rosterVersion: number; roster: RosterEntry[]; pilots: Pilot[]; killLimit: number; tick: number }
   | { t: 'roster'; rosterVersion: number; roster: RosterEntry[]; pilots: Pilot[] }
   | { t: 'events'; events: GameEvent[] }
   | { t: 'stats'; stats: Record<string, PilotStats> }
@@ -296,9 +303,30 @@ export interface OwnWeapons {
   flares: number;
   chaff: number;
   lockMount: number;
+  rockets: number;
+  bombs: number;
 }
 
-export const NO_WEAPONS: OwnWeapons = { ammo: [], missiles: [], flares: 0, chaff: 0, lockMount: -1 };
+export const NO_WEAPONS: OwnWeapons = { ammo: [], missiles: [], flares: 0, chaff: 0, lockMount: -1, rockets: 0, bombs: 0 };
+
+export interface SnapshotZone {
+  progress: number;
+  owner: Team | null;
+}
+
+export interface SnapshotUnit {
+  /** 0–100; 0 = destroyed. */
+  hpPct: number;
+  firing: boolean;
+}
+
+/** What the objectives encoder reads (world.objectives). */
+export interface SnapshotObjectives {
+  zones: readonly ZoneState[];
+  units: readonly GroundUnit[];
+}
+
+const NO_OBJECTIVES: SnapshotObjectives = { zones: [], units: [] };
 
 export interface Snapshot {
   rosterVersion: number;
@@ -309,6 +337,8 @@ export interface Snapshot {
   ended: boolean;
   planes: SnapshotPlane[];
   missiles: SnapshotMissile[];
+  zones: SnapshotZone[];
+  units: SnapshotUnit[];
   own: OwnWeapons;
 }
 
@@ -329,24 +359,28 @@ export function encodeSnapshot(
   own: OwnWeapons,
   missiles: readonly MissileState[] = [],
   sc: SnapshotContext = { missileTypes: [], lockIsRadar: () => false },
+  obj: SnapshotObjectives = NO_OBJECTIVES,
 ): ArrayBuffer {
   const n = Math.min(127, planes.length);
   const nm = Math.min(255, missiles.length);
+  const nz = Math.min(255, obj.zones.length);
+  const nu = Math.min(255, obj.units.length);
   const slotOf = (id: string | null): number => {
     if (id === null) return 0;
     const i = planes.findIndex((p) => p.id === id);
     return i >= 0 && i < n ? i + 1 : 0;
   };
-  const buf = new ArrayBuffer(HEADER_BYTES + n * PLANE_BYTES + 1 + nm * MISSILE_BYTES + 1 + own.ammo.length * 2 + 1 + own.missiles.length + 3);
+  const buf = new ArrayBuffer(HEADER_BYTES + n * PLANE_BYTES + 1 + nm * MISSILE_BYTES + 1 + nz * 2 + 1 + nu + 1 + own.ammo.length * 2 + 1 + own.missiles.length + 5);
   const v = new DataView(buf);
   v.setUint8(0, MSG_SNAPSHOT);
   v.setUint8(1, s.rosterVersion & 0xff);
   v.setUint32(2, s.tick >>> 0);
   v.setUint32(6, s.ackSeq >>> 0);
   v.setUint16(10, u16(Math.min(s.timeLeftS, 6553) * 10));
-  v.setUint8(12, u8(s.score.red));
-  v.setUint8(13, u8(s.score.blue));
-  v.setUint8(14, ((s.ended ? 1 : 0) << 7) | n);
+  // Tickets drain fractionally on the host; the wire carries what the HUD shows (rounded up).
+  v.setUint16(12, u16(Math.ceil(s.score.red)));
+  v.setUint16(14, u16(Math.ceil(s.score.blue)));
+  v.setUint8(16, ((s.ended ? 1 : 0) << 7) | n);
   let o = HEADER_BYTES;
   for (let i = 0; i < n; i++) {
     const p = planes[i]!;
@@ -366,7 +400,9 @@ export function encodeSnapshot(
     const lockSlot = p.lockProgress > 0 ? slotOf(p.lockTarget) : 0;
     v.setUint8(o + 22, lockSlot);
     v.setUint8(o + 23, lockSlot ? (sc.lockIsRadar(p) ? 128 : 0) | Math.round(Math.min(1, Math.max(0, p.lockProgress)) * 127) : 0);
-    v.setUint8(o + 24, Math.min(15, p.missiles[0] ?? 0) | (Math.min(15, p.missiles[1] ?? 0) << 4));
+    const loadA = p.missiles.length ? p.missiles[0] ?? 0 : p.rockets;
+    const loadB = p.missiles.length ? p.missiles[1] ?? 0 : p.bombs;
+    v.setUint8(o + 24, Math.min(15, loadA) | (Math.min(15, loadB) << 4));
     o += PLANE_BYTES;
   }
   v.setUint8(o++, nm);
@@ -384,6 +420,18 @@ export function encodeSnapshot(
     v.setInt16(o + 15, i16(m.vel[2] * 20));
     o += MISSILE_BYTES;
   }
+  v.setUint8(o++, nz);
+  for (let i = 0; i < nz; i++) {
+    const z = obj.zones[i]!;
+    v.setInt8(o++, Math.round(Math.max(-1, Math.min(1, z.progress)) * 127));
+    v.setUint8(o++, z.owner === 'red' ? 1 : z.owner === 'blue' ? 2 : 0);
+  }
+  v.setUint8(o++, nu);
+  for (let i = 0; i < nu; i++) {
+    const u = obj.units[i]!;
+    const pct = u.alive ? Math.max(1, Math.min(100, Math.ceil((u.hp / u.maxHp) * 100))) : 0;
+    v.setUint8(o++, (u.firing && u.alive ? 128 : 0) | pct);
+  }
   v.setUint8(o++, own.ammo.length);
   for (const a of own.ammo) {
     v.setUint16(o, u16(a));
@@ -394,6 +442,8 @@ export function encodeSnapshot(
   v.setUint8(o++, u8(own.flares));
   v.setUint8(o++, u8(own.chaff));
   v.setUint8(o++, u8(own.lockMount + 1));
+  v.setUint8(o++, u8(own.rockets));
+  v.setUint8(o++, u8(own.bombs));
   return buf;
 }
 
@@ -401,7 +451,7 @@ export function decodeSnapshot(data: ArrayBuffer, missileTypes: readonly string[
   if (data.byteLength < HEADER_BYTES + 1) return null;
   const v = new DataView(data);
   if (v.getUint8(0) !== MSG_SNAPSHOT) return null;
-  const countByte = v.getUint8(14);
+  const countByte = v.getUint8(16);
   const n = countByte & 0x7f;
   if (data.byteLength < HEADER_BYTES + n * PLANE_BYTES + 1) return null;
   const planes: SnapshotPlane[] = [];
@@ -448,6 +498,19 @@ export function decodeSnapshot(data: ArrayBuffer, missileTypes: readonly string[
     o += MISSILE_BYTES;
   }
   const byte = (): number => (o < data.byteLength ? v.getUint8(o++) : 0);
+  const zones: SnapshotZone[] = [];
+  const nz = byte();
+  for (let i = 0; i < nz; i++) {
+    const p = o < data.byteLength ? v.getInt8(o++) / 127 : 0;
+    const w = byte();
+    zones.push({ progress: p, owner: w === 1 ? 'red' : w === 2 ? 'blue' : null });
+  }
+  const units: SnapshotUnit[] = [];
+  const nu = byte();
+  for (let i = 0; i < nu; i++) {
+    const b = byte();
+    units.push({ hpPct: b & 127, firing: (b & 128) !== 0 });
+  }
   const ammo: number[] = [];
   const na = byte();
   for (let i = 0; i < na && o + 2 <= data.byteLength; i++, o += 2) ammo.push(v.getUint16(o));
@@ -457,16 +520,20 @@ export function decodeSnapshot(data: ArrayBuffer, missileTypes: readonly string[
   const flares = byte();
   const chaff = byte();
   const lockMount = byte() - 1;
+  const rockets = byte();
+  const bombs = byte();
   return {
     rosterVersion: v.getUint8(1),
     tick: v.getUint32(2),
     ackSeq: v.getUint32(6),
     timeLeftS: v.getUint16(10) / 10,
-    score: { red: v.getUint8(12), blue: v.getUint8(13) },
+    score: { red: v.getUint16(12), blue: v.getUint16(14) },
     ended: (countByte & 0x80) !== 0,
     planes,
     missiles,
-    own: { ammo, missiles: ownMissiles, flares, chaff, lockMount },
+    zones,
+    units,
+    own: { ammo, missiles: ownMissiles, flares, chaff, lockMount, rockets, bombs },
   };
 }
 

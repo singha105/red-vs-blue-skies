@@ -8,6 +8,7 @@ import { addHumanToMatch, botTakeOver, createMatch, rebalanceBots, stepMatch, ty
 import { computeResults, type MatchResults } from '../game/results';
 import { cleanUnlocks } from '../game/unlocks';
 import { lockSeeker, missileTypeIds } from '../game/missiles';
+import { isBomber, type ModeId } from '../game/objectives';
 import { createWorldContext, type GameEvent, type WorldContext } from '../game/world';
 import {
   CHAT_MAX,
@@ -168,6 +169,9 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
       uids: matchUids,
       era: room.choice.era,
       mapId: room.choice.mapId,
+      mode: match.world.objectives.mode === 'free' ? 'tdm' : match.world.objectives.mode,
+      layout: ctx.layout,
+      escort: match.world.objectives.escort?.escort ?? null,
       you: c.playerId,
       rosterVersion,
       roster: roster(),
@@ -180,7 +184,7 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
 
   const teamBr = (m: Match, c: WorldContext): Record<Team, number> => {
     const br = { blue: 0, red: 0 };
-    for (const p of m.world.planes) br[p.team] += c.planeDefs.get(p.planeId)?.br ?? 0;
+    for (const p of m.world.planes) if (!isBomber(m.world, p.id)) br[p.team] += c.planeDefs.get(p.planeId)?.br ?? 0;
     return { blue: Math.round(br.blue * 10) / 10, red: Math.round(br.red * 10) / 10 };
   };
 
@@ -190,8 +194,10 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
     ctx = createWorldContext(data, choice.mapId);
     const killLimit = opts.killLimit ?? data.modes.find((m) => m.id === choice.mode)?.killLimit;
     const players = room.players();
+    const mode = (data.modes.find((m) => m.id === choice.mode && m.playable)?.id ?? 'tdm') as ModeId;
     match = createMatch(ctx, {
       era: choice.era,
+      mode,
       difficulty: room.settings.difficulty,
       humans: players.map((p) => ({ id: p.id, name: p.name, planeId: p.planeId!, team: p.team ?? 'blue' })),
       bots: room.settings.bots,
@@ -435,9 +441,10 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
         const snap = encodeSnapshot(
           { rosterVersion, tick: w.tick, ackSeq: rec.lastSeq, timeLeftS: w.match.timeLeftS, score: w.match.score, ended: w.match.state === 'ended' },
           w.planes,
-          own ? { ammo: own.ammo, missiles: own.missiles, flares: own.flares, chaff: own.chaff, lockMount: own.lockMount } : NO_WEAPONS,
+          own ? { ammo: own.ammo, missiles: own.missiles, flares: own.flares, chaff: own.chaff, lockMount: own.lockMount, rockets: own.rockets, bombs: own.bombs } : NO_WEAPONS,
           w.missiles,
           snapshotContext(c),
+          w.objectives,
         );
         send(rec.peerId, 'unreliable', snap);
       }

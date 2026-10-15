@@ -1,6 +1,7 @@
 // End of match: RP earned (the GAME_DESIGN formula) and awards. The host computes this once and sends it to
 // everyone, so every screen shows the same numbers. Day 8 saves the RP to each player's profile.
 import type { Team } from './flight';
+import { RP_CAPTURE, RP_GROUND } from './objectives';
 import type { WorldState } from './world';
 
 export type AwardId = 'mvp' | 'ace' | 'wingman' | 'survivor';
@@ -29,6 +30,9 @@ export interface ResultRow {
   assists: number;
   /** Damage dealt, in percent of a plane's HP (summed over victims). */
   damagePct: number;
+  /** Zones captured and ground targets destroyed (50 and 30 RP each). */
+  captures: number;
+  groundKills: number;
   /** Score before the win and MVP bonuses; MVP is the top score. */
   score: number;
   /** Research points earned (humans only; bots show 0). */
@@ -60,14 +64,17 @@ function best(rows: ResultRow[], keys: ((r: ResultRow) => number)[], qualifies: 
 export function computeResults(world: WorldState, br: Record<Team, number> | null = null): MatchResults {
   const m = world.match;
   const bestLife = (id: string): number => world.stats[id]?.bestLifeKills ?? 0;
-  const rows: ResultRow[] = Object.values(world.pilots).map((p) => {
+  // AI bombers fly for a team but aren't players.
+  const rows: ResultRow[] = Object.values(world.pilots).filter((p) => p.role !== 'bomber').map((p) => {
     const st = world.stats[p.id];
     const plane = world.planes.find((x) => x.id === p.id);
     const kills = st?.kills ?? 0;
     const assists = st?.assists ?? 0;
     const damagePct = Math.round(st?.damagePct ?? 0);
     const survived = plane?.alive ?? false;
-    const score = Math.round((st?.killRp ?? 0) + RP_ASSIST * assists + damagePct + (survived ? RP_SURVIVE : 0));
+    const captures = st?.captures ?? 0;
+    const groundKills = st?.groundKills ?? 0;
+    const score = Math.round((st?.killRp ?? 0) + RP_ASSIST * assists + damagePct + (survived ? RP_SURVIVE : 0) + RP_CAPTURE * captures + RP_GROUND * groundKills);
     return {
       id: p.id,
       name: p.name,
@@ -78,6 +85,8 @@ export function computeResults(world: WorldState, br: Record<Team, number> | nul
       deaths: st?.deaths ?? 0,
       assists,
       damagePct,
+      captures,
+      groundKills,
       score,
       rp: 0,
       awards: [],
@@ -85,7 +94,7 @@ export function computeResults(world: WorldState, br: Record<Team, number> | nul
   });
 
   // Awards need something to show for it: nobody is MVP or Survivor of a match where nothing happened.
-  const active = (r: ResultRow): boolean => r.kills + r.assists + r.damagePct > 0;
+  const active = (r: ResultRow): boolean => r.kills + r.assists + r.damagePct + r.captures + r.groundKills > 0;
   const mvp = best(rows, [(r) => r.score, (r) => r.kills], active);
   const wingman = best(rows, [(r) => r.assists, (r) => r.damagePct], (r) => r.assists > 0);
   const survivor = best(rows, [(r) => -r.deaths, (r) => r.kills, (r) => r.damagePct], active);
@@ -101,5 +110,5 @@ export function computeResults(world: WorldState, br: Record<Team, number> | nul
     }
   }
   rows.sort((a, b) => (a.team === b.team ? b.score - a.score || b.kills - a.kills : a.team === 'blue' ? -1 : 1));
-  return { winner: m.winner, score: { ...m.score }, rows, br };
+  return { winner: m.winner, score: { red: Math.ceil(m.score.red), blue: Math.ceil(m.score.blue) }, rows, br };
 }

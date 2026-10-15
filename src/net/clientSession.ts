@@ -11,7 +11,12 @@ import { neutralInput, type ControlInput } from '../game/controls';
 import { edgeTurnInput, stepPlane, type PlaneState, type Team } from '../game/flight';
 import type { Quat, Vec3 } from '../game/math';
 import { missileTypeIds, stepDecoys, type MissileState } from '../game/missiles';
-import { addPilot, createWorld, createWorldContext, spawnPlane, type GameEvent, type PilotStats, type WorldContext, type WorldState } from '../game/world';
+import type { EraId } from '../data/types';
+import type { GroundLayout } from '../game/groundLayout';
+import { initObjectives, isBomber, moveOrdnance, placeUnits, stepTurret, turretTarget, type ModeId } from '../game/objectives';
+import { PLANE_MODELS } from '../game/planeModels';
+import { add, rotate } from '../game/math';
+import { addPilot, createWorld, createWorldContext, spawnPlane, type GameEvent, type Pilot, type PilotStats, type WorldContext, type WorldState } from '../game/world';
 import { lerp, nlerpQuat, type NetStats, type RenderPose, type Session } from '../app/session';
 import type { MatchResults } from '../game/results';
 import {
@@ -121,6 +126,8 @@ export function createClientSession(
   let rejectReason: string | null = null;
   let ended: Session['ended'] = null;
   const pendingEvents: GameEvent[] = [];
+  /** One shared turret state for cosmetic AA and gunner tracers (bursts come from the host's firing flags). */
+  const turretFx = { burst: 1, heat: 0 };
 
   // Snapshot buffers per plane id, newest last; missiles per snapshot.
   const buffers = new Map<string, Buffered[]>();
@@ -160,13 +167,20 @@ export function createClientSession(
     transport.send(channel, d);
   };
 
-  const buildWorld = (mapId: string, r: RosterEntry[], pilots: { id: string; name: string; team: Team; bot: boolean }[]): void => {
+  const buildWorld = (
+    mapId: string,
+    r: RosterEntry[],
+    pilots: Pilot[],
+    setup: { mode: ModeId; era: EraId; layout: GroundLayout | null; escort: Team | null },
+  ): void => {
     ctx = createWorldContext(data, mapId);
     const w = createWorld(ctx);
     for (const p of pilots) addPilot(w, p);
     for (const e of r) spawnPlane(w, ctx, { id: e.id, team: e.team, planeId: e.planeId, assist: e.id === playerId ? (opts.assist ?? 0) : 0 });
-    w.events = [];
     w.match = { mode: 'tdm', timeLeftS: 600, killLimit: 50, score: { red: 0, blue: 0 }, state: 'playing', winner: null };
+    // The same zones, ground targets and bomber setup as the host (its layout, so floating point can't differ).
+    initObjectives(w, ctx, setup.mode, setup.era, { ...(setup.layout ? { layout: setup.layout } : {}), ...(setup.escort ? { escort: setup.escort } : {}) });
+    w.events = [];
     world = w;
     own = w.planes.find((p) => p.id === playerId) ?? null;
     buffers.clear();
@@ -213,8 +227,15 @@ export function createClientSession(
     target.lockProgress = target.lockTarget ? s.lockProgress : 0;
     // Others' mounts aren't sent, only the seeker kind: point at the first mount with that seeker.
     if (target !== own) target.lockMount = target.lockTarget ? mountWithSeeker(target.planeId, s.lockRadar ? 'radar' : 'ir') : -1;
-    // Missiles left per mount, for drawing them on the pylons (our own come exactly in the trailer).
-    if (target !== own) for (let i = 0; i < target.missiles.length; i++) target.missiles[i] = s.missiles[i as 0 | 1] ?? 0;
+    // Missiles left per mount, for drawing them on the pylons (our own come exactly in the trailer). Planes with
+    // rockets and bombs send those counts in the same byte.
+    if (target !== own) {
+      if (target.missiles.length > 0) for (let i = 0; i < target.missiles.length; i++) target.missiles[i] = s.missiles[i as 0 | 1] ?? 0;
+      else {
+        target.rockets = s.missiles[0];
+        target.bombs = s.missiles[1];
+      }
+    }
   };
 
   const mountWithSeeker = (planeId: string, seeker: 'ir' | 'radar'): number => {
@@ -251,6 +272,8 @@ export function createClientSession(
     own.flares = s.own.flares;
     own.chaff = s.own.chaff;
     own.lockMount = s.own.lockMount;
+    own.rockets = s.own.rockets;
+    own.bombs = s.own.bombs;
     while (history.length && history[0]!.seq <= s.ackSeq) history.shift();
     if (own.alive) {
       // Replay what the host hasn't seen yet: each input lasted TICKS_PER_INPUT ticks.
@@ -289,6 +312,21 @@ export function createClientSession(
     }
     world.match.timeLeftS = s.timeLeftS;
     world.match.score = { ...s.score };
+    // Zones and ground units: the host's state as of this snapshot (positions follow from the clock).
+    const o = world.objectives;
+    s.zones.forEach((z, i) => {
+      const zone = o.zones[i];
+      if (!zone) return;
+      zone.progress = z.progress;
+      zone.owner = z.owner;
+    });
+    s.units.forEach((u, i) => {
+      const unit = o.units[i];
+      if (!unit) return;
+      unit.alive = u.hpPct > 0;
+      unit.hp = (u.hpPct / 100) * unit.maxHp;
+      unit.firing = u.firing;
+    });
     missileSnaps.push({ tick: s.tick, missiles: s.missiles });
     while (missileSnaps.length > 6) missileSnaps.shift();
     s.planes.forEach((p, i) => {
@@ -341,7 +379,12 @@ export function createClientSession(
         playerId = m.you;
         roster = m.roster;
         rosterVersion = m.rosterVersion;
-        buildWorld(m.mapId, m.roster, m.pilots);
+        buildWorld(m.mapId, m.roster, m.pilots, {
+          mode: m.mode ?? 'tdm',
+          era: m.era as EraId,
+          layout: m.layout ?? null,
+          escort: m.escort === 'red' || m.escort === 'blue' ? m.escort : null,
+        });
         if (world) world.match.killLimit = m.killLimit;
         serverTick = m.tick;
         phase = 'playing';
@@ -354,8 +397,13 @@ export function createClientSession(
         break;
       case 'events':
         pendingEvents.push(...m.events);
-        // Flares and chaff are only events on the wire; fly them locally (they're cosmetic here).
-        if (world) for (const e of m.events) if (e.t === 'decoy') world.decoys.push({ id: world.nextMissileId++, kind: e.kind, owner: e.owner, pos: [...e.pos], vel: [...e.vel], age: 0 });
+        // Flares, chaff, rockets and bombs are only events on the wire; fly them locally (they're cosmetic here).
+        if (world) {
+          for (const e of m.events) {
+            if (e.t === 'decoy') world.decoys.push({ id: world.nextMissileId++, kind: e.kind, owner: e.owner, pos: [...e.pos], vel: [...e.vel], age: 0 });
+            if (e.t === 'drop') world.objectives.ordnance.push({ id: e.id, kind: e.kind, owner: e.owner, team: e.team, pos: [...e.pos], vel: [...e.vel], age: 0 });
+          }
+        }
         break;
       case 'stats':
         if (world) for (const [id, st] of Object.entries(m.stats)) world.stats[id] = st as PilotStats;
@@ -604,6 +652,9 @@ export function createClientSession(
       }
       sampleMissiles(w, renderTick);
       stepDecoys(w, dt);
+      // Ground units sit where the host's clock puts them; rockets and bombs fly until they hit something.
+      if (w.objectives.ordnance.length) moveOrdnance(w, ctx, dt, [], true);
+      if (w.objectives.units.length) placeUnits(w, ctx, Math.max(0, renderTick) / TICK_HZ);
 
       // Cosmetic tracers from every firing plane; the host decides what they hit.
       const fc = { guns: ctx.guns, nextBulletId: () => w.nextBulletId++, random: Math.random, enemies: [] as PlaneState[] };
@@ -612,7 +663,26 @@ export function createClientSession(
         const def = ctx.planeDefs.get(p.planeId);
         if (!def) continue;
         if (p !== own) p.ammo = p.ammo.map(() => 9999);
-        fireGuns(p, def, fc, dt, w.bullets);
+        if (def.guns.length) fireGuns(p, def, fc, dt, w.bullets);
+      }
+      // AA guns and bomber gunners that the host says are firing: cosmetic tracers at the nearest enemy.
+      const rand = Math.random;
+      const nextId = (): number => w.nextBulletId++;
+      for (const u of w.objectives.units) {
+        if (!u.firing || !u.alive) continue;
+        const from: [number, number, number] = [u.pos[0], u.pos[1] + 3 + (u.kind === 'aa' ? 0 : 14), u.pos[2]];
+        const aa = ctx.data.objectives.aa;
+        turretFx.burst = 1;
+        stepTurret(turretFx, aa, from, [0, 0, 0], turretTarget(w, from, u.team, aa.rangeM), `u${u.id}`, u.team, 'aa', dt, rand, nextId, w.bullets);
+      }
+      for (const p of w.planes) {
+        if (!p.alive || !p.firing || !isBomber(w, p.id)) continue;
+        const g = ctx.data.objectives.gunners;
+        for (const mz of PLANE_MODELS[p.planeId]?.muzzles ?? []) {
+          const from = add(p.pos, rotate(p.quat, mz.pos));
+          turretFx.burst = 1;
+          stepTurret(turretFx, g, from, p.vel, turretTarget(w, from, p.team, g.rangeM), p.id, p.team, 'gunner', dt, rand, nextId, w.bullets);
+        }
       }
       stepBullets(w.bullets, [], () => ({}) as HitSpheres, ctx.terrain.surfaceAt, dt);
       return out;

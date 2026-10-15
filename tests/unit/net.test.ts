@@ -31,13 +31,19 @@ const STEP_MS = 1000 / 60;
 const SETTINGS = { difficulty: 'easy' as const, bots: true, matchLengthS: 600 };
 
 /** Lobby → vote (everyone votes Early WW2, Island Chain, TDM) → teams → plane select (Spitfire) → playing. */
-function playThrough(server: HostServer, clients: ClientSession[], step: () => void, plane = 'spitfire_mk5'): void {
+function playThrough(
+  server: HostServer,
+  clients: ClientSession[],
+  step: () => void,
+  plane = 'spitfire_mk5',
+  vote: { era: string; map: string; mode: string } = { era: 'early_ww2', map: 'island_chain', mode: 'tdm' },
+): void {
   expect(server.startVote()).toBe(true);
   for (let i = 0; i < 5; i++) step();
   for (const c of clients) {
-    c.request({ t: 'vote', cat: 'era', id: 'early_ww2' });
-    c.request({ t: 'vote', cat: 'map', id: 'island_chain' });
-    c.request({ t: 'vote', cat: 'mode', id: 'tdm' });
+    c.request({ t: 'vote', cat: 'era', id: vote.era });
+    c.request({ t: 'vote', cat: 'map', id: vote.map });
+    c.request({ t: 'vote', cat: 'mode', id: vote.mode });
   }
   for (let i = 0; i < 60 * 10 && server.phase !== 'select'; i++) step();
   expect(server.phase).toBe('select');
@@ -143,12 +149,12 @@ describe('protocol', () => {
     start(r);
     r.step(30);
     const w = r.server.match!.world;
-    const buf = encodeSnapshot({ rosterVersion: 1, tick: w.tick, ackSeq: 7, timeLeftS: 432.1, score: { red: 3, blue: 5 }, ended: false }, w.planes, { ammo: [120, 1400], missiles: [2, 4], flares: 24, chaff: 23, lockMount: 1 });
-    expect(buf.byteLength).toBeLessThan(15 + 20 * PLANE_BYTES + 16);
+    const buf = encodeSnapshot({ rosterVersion: 1, tick: w.tick, ackSeq: 7, timeLeftS: 432.1, score: { red: 3, blue: 5 }, ended: false }, w.planes, { ammo: [120, 1400], missiles: [2, 4], flares: 24, chaff: 23, lockMount: 1, rockets: 0, bombs: 0 });
+    expect(buf.byteLength).toBeLessThan(17 + 20 * PLANE_BYTES + 22);
     const s = decodeSnapshot(buf)!;
     expect(s.planes).toHaveLength(20);
     expect(s.ackSeq).toBe(7);
-    expect(s.own).toEqual({ ammo: [120, 1400], missiles: [2, 4], flares: 24, chaff: 23, lockMount: 1 });
+    expect(s.own).toEqual({ ammo: [120, 1400], missiles: [2, 4], flares: 24, chaff: 23, lockMount: 1, rockets: 0, bombs: 0 });
     expect(s.missiles).toEqual([]);
     expect(s.score).toEqual({ red: 3, blue: 5 });
     w.planes.forEach((p, i) => {
@@ -401,10 +407,71 @@ describe('host and clients over a fake network', () => {
   });
 });
 
+describe('modes over the network', () => {
+  it('Ground Strike: clients get the host\'s layout, units where the host has them, and a destroyed target', async () => {
+    const r = await rig({ clients: 2, delayMs: 40, loss: 0.05 });
+    r.step(5);
+    playThrough(r.server, r.clients, () => r.step(), 'p47d', { era: 'late_ww2', map: 'desert_mesas', mode: 'ground_strike' });
+    r.step(60 * 4);
+    const host = r.server.match!.world;
+    expect(host.match.mode).toBe('ground_strike');
+    for (const c of r.clients) {
+      const w = c.world;
+      expect(w.match.mode).toBe('ground_strike');
+      expect(w.objectives.units.map((u) => u.kind)).toEqual(host.objectives.units.map((u) => u.kind));
+      // Same place within what 100 ms of interpolation delay and a convoy's speed allow.
+      host.objectives.units.forEach((u, i) => expect(dist(w.objectives.units[i]!.pos, u.pos), u.kind).toBeLessThan(15));
+      expect(w.match.score).toEqual({ red: Math.ceil(host.match.score.red), blue: Math.ceil(host.match.score.blue) });
+      expect(c.world.planes.find((p) => p.id === c.playerId)!.rockets).toBe(8);
+    }
+    // The host destroys a red bunker: every client sees it go.
+    const u = host.objectives.units.find((x) => x.team === 'red' && x.kind === 'bunker' && x.alive)!;
+    u.hp = 0;
+    u.alive = false;
+    r.step(30);
+    for (const c of r.clients) expect(c.world.objectives.units[u.id]!.alive).toBe(false);
+  });
+
+  it('Air Domination: zone progress and owners reach every client', async () => {
+    const r = await rig({ clients: 1 });
+    r.step(5);
+    playThrough(r.server, r.clients, () => r.step(), 'spitfire_mk5', { era: 'early_ww2', map: 'mountain_valley', mode: 'air_domination' });
+    const host = r.server.match!.world;
+    host.objectives.zones[2]!.progress = 1;
+    host.objectives.zones[2]!.owner = 'blue';
+    host.objectives.zones[0]!.progress = -0.5;
+    r.step(20);
+    const z = r.clients[0]!.world.objectives.zones;
+    expect(z).toHaveLength(3);
+    expect(z[2]!.owner).toBe('blue');
+    expect(z[0]!.progress).toBeCloseTo(host.objectives.zones[0]!.progress, 1);
+    expect(r.clients[0]!.world.match.score.red).toBeGreaterThan(255); // tickets need two bytes
+  });
+
+  it('Bomber Escort: the bombers are planes in everyone\'s roster and fly for the escort team', async () => {
+    const r = await rig({ clients: 1 });
+    r.step(5);
+    playThrough(r.server, r.clients, () => r.step(), 'mig21f13', { era: 'cold_war', map: 'carrier_strike', mode: 'bomber_escort' });
+    r.step(60 * 9);
+    const host = r.server.match!.world;
+    const c = r.clients[0]!.world;
+    const escort = host.objectives.escort!.escort;
+    expect(c.objectives.escort!.escort).toBe(escort);
+    const bombers = c.planes.filter((p) => c.pilots[p.id]?.role === 'bomber');
+    expect(bombers).toHaveLength(4);
+    expect(bombers.every((b) => b.team === escort && b.alive)).toBe(true);
+    // Teams still have ten players each.
+    expect(r.server.room().br).not.toBeNull();
+    expect(host.planes.filter((p) => host.pilots[p.id]?.role !== 'bomber')).toHaveLength(20);
+  });
+});
+
 describe('room (host-owned lobby state)', () => {
   const device = { touch: false, connection: null };
+  // Every mode is playable since Day 9; a copy of the data with Air Domination switched off checks the refusal.
+  const withUnplayable = { ...data, modes: data.modes.map((m) => (m.id === 'air_domination' ? { ...m, playable: false } : m)) };
   const make = (random = () => 0.5) => {
-    const room = createRoom(data, { allUnlocked: false, settings: SETTINGS, random });
+    const room = createRoom(withUnplayable, { allUnlocked: false, settings: SETTINGS, random });
     for (const [id, host] of [['h1', true], ['h2', false], ['h3', false], ['h4', false], ['h5', false]] as const) room.add({ id, name: id, host, device, rp: 0 });
     return room;
   };
@@ -417,7 +484,7 @@ describe('room (host-owned lobby state)', () => {
     room.vote('h2', 'era', 'ww1');
     room.vote('h3', 'era', 'modern');
     room.vote('h4', 'era', 'modern');
-    expect(room.vote('h5', 'mode', 'air_domination')).toBe(false); // Day 9
+    expect(room.vote('h5', 'mode', 'air_domination')).toBe(false); // marked unplayable in this copy
     expect(room.vote('h5', 'era', 'not_an_era')).toBe(false);
     expect(voteCounts(room.state(0), 'era')).toEqual({ ww1: 2, modern: 2 });
     room.tick(20_001);

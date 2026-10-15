@@ -1,6 +1,6 @@
 [
   {"id": "tdm", "name": "Team Deathmatch", "default": true, "playable": true, "description": "First team to 50 kills, or most kills after 10 minutes.", "timeLimitS": 600, "killLimit": 50},
-  {"id": "air_domination", "name": "Air Domination", "default": false, "playable": false, "description": "Capture 3 zones by flying below 300 m over them; held zones drain enemy tickets.", "timeLimitS": 600, "zones": 3, "captureAltitudeM": 300, "tickets": 300, "zoneRadiusM": 700, "captureS": 10, "drainPerZonePerS": 0.5, "ticketsPerDeath": 2},
-  {"id": "ground_strike", "name": "Ground Strike", "default": false, "playable": false, "description": "Destroy the enemy's AI convoys, bunkers and ships.", "timeLimitS": 600, "tickets": 300, "ticketsPerDeath": 2},
-  {"id": "bomber_escort", "name": "Bomber Escort", "default": false, "playable": false, "description": "One team protects AI bombers flying a route; the other intercepts them.", "timeLimitS": 600, "formation": 4, "waveGapS": 15, "pointsDelivered": 10, "pointsDowned": 10, "pointsPerKill": 1, "dropRadiusM": 450}
+  {"id": "air_domination", "name": "Air Domination", "default": false, "playable": true, "description": "Capture 3 zones by flying below 300 m over them; held zones drain enemy tickets.", "timeLimitS": 600, "zones": 3, "captureAltitudeM": 300, "tickets": 300, "zoneRadiusM": 700, "captureS": 10, "drainPerZonePerS": 0.5, "ticketsPerDeath": 2},
+  {"id": "ground_strike", "name": "Ground Strike", "default": false, "playable": true, "description": "Destroy the enemy's AI convoys, bunkers and ships.", "timeLimitS": 600, "tickets": 300, "ticketsPerDeath": 2},
+  {"id": "bomber_escort", "name": "Bomber Escort", "default": false, "playable": true, "description": "One team protects AI bombers flying a route; the other intercepts them.", "timeLimitS": 600, "formation": 4, "waveGapS": 15, "pointsDelivered": 10, "pointsDowned": 10, "pointsPerKill": 1, "dropRadiusM": 450}
 ]
