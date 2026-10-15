@@ -33,6 +33,7 @@ import { createCallsignScreen, createConnecting, createNetMenu, createNetOverlay
 import { createChaseCamera } from './render/chaseCamera';
 import { createEffects } from './render/effects';
 import { createMissileFx, type GlowSource } from './render/missiles';
+import { createPylonMissiles } from './render/pylonMissiles';
 import { createCockpitAudio } from './core/audio';
 import { cockpitState, cycleTarget, targetAt } from './app/weapons';
 import { afterburner, launch as launchMissile } from './game/missiles';
@@ -84,6 +85,8 @@ function boot(): void {
   const tracers = createTracers(data.guns);
   const effects = createEffects();
   const missileFx = createMissileFx(effects);
+  const missileClass = new Map(data.missiles.missiles.map((m) => [m.id, m.class]));
+  const pylonMissiles = createPylonMissiles((type) => missileClass.get(type));
   const audio = createCockpitAudio(() => getSettings().volume);
   const silhouettes = createSilhouettes(view.renderer);
   // One scene per map, built the first time a match is voted onto it and kept (at most 4), so switching back is free.
@@ -109,7 +112,7 @@ function boot(): void {
   let ctx: WorldContext = current.ctx;
   let mapScene = current.scene;
   let titleShot = current.titleShot;
-  mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root);
+  mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root, pylonMissiles.root);
 
   let quality: QualityLevel = forced ?? initialLevel(settings.graphics, env.isTouch);
   const applyQuality = (level: QualityLevel): void => {
@@ -139,7 +142,7 @@ function boot(): void {
     mapScene = current.scene;
     titleShot = current.titleShot;
     titleShot.setVisible(visible);
-    mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root);
+    mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root, pylonMissiles.root);
     applyQuality(quality);
   };
 
@@ -218,6 +221,7 @@ function boot(): void {
     endedAt = 0;
     controls.target = null;
     missileFx.clear();
+    pylonMissiles.clear();
     audio.mute();
     mapScene.shadowTarget = null;
     document.body.classList.remove('is-flying');
@@ -460,17 +464,20 @@ function boot(): void {
 
   // --- Hangar: the selected plane parked high above the islands, orbited by the camera.
   const HANGAR_POS = new Vector3(0, 3400, 0);
+  const hangarCarrier = [{ id: 'hangar', planeId: '', alive: true, missiles: [] as number[] }];
   const hangar = { visual: null as PlaneVisual | null, planeId: '', team: 'blue' as PlaneState['team'], yaw: 2.4, pitch: 0.25, dist: 22, touched: false };
   const setHangarVisual = (): void => {
     if (hangar.visual) mapScene.scene.remove(hangar.visual.root);
     const v = createPlaneVisual(hangar.planeId, hangar.team);
     v.root.position.copy(HANGAR_POS);
+    v.root.updateMatrixWorld();
     mapScene.scene.add(v.root);
     hangar.visual = v;
   };
   const leaveHangar = (): void => {
     if (hangar.visual) mapScene.scene.remove(hangar.visual.root);
     hangar.visual = null;
+    pylonMissiles.clear();
   };
 
   function showHangar(choice: SoloChoice): void {
@@ -482,6 +489,9 @@ function boot(): void {
     Object.assign(hangar, { planeId: plane.id, team: 'blue', yaw: 2.4, pitch: 0.25, dist: Math.max(size.lengthM, size.wingspanM) * 1.7, touched: false });
     setHangarVisual();
     void loadPlane(plane.id);
+    hangarCarrier[0]!.planeId = plane.id;
+    hangarCarrier[0]!.missiles = plane.missiles.map((m) => m.count);
+    if (plane.missiles.length > 0) void pylonMissiles.load();
     const ui2 = createHangarUi(ui, plane, data, {
       onRotate: (dx, dy) => {
         hangar.touched = true;
@@ -509,6 +519,8 @@ function boot(): void {
     if (!hangar.touched) hangar.yaw += frameDt * 0.25;
     const v = hangar.visual;
     if (v?.prop) v.prop.rotation.z += frameDt * 6;
+    // The full missile load on the pylons.
+    if (v) pylonMissiles.update(hangarCarrier, ctx.planeDefs, () => (v.placeholder ? null : v.root));
     const cp = Math.cos(hangar.pitch);
     view.camera.position.set(
       HANGAR_POS.x + Math.sin(hangar.yaw) * cp * hangar.dist,
@@ -550,6 +562,8 @@ function boot(): void {
     // Only this match's era models are downloaded.
     const era = mine?.era ?? lastChoice?.era;
     if (era) void loadEra(era, data.planes.filter((p) => p.era === era).map((p) => p.id));
+    // Weapon models only for eras whose planes carry missiles.
+    if (era && data.planes.some((p) => p.era === era && p.missiles.length > 0)) void pylonMissiles.load();
     chase.setScale(mine ? planeSize(mine).lengthM / 9 : 1);
     if (me) controls.resetTo(me);
     controls.freeLook = false;
@@ -881,6 +895,10 @@ function boot(): void {
     }
     tracers.update(w.bullets, 1 - alpha, 1 / 60, view.camera.position);
     missileFx.update(w, (1 - alpha) / 60, frameDt, burners);
+    pylonMissiles.update(w.planes, ctx.planeDefs, (p) => {
+      const v = visuals.get(p.id);
+      return v && !v.placeholder && v.root.visible ? v.root : null;
+    });
     burners.length = 0;
     if (!me) return;
 
@@ -1093,6 +1111,7 @@ function boot(): void {
         return p ? (JSON.parse(JSON.stringify(p)) as PlaneState) : null;
       },
       quality: () => quality,
+      pylonMissiles: () => ({ total: pylonMissiles.shown, mine: session ? pylonMissiles.shownOn(session.playerId) : 0 }),
       fps: () => fpsAvg,
       drawCalls: () => view.renderer.info.render.calls,
       triangles: () => view.renderer.info.render.triangles,

@@ -198,6 +198,8 @@ export function createClientSession(
     target.lockProgress = target.lockTarget ? s.lockProgress : 0;
     // Others' mounts aren't sent, only the seeker kind: point at the first mount with that seeker.
     if (target !== own) target.lockMount = target.lockTarget ? mountWithSeeker(target.planeId, s.lockRadar ? 'radar' : 'ir') : -1;
+    // Missiles left per mount, for drawing them on the pylons (our own come exactly in the trailer).
+    if (target !== own) for (let i = 0; i < target.missiles.length; i++) target.missiles[i] = s.missiles[i as 0 | 1] ?? 0;
   };
 
   const mountWithSeeker = (planeId: string, seeker: 'ir' | 'radar'): number => {

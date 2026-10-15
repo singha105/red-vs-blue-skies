@@ -148,6 +148,7 @@ describe('protocol', () => {
     a.lockTarget = b.id;
     a.lockMount = 0;
     a.lockProgress = 0.5;
+    a.missiles = [3, 1];
     const types = ['aim9l', 'aim120b'];
     const missiles: MissileState[] = [
       { id: 300, type: 'aim120b', owner: a.id, team: a.team, target: b.id, pos: [1234.5, 2500, -4321], vel: [800, -20.5, 300], age: 1, blind: 0, rolled: [], boost: 900 },
@@ -162,6 +163,7 @@ describe('protocol', () => {
     expect(s.planes[0]).toMatchObject({ lockSlot: 6, lockRadar: true });
     expect(s.planes[0]!.lockProgress).toBeCloseTo(0.5, 1);
     expect(s.planes[5]!.lockSlot).toBe(0);
+    expect(s.planes[0]!.missiles).toEqual([3, 1]);
     expect(s.missiles.map((m) => [m.id, m.type, m.ownerSlot, m.targetSlot])).toEqual([
       [300, 'aim120b', 1, 6],
       [301, 'aim9l', 6, 255],

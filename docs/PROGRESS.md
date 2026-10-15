@@ -33,6 +33,12 @@ Repo: https://github.com/singha105/red-vs-blue-skies
 - **Part B, jet models**: all 28 remaining jets have specs and models (`tools/blender/make_jet_specs.py` writes the specs; dimensions from spec sheets, the rest read off general arrangements). Kit additions: `pods` (Meteor nacelles, Vampire booms, tip tanks), `chin_intake` (F-8, F-16, Typhoon), `fin_only` tails for tailless deltas, canards and LERX/gloves as extra wings. Pylons for each jet's missiles, exhaust empties for the afterburner glow. 303–469 triangles each; all 34 planes plus weapons are 450 KB.
 - **Tests**: 114 Vitest (+40: guidance hits nine missile/geometry cases, PN flies a lead course, outrun after burnout, rear-aspect, afterburner heat, sun, notch geometry, **notching breaks a semi-active lock**, **flare and chaff pull rates within 5% of 1 − resistance over 1,000 trials**, flares ignore radar and chaff ignores IR, a counter for all 15 missiles, bots launch/flare/chaff/kill in a headless Modern match, protocol round trips for missiles, locks and the target byte). Playwright adds `missiles.spec` on Desktop Chrome and the iPhone touch layout: R or a tap picks the enemy, the lock goes solid (and the ring on the touch Missile button), Q or a tap fires, then an inbound missile shows the warning and flares pull it off.
 
+### Missiles on the pylons (follow-up, 2026-10-15)
+
+- Every jet now carries its remaining missiles on its pylons (`src/render/pylonMissiles.ts`): one InstancedMesh per weapon model, so at most 4 extra draw calls for the whole match. `pylonSlots` in `src/game/planeModels.ts` puts radar missiles on the innermost pylons and IR missiles on the outermost, in left/right pairs; each launch empties a pylon (alternating sides) and a respawn refills them. Class → model: rear/all-aspect IR → `missile_ir_small`, HOBS IR → `missile_ir_large`, semi-active → `missile_radar_medium`, active → `missile_radar_long`. Weapon models load only for eras with missiles (+18 KB).
+- Clients see other planes' loads too: each plane in a snapshot has one more byte (missiles left on mounts 0 and 1, 4 bits each), so 25 bytes per plane (+0.4 KB/s per client).
+- The hangar shows the full load. Tests: every jet hangs all its missiles, F-15C AMRAAMs inboard of its Sidewinders, the snapshot byte round-trips, and `missiles.spec` checks the F-15C shows 6 and then 5 after a launch.
+
 ### Deploy
 
 - Pushed and deployed (GitHub Actions green). The full Playwright suite passed against the live site with `BASE_URL` (22 tests: both multiplayer specs over public PeerJS signaling, the missile spec on desktop and iPhone, perf 60 fps on both profiles). Whole site is 1.6 MB (models 552 KB).
@@ -43,7 +49,6 @@ Each preview was checked against the real aircraft's planform; a second pass wid
 
 ### Known issues
 
-- Missiles aren't drawn hanging on the pylons yet (the pylon empties exist).
 - Notching is all-or-nothing inside the 45 m/s window; there's no partial doppler model.
 - A missile's lock state on clients updates at the 20 Hz snapshot rate.
 - TURN still isn't configured (Day 5 issue).

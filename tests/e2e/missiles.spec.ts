@@ -12,6 +12,7 @@ interface MissileInfo {
 
 type Hooks = {
   missiles(): MissileInfo | null;
+  pylonMissiles(): { total: number; mine: number };
   placeEnemyAhead(distM: number): string | null;
   launchAtPlayer(type: string, distM?: number): number | null;
 };
@@ -37,6 +38,10 @@ test('Modern jets: pick a target, lock, fire, and beat an inbound missile with f
   await expect(page.locator('.hud')).toBeVisible();
   await expect(page.getByTestId('loadout')).toContainText('AIM-120B ×4');
   await expect(page.getByTestId('loadout')).toContainText('Flares 24');
+  // The F-15C's six missiles hang on its pylons (and other jets' on theirs).
+  const pylons = () => page.evaluate(() => (window as unknown as { __rvbs: Hooks }).__rvbs.pylonMissiles());
+  await expect.poll(async () => (await pylons()).mine, { timeout: 10_000 }).toBe(6);
+  expect((await pylons()).total).toBeGreaterThan(20);
   // Let spawn protection run out.
   await page.waitForTimeout(3500);
 
@@ -68,6 +73,8 @@ test('Modern jets: pick a target, lock, fire, and beat an inbound missile with f
   if (isMobile) await page.getByTestId('missile-btn').tap();
   else await page.keyboard.press('KeyQ');
   await expect.poll(async () => (await info(page)).me!.missiles.reduce((a, b) => a + b, 0), { timeout: 3000 }).toBe(before - 1);
+  // One missile left its pylon.
+  await expect.poll(async () => (await pylons()).mine, { timeout: 2000 }).toBe(5);
   await expect.poll(async () => (await info(page)).inAir.filter((m) => m.owner === 'p1').length, { timeout: 2000 }).toBeGreaterThan(0);
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${SHOTS}/${testInfo.project.name}-missile-away.png` });

@@ -2,11 +2,12 @@
 //
 // Input (11 bytes):  u8 type=1 | u32 seq | i8 pitch | i8 roll | i8 yaw | u8 throttle | u8 buttons | u8 target slot
 // Ping/pong (11 B):  u8 type=3|4 | u16 id | f64 sender time (echoed back unchanged)
-// Snapshot:          header 15 B + 24 B per plane + 1 B + 17 B per missile + own weapons trailer
+// Snapshot:          header 15 B + 25 B per plane + 1 B + 17 B per missile + own weapons trailer
 //   header: u8 type=2 | u8 roster version | u32 tick | u32 ack seq | u16 time left ×10 | u8 red | u8 blue | u8 state | u8 count
 //   plane:  u8 flags | u8 damage flags | i16 x×2 | u16 (y+2000)×2 | i16 z×2 | u32 quat (smallest three)
 //           | i16 vx×20 | i16 vy×20 | i16 vz×20 | u8 hp | u8 throttle×255 | u8 respawn×10 | u8 g×10
 //           | u8 lock target slot | u8 lock (bit 7 radar, bits 0–6 progress×127)
+//           | u8 missiles left (mount 0 in bits 0–3, mount 1 in bits 4–7; drawn on the pylons)
 //   missile: u16 id | u8 type | u8 owner slot | u8 target slot (0 none, 255 a decoy) | i16 x×2 | u16 (y+2000)×2
 //           | i16 z×2 | i16 vx×20 | i16 vy×20 | i16 vz×20
 //   trailer: u8 n | u16 ammo × n | u8 m | u8 missiles × m | u8 flares | u8 chaff | u8 lock mount + 1 (the receiving
@@ -28,7 +29,7 @@ export const MSG_PONG = 4;
 
 export const SNAPSHOT_HZ = 20;
 export const INPUT_HZ = 30;
-export const PLANE_BYTES = 24;
+export const PLANE_BYTES = 25;
 export const MISSILE_BYTES = 17;
 const INPUT_BYTES = 11;
 /** Missile target byte for "chasing a flare or chaff". */
@@ -266,6 +267,8 @@ export interface SnapshotPlane {
   lockSlot: number;
   lockProgress: number;
   lockRadar: boolean;
+  /** Missiles left on the first two mounts (no plane has more than two). */
+  missiles: [number, number];
 }
 
 export interface SnapshotMissile {
@@ -355,6 +358,7 @@ export function encodeSnapshot(
     const lockSlot = p.lockProgress > 0 ? slotOf(p.lockTarget) : 0;
     v.setUint8(o + 22, lockSlot);
     v.setUint8(o + 23, lockSlot ? (sc.lockIsRadar(p) ? 128 : 0) | Math.round(Math.min(1, Math.max(0, p.lockProgress)) * 127) : 0);
+    v.setUint8(o + 24, Math.min(15, p.missiles[0] ?? 0) | (Math.min(15, p.missiles[1] ?? 0) << 4));
     o += PLANE_BYTES;
   }
   v.setUint8(o++, nm);
@@ -417,6 +421,7 @@ export function decodeSnapshot(data: ArrayBuffer, missileTypes: readonly string[
       lockSlot: v.getUint8(o + 22),
       lockProgress: (v.getUint8(o + 23) & 127) / 127,
       lockRadar: (v.getUint8(o + 23) & 128) !== 0,
+      missiles: [v.getUint8(o + 24) & 15, v.getUint8(o + 24) >> 4],
     });
     o += PLANE_BYTES;
   }
