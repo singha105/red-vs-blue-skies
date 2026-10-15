@@ -66,14 +66,20 @@ test('title screen and test scene load without errors', async ({ page }, info) =
   // No FPS counter without ?debug=1.
   await expect(page.locator('[data-testid="fps"]')).toHaveCount(0);
 
-  // Host / Join opens the multiplayer menu (thumb-sized buttons there too), and Back returns.
+  // Host / Join: callsign first, then the host-or-join menu (thumb-sized buttons there too); Back returns.
   await host.click();
   await expect(page.getByRole('heading', { name: 'Play with friends' })).toBeVisible();
+  await page.getByLabel('Your callsign').fill('Smoky');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByRole('heading', { name: 'Host or join' })).toBeVisible();
+  await expect(page.getByText('Flying as Smoky')).toBeVisible();
   for (const name of ['Host', 'Join']) {
     const box = await page.getByRole('button', { name, exact: true }).boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(56);
   }
   await page.screenshot({ path: `${SHOTS}/${info.project.name}-netmenu.png` });
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page.getByRole('heading', { name: 'Play with friends' })).toBeVisible();
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(solo).toBeVisible();
 

@@ -5,7 +5,7 @@ const SHOTS = 'tests/screenshots';
 interface Hooks {
   mode(): string;
   aim(): { yaw: number; pitch: number };
-  player(): { alive: boolean; pos: number[]; vel: number[]; throttle: number; stalled: boolean } | null;
+  player(): { alive: boolean; pos: number[]; vel: number[]; throttle: number; stalled: boolean; planeId: string } | null;
   fps(): number;
   quality(): string;
   drawCalls(): number;
@@ -56,7 +56,7 @@ test('spawns in the air and flies with the keyboard', async ({ page, isMobile },
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
-test('diving into the sea crashes and respawns', async ({ page, isMobile }) => {
+test('diving into the sea crashes and respawns', async ({ page, isMobile }, info) => {
   test.skip(isMobile, 'desktop keyboard');
   await startSolo(page);
   const h = hooks(page);
@@ -65,8 +65,18 @@ test('diving into the sea crashes and respawns', async ({ page, isMobile }) => {
   await page.keyboard.up('ArrowDown');
   // Killcam / respawn screen: crashed on our own, or a bot got us on the way down.
   await expect(page.locator('.hud__death')).toContainText(/You crashed|Shot down by/);
+  // The respawn picker: no spawn points yet, so only the free tier-1 reserve can be picked.
+  const picker = page.getByRole('group', { name: 'Next plane' });
+  await expect(picker).toBeVisible();
+  await expect(picker).toContainText('0 SP');
+  await expect(picker.locator('.rcard:not([disabled])')).toHaveCount(1);
+  await expect(picker.locator('.rcard[aria-pressed="true"]')).toContainText('Free');
+  await page.screenshot({ path: `${SHOTS}/${info.project.name}-respawn.png` });
   await expect.poll(async () => (await h.get('player'))?.alive, { timeout: 9000 }).toBe(true);
-  expect((await h.get('player'))!.pos[1]).toBeGreaterThan(1000);
+  const back = (await h.get('player'))!;
+  expect(back.pos[1]).toBeGreaterThan(1000);
+  expect(back.planeId).toBe('p26');
+  await expect(picker).toBeHidden();
 });
 
 test('touch: dragging on the right half moves the aim point', async ({ page, isMobile }, info) => {
