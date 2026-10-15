@@ -33,6 +33,10 @@ Repo: https://github.com/singha105/red-vs-blue-skies
 - **Part B, jet models**: all 28 remaining jets have specs and models (`tools/blender/make_jet_specs.py` writes the specs; dimensions from spec sheets, the rest read off general arrangements). Kit additions: `pods` (Meteor nacelles, Vampire booms, tip tanks), `chin_intake` (F-8, F-16, Typhoon), `fin_only` tails for tailless deltas, canards and LERX/gloves as extra wings. Pylons for each jet's missiles, exhaust empties for the afterburner glow. 303–469 triangles each; all 34 planes plus weapons are 450 KB.
 - **Tests**: 114 Vitest (+40: guidance hits nine missile/geometry cases, PN flies a lead course, outrun after burnout, rear-aspect, afterburner heat, sun, notch geometry, **notching breaks a semi-active lock**, **flare and chaff pull rates within 5% of 1 − resistance over 1,000 trials**, flares ignore radar and chaff ignores IR, a counter for all 15 missiles, bots launch/flare/chaff/kill in a headless Modern match, protocol round trips for missiles, locks and the target byte). Playwright adds `missiles.spec` on Desktop Chrome and the iPhone touch layout: R or a tap picks the enemy, the lock goes solid (and the ring on the touch Missile button), Q or a tap fires, then an inbound missile shows the warning and flares pull it off.
 
+### Deploy
+
+- Pushed and deployed (GitHub Actions green). The full Playwright suite passed against the live site with `BASE_URL` (22 tests: both multiplayer specs over public PeerJS signaling, the missile spec on desktop and iPhone, perf 60 fps on both profiles). Whole site is 1.6 MB (models 552 KB).
+
 ### Review of the jet models
 
 Each preview was checked against the real aircraft's planform; a second pass widened the twin-engine bodies back to the nozzles (F-14, F-15, MiG-29, Su-27, F-22) and moved the Mirage deltas aft. No reference drawings were downloaded this session (Day 4's were), so the review was against known general arrangements; shapes are deliberately simple and some details are approximations: the F-14 is modelled at a mid wing sweep, LERX and canards are flat plates, intakes are boxes.
