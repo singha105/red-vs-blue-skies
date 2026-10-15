@@ -201,7 +201,7 @@ function boot(): void {
   const signal = ((): { host: string; port: number; secure: boolean } | null => {
     // A local PeerJS signaling server for the browser tests (?debug=1&signal=localhost:9187).
     const m = (env.debug ? params.get('signal') : null)?.match(/^([\w.-]+):(\d+)$/);
-    return m ? { host: m[1]!, port: Number(m[2]), secure: window.location.protocol === 'https:' } : null;
+    return m ? { host: m[1]!, port: Number(m[2]), secure: m[1] !== 'localhost' && window.location.protocol === 'https:' } : null;
   })();
 
   /** PeerJS is only downloaded when someone hosts or joins, so solo stays small and fully offline. */

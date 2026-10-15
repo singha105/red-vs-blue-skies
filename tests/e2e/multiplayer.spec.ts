@@ -4,7 +4,8 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 const SHOTS = 'tests/screenshots';
-const FLAGS = 'debug=1&gfx=low&signal=localhost:9187';
+// PUBLIC_SIGNAL=1 uses PeerJS's public signaling server, exactly like real players (e.g. with BASE_URL).
+const FLAGS = process.env['PUBLIC_SIGNAL'] ? 'debug=1&gfx=low' : 'debug=1&gfx=low&signal=localhost:9187';
 
 interface Human {
   id: string;
