@@ -3,6 +3,59 @@
 Live: https://singha105.github.io/red-vs-blue-skies/ (`?debug=1` shows the FPS counter)
 Repo: https://github.com/singha105/red-vs-blue-skies
 
+## Day 8: Progression, unlocks, Firebase (2026-10-15)
+
+### Done
+
+- **Firebase project** `red-vs-blue-skies` on the free **Spark** plan (no billing). Created with the CLI (project, web app, config) plus the console for the Firebase terms, Firestore (Standard, nam5, production mode), the Anonymous and Google providers and the `singha105.github.io` authorized domain. The web config is in `src/profile/config.ts` (public by design). Rules deployed with `npm run rules:deploy`.
+- **SDK** (looked up 2026-10-15): Firebase JS v13 modular API. `firebase/auth` with `initializeAuth` (IndexedDB persistence) and `firebase/firestore/lite` (plain HTTPS: no listeners, no SDK cache, smaller). Both load only after the title screen is up, as a 63 KB gzip chunk; the main bundle grew 7 KB. The game never waits for Firebase.
+- **Auth**: anonymous sign-in on first launch; the uid persists in IndexedDB, so a returning player is known offline too. **Settings → Link Google account** uses `linkWithPopup`, because `signInWithRedirect` breaks on github.io in Chrome 115+, Firefox 109+ and Safari 16.1+ (third-party storage partitioning, per Firebase's redirect best-practices page). The popup opens straight from the tap so iPhone Safari allows it. If that Google account already has a profile (a second device), `auth/credential-already-in-use` signs this device into it (`credentialFromError` + `signInWithCredential`) and loads that progress. The guest progress on that device is left behind (judgment call: merging would be a cheat path).
+- **Profile** `players/{uid}`: callsign, rp, unlocked (highest tier per era), stats (kills, deaths, assists, matches, wins), friends (up to 50 uids you've flown with), lastMatch, lastUnlock, createdAt. It's cached in localStorage so plane select works offline.
+- **Match results**: the host creates `matches/{matchId}` with every human's uid (`MatchRecorder` in `hostServer.ts`) and sends `matchId` + uids in `start`; late joiners are added. The host computes RP with `computeResults` (the GAME_DESIGN formula) and sends the results. Each player then writes `matches/{id}/results/{uid}` and its profile increments in **one batch**. If the host leaves, everyone saves what they had so far (counted locally, still capped). Solo: this device creates the match and the result.
+- **Security rules** (`firestore.rules`, friends-grade anti-cheat): you write only your own profile; a new profile has 0 RP and tier 1 everywhere; RP and stats can only rise by exactly one result created in the same batch (its `createdAt` must equal the request time, so old results can't be replayed); one result per uid per match (create only); the uid must be a participant; the match must be under 1 hour old; at most 3,000 RP per result; RP can only fall by buying the next tier of one era at exactly 200 × tier, never below 0; the host can only append participants.
+- **Rules tests** (`npm run test:rules`, Firestore emulator, Java 22 already installed): 10 tests, including **a forged +100,000 RP write rejected** (four ways: direct, increment, as a result, a capped result with a bigger profile increment), **an out-of-order unlock rejected** (tier 10 or 3 with only tier 1, re-buying, setting the map directly), a replayed result, the 3,000 cap, non-participants, a match over an hour old, wrong price, two eras at once.
+- **Research screen** (`src/ui/research.ts`): one tree per era, 10 tier cards with silhouettes, Free / Unlocked / "Unlock · N RP" / "Need N RP" / "N RP · after tier N−1", each Unlock behind a confirmation ("You'll have N RP left"). Opens from the title, solo setup, the room lobby and results (between rounds), and the solo results. Buying needs a connection; the screen says so when offline.
+- **Real unlocks everywhere**: the Day 6 stub is gone (`OPEN_TIERS`, the room-wide unlock, `?rp=N`). Each player's hello carries uid, unlocks and RP earned; the host checks plane picks, defaults (your best unlocked plane) and respawn picks per player; a `profile` message updates the host after a purchase between rounds. Team balancing uses RP earned (balance + spent). "All unlocked" happens only with `?debug=1` **on localhost** (`env.allUnlocked`; `&locks=1` turns it off for testing), never on the live site.
+- **Offline**: results queue in localStorage (`rvbs.pending.v1`) and sync on start, on the browser's `online` event and every 60 s; retries are safe (create-only result, duplicates detected). Results screen: "RP saved to your profile." / "Saving RP…" / "RP saved on this device. It syncs when you're back online." The title shows callsign, RP, "+N syncing" and offline state. Solo works with no network at all; a solo result made offline syncs later (its match record is created at sync time).
+- **Friends leaderboard** (title → Leaderboard): you plus everyone you've shared a match with. Top RP (earned), Most kills, Best K/D. It reads those profiles (`documentId() in` batches of 30) at most every **5 minutes** (localStorage cache, Refresh disabled while fresh).
+- **Debug overlay** (`?debug=1`): under the fps, `FS match Xr+Yrr/Zw · session …` (reads, reads made by the rules, writes) for the current match including its saves.
+- **Tests**: 130 Vitest (+14: unlock costs/order/fresh player, unlock cleaning, result capping, applyResult, profile cleaning, friends merge, the offline queue (dedupe, storage round trip, forged entries capped), match ids, leaderboard ranking; host records the match with participant uids and adds late joiners; plane select follows each player's unlocks; a profile update between rounds). `npm run test:profile` starts the auth + Firestore emulators and runs `profile.spec` (4 tests, desktop + iPhone): after a solo match "RP saved", **RP still there after a reload with the local copy wiped**, research buys WW1 tiers 2 and 3 in order with the confirmation and refuses tier 4, the unlocks survive a reload and open in plane select; offline (Firestore blocked) the result waits and syncs when it's back; **a second browser context links the same Google account and gets the same uid, RP and Modern tier 2**. Playwright tests never touch the real Firebase (automated browsers stay offline unless `&fb=1` or `&emu=1`), and against the live site they pick tier-1 planes.
+- **Checked on the real project** (local dev server, in-app browser, 2026-10-15): anonymous sign-in, a solo match saved (3 writes, 2 rule reads), the RP came back after a reload with the cache wiped, the leaderboard read 1 profile.
+
+### Firestore usage (Spark limits: 50,000 reads, 20,000 writes, 20,000 deletes per day; 1 GiB stored; 10 GiB/month egress)
+
+Measured per match (emulator test and the real project): a solo match = 3 writes (match record, result, profile) + 2 rule reads; a network match = 1 write for the host's match record + 2 writes and 2 rule reads per player. Startup = 1 read (profile). Leaderboard = 1 read per profile shown.
+
+Estimate for **20 players × 20 matches a day** (400 player-matches):
+
+| What | Reads | Writes |
+| --- | --- | --- |
+| Results: 400 × (2 writes + 2 rule reads) | 800 | 800 |
+| Match records: worst case 400 (all solo); 20 if everyone plays in one room | – | 400 |
+| Startups: 20 players × 5 a day | 100 | – |
+| Unlocks (~3 a day each) and callsign changes | – | 80 |
+| Leaderboard: 20 players × 5 opens a day × 20 profiles (5-minute cache) | 2,000 | – |
+| **Total** | **2,900 (5.8% of 50,000)** | **1,280 (6.4% of 20,000)** |
+
+Deletes: 0. Storage: ~0.2 KB per result → ~80 KB a day. All well under 10%. The one thing that could push reads up is the leaderboard: opened after every match by everyone (20 × 20 × 20 = 8,000 reads) it would reach ~18% of reads, which is still inside the free tier.
+
+### Known issues
+
+- **Friends-grade anti-cheat**: a player can create a match record with only themselves in it and claim up to 3,000 RP per "match". The rules cap each claim, but they don't verify play (that would need Cloud Functions, i.e. Blaze).
+- Linking Google on a device that already has guest progress, when that Google account already has a profile, switches to the account and leaves the guest progress behind.
+- Unlocking needs a connection (no offline purchases). A result saved offline more than ~2 hours after a **network** match is dropped: the host's match record expires after 1 hour.
+- Unlocks are client-claimed in the lobby: the host trusts each player's unlock list (Firestore holds the truth; checking it would cost reads per player per round).
+- Locked planes can't be viewed in the hangar.
+- TURN still isn't configured (Day 5 issue).
+
+### Still to do for Day 8's done-when
+
+- On the live site: play a match, reload, then link Google and open the game on a second device (phone) to see the same RP and unlocks. The emulator test covers this flow; the real Google popup needs a person.
+
+### Next steps (Day 9)
+
+- The remaining prop plane models, Mountain Valley / Desert Mesas / Carrier Strike maps, Air Domination / Ground Strike / Bomber Escort, procedural sound and effects.
+
 ## Day 7: Missiles, countermeasures, jet models (2026-10-15)
 
 ### Done
@@ -55,7 +108,7 @@ Each preview was checked against the real aircraft's planform; a second pass wid
 
 ### Next steps (Day 8)
 
-- Progression, unlocks, Firebase.
+- Progression, unlocks, Firebase. Done, see Day 8.
 
 ## Day 6: Lobby, voting, teams, match flow (2026-10-15)
 

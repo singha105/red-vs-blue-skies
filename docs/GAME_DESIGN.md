@@ -108,6 +108,8 @@ Points are permanent and can be spent in any era's tree, unlocking tiers in orde
 
 Unlocking tier N costs 200 × N RP (tier 2 = 400, tier 10 = 2,000; a full era is about 10,800). A typical match with 3 kills earns about 600–700 RP, so a full era takes roughly 15 matches, faster for top players.
 
+As built (Day 8): RP and unlocks live in your Firebase profile (anonymous account, optionally linked to Google). Solo matches earn RP too. One match is worth at most 3,000 RP (a server rule; the client caps it the same way). Team balancing and the leaderboard's "Top RP" use everything you've earned (balance + spent), so buying planes doesn't make you look like a beginner. A new player flies tier 1 of every era.
+
 Worked example: a tier-3 player gets 2 kills on tier-5 planes (100 × 2 × 2 = 400), 1 kill on a tier-3 (100), 1 assist (40), 260% damage (260) and survives (30). Subtotal 830. Team wins: +25% = 207.5. Total 1,037.5, rounded to 1,038.
 
 ### Spawn points (SP)

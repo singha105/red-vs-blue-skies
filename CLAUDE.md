@@ -22,6 +22,9 @@ Always read docs/PROGRESS.md first. It says where the last session stopped.
 | `npm test` | Vitest unit tests (data validation and pure game logic) |
 | `npx playwright test` | Builds, serves (port 4187), and runs the browser tests: Desktop Chrome, iPhone 13 landscape (WebKit), and `perf` (GPU Chromium fps budget). Screenshots go to `tests/screenshots/` |
 | `npx playwright test --project perf` | Just the fps budget: high ≥ 55 fps, low ≥ 30 fps under 4× CPU throttling at phone size |
+| `npm run test:rules` | Firestore security rules tests on the local emulator (Java; ports 8187, hub/ws defaults) |
+| `npm run test:profile` | Starts the auth + Firestore emulators and runs `profile.spec` (RP saved, research, offline queue, Google linking on a second device) |
+| `npm run rules:deploy` | Deploy `firestore.rules` to the real project (`npx firebase login` first, with the Google account that owns the project) |
 | `npm run icons` | Regenerate the PWA roundel icons in `public/icons/` |
 | `npm run models` | Clean rebuild of every plane spec + weapon with headless Blender, meshopt-compress with gltf-transform, write `public/models/<era>/<id>.glb`, `public/models/manifest.json`, `src/data/planeModels.json` and previews; prints sizes. `npm run models -- f4e weapons` rebuilds only some |
 
@@ -40,11 +43,13 @@ src/
                  guidance, locks, flares/chaff, notching), sun (SUN_DIR for sky + IR seekers), world (planes,
                  bullets, damage, kills, respawn, spawn points, stepWorld), bots (AI → ControlInput), match (TDM,
                  humans + bots), teams (split by RP + parties, bot BR balancing), results (RP formula, awards),
-                 unlocks (tier stub until Day 8, spawn costs)
+                 unlocks (research trees: tiers in order, 200 × tier RP; spawn costs)
   render/        Three.js only: renderer, mapScene (sky, ocean, terrain LOD chunks, clouds, sun),
                  chaseCamera, planeMesh (merged, 1 draw call), tracers + effects (instanced pools), missiles
                  (missiles, trails, flares, chaff, afterburner glow), titleShot,
                  silhouettes (top-view card images rendered from the models)
+  profile/       progress (Day 8): model (pure: profile, results, queue, leaderboard ranking), cloud (Firebase
+                 Auth + Firestore Lite, lazy-loaded), store (cached profile, offline queue, sync), config (web config)
   app/           session.ts: what the renderer needs from a match (solo or networked); weapons.ts: cockpit
                  missile state (lock box, RWR, warnings, tones) and target picking
   net/           multiplayer: transport (interface), peerTransport (PeerJS, lazy-loaded), fakeTransport
@@ -53,7 +58,8 @@ src/
                  clientSession (prediction + interpolation, room/results/chat), roomCode, ice, hostAdvice
   ui/            HTML/CSS overlays: title, soloSetup, settingsPanel, HUD, results, touch controls,
                  netScreens (callsign, host/join), roomScreens (lobby, vote, teams, plane select, results,
-                 chat), respawn (plane picker with SP costs), rotate prompt, error overlay, FPS
+                 chat), respawn (plane picker with SP costs), research (unlock trees), leaderboard, rotate
+                 prompt, error overlay, FPS
   data/          JSON data files + types.ts + validate.ts (checked at startup)
   styles.css     global styles; fonts.css declares the self-hosted fonts
 public/
@@ -69,6 +75,7 @@ tools/
   make-icons.mjs icon generator
 tests/
   unit/          Vitest
+  rules/         Firestore rules tests (emulator, npm run test:rules)
   e2e/           Playwright
   screenshots/   Playwright output (committed so changes are visible in diffs)
 docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md
@@ -113,6 +120,14 @@ docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md
 - TURN: `VITE_TURN_DOMAIN` + `VITE_TURN_API_KEY` in `.env` (gitignored) and as GitHub Actions secrets for the deploy build. The Metered apiKey only fetches TURN credentials, so it's fine in the bundle; never put the Metered secret key anywhere.
 - Change the protocol in `src/net/protocol.ts` only, and keep `tests/unit/net.test.ts` (fake transport with delay/loss) passing. `tests/e2e/multiplayer.spec.ts` (movement, bandwidth, host left) and `multiplayer-loop.spec.ts` (two full rounds, BR check) run 1 host + 2 clients (one phone-sized) against a local PeerJS server (`tests/e2e/peer-server.mjs`, port 9187), or the public one with `BASE_URL`/`PUBLIC_SIGNAL=1`. Shared steps are in `tests/e2e/netHelpers.ts`.
 
+## Progress: Firebase (Day 8)
+
+- Firebase project `red-vs-blue-skies`, **Spark plan only** (never enable billing or Blaze-only features such as Cloud Functions or Storage). Web config in `src/profile/config.ts` (public by design). Console: https://console.firebase.google.com/project/red-vs-blue-skies
+- Anonymous sign-in on first launch (the uid persists in IndexedDB, so it works offline); Settings → "Link Google account" uses `linkWithPopup` (redirects break on github.io in Safari/Chrome). If that Google account already has a profile, the device switches to it.
+- Data: `players/{uid}` (callsign, rp, unlocked per era, stats, friends, lastMatch, lastUnlock, createdAt), `matches/{matchId}` (host, participants, createdAt), `matches/{id}/results/{uid}` (rp, kills, deaths, assists, won, createdAt). The host creates the match record (`MatchRecorder` in hostServer.ts) and sends `matchId` + uids in `start`; each player saves its own row in one batch with the profile increments.
+- `firestore.rules` is the anti-cheat: own profile only; RP rises only by a result created in the same batch (≤ 3,000, participant, match < 1 h old, once); RP falls only by buying the next tier at 200 × tier. Change the rules → `npm run test:rules` → `npm run rules:deploy`.
+- Offline: results queue in localStorage (`rvbs.pending.v1`) and sync on start, on the browser's `online` event and every 60 s. Firestore Lite (no listeners, no SDK cache). The game never waits for Firebase.
+
 ## Controls and URL flags
 
 - Mouse aim: the mouse moves the aim circle, the autopilot (`src/game/autopilot.ts`) flies the nose (small circle) onto it. Click to capture the mouse; if the browser refuses pointer lock, the cursor's offset from screen centre steers instead.
@@ -120,8 +135,8 @@ docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md
 - Touch: drag the right side to aim, a quick tap on an enemy picks it as the missile target, throttle slider on the left, Fire/Missile/Flare by the left thumb (the Missile button shows a lock ring), Level/Look top right.
 - Gamepad: left stick aim, right stick look, RT/LT throttle, A fire, B missile, X flare, RB next target, Y level.
 - Tab (or the Scores button) shows the scoreboard.
-- `?debug=1` FPS counter, all planes selectable, `window.__rvbs` test hooks; with debug, `?timescale=N` runs the sim N× faster and `?matchtime=S` shortens the match. `?gfx=low|medium|high` forces a quality level.
-- With `?debug=1`, `?rp=N` sets this player's (stub) research points, for testing team balancing.
+- `?debug=1` FPS counter plus Firestore reads/writes (this match and this session), `window.__rvbs` test hooks; all planes selectable **only on localhost** (`&locks=1` keeps the real unlocks); with debug, `?timescale=N` runs the sim N× faster and `?matchtime=S` shortens the match. `?gfx=low|medium|high` forces a quality level.
+- With `?debug=1`: `&emu=1` (localhost) uses the Firebase emulators, `&offline=1` pretends Firebase is unreachable. Automated browsers (Playwright) never touch the real Firebase unless the page has `&fb=1`.
 - `?room=CODE` opens the callsign step for that room (the lobby's share link and QR use it). With `?debug=1`, a network match shows ping, loss, snapshots/s and KB/s in and out, and `?signal=host:port` uses a local PeerJS signaling server.
 - `FULL_MATCH=1 npx playwright test match.spec` plays a full 10-minute match at 10× speed on both viewports.
 
