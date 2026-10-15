@@ -11,7 +11,9 @@
 import type { ControlInput } from '../game/controls';
 import type { PlaneState, Team } from '../game/flight';
 import type { Quat, Vec3 } from '../game/math';
-import type { GameEvent, Pilot, PilotStats } from '../game/world';
+import type { EraId } from '../data/types';
+import type { MatchResults } from '../game/results';
+import type { BotDifficulty, GameEvent, Pilot, PilotStats } from '../game/world';
 
 export const MSG_INPUT = 1;
 export const MSG_SNAPSHOT = 2;
@@ -31,9 +33,67 @@ export interface DeviceInfo {
   connection: string | null;
 }
 
+export type VoteCategory = 'era' | 'map' | 'mode';
+export const VOTE_CATEGORIES: readonly VoteCategory[] = ['era', 'map', 'mode'];
+
+/** Everything a client can ask for. The host checks each request against the room phase and the rules. */
 export type ClientMsg =
-  | { t: 'hello'; callsign: string; version: string; device: DeviceInfo }
-  | { t: 'chat'; text: string };
+  | { t: 'hello'; callsign: string; version: string; device: DeviceInfo; rp?: number }
+  | { t: 'chat'; text: string }
+  | { t: 'ready'; ready: boolean }
+  /** Join this player's party (null = leave your party). */
+  | { t: 'party'; with: string | null }
+  | { t: 'vote'; cat: VoteCategory; id: string }
+  | { t: 'pick'; planeId: string; lock: boolean }
+  /** Plane for your next respawn (respawn screen). */
+  | { t: 'respawn'; planeId: string }
+  /** Results screen: ready for the next round. */
+  | { t: 'again' };
+
+export type RoomPhase = 'lobby' | 'vote' | 'teams' | 'select' | 'playing' | 'results';
+
+export interface RoomSettings {
+  difficulty: BotDifficulty;
+  bots: boolean;
+  matchLengthS: number;
+}
+
+export interface RoomPlayer {
+  id: string;
+  name: string;
+  host: boolean;
+  pingMs: number | null;
+  device: DeviceInfo;
+  ready: boolean;
+  party: string | null;
+  /** Research points (a local stub until Day 8). */
+  rp: number;
+  team: Team | null;
+  planeId: string | null;
+  /** Plane select: confirmed. */
+  locked: boolean;
+  votes: Partial<Record<VoteCategory, string>>;
+  /** Flying in the current match (joins in progress included). */
+  inMatch: boolean;
+}
+
+/** The whole lobby, owned by the host and broadcast whenever it changes. */
+export interface RoomState {
+  phase: RoomPhase;
+  /** Milliseconds left on the current phase's timer (vote, teams, select, results), or null. */
+  endsInMs: number | null;
+  players: RoomPlayer[];
+  settings: RoomSettings;
+  /** Host overrides in the vote. */
+  overrides: Partial<Record<VoteCategory, string>>;
+  /** The vote's result, from the end of the vote until back in the lobby. */
+  choice: { era: EraId; mapId: string; mode: string } | null;
+  /** Total Battle Rating per team for the current match (humans + bots). */
+  br: Record<Team, number> | null;
+  /** Everything unlocked (the host runs with ?debug=1). */
+  allUnlocked: boolean;
+  round: number;
+}
 
 export interface LobbyPlayer {
   id: string;
@@ -52,13 +112,17 @@ export interface RosterEntry {
 export type HostMsg =
   | { t: 'welcome'; playerId: string; version: string; hostName: string }
   | { t: 'reject'; reason: string }
-  | { t: 'lobby'; players: LobbyPlayer[]; era: string; mapId: string }
+  | { t: 'room'; room: RoomState }
+  | { t: 'results'; results: MatchResults }
   | { t: 'start'; era: string; mapId: string; you: string; rosterVersion: number; roster: RosterEntry[]; pilots: Pilot[]; killLimit: number; tick: number }
   | { t: 'roster'; rosterVersion: number; roster: RosterEntry[]; pilots: Pilot[] }
   | { t: 'events'; events: GameEvent[] }
   | { t: 'stats'; stats: Record<string, PilotStats> }
   | { t: 'match'; state: 'playing' | 'ended'; winner: Team | 'draw' | null; score: Record<Team, number> }
-  | { t: 'chat'; from: string; text: string };
+  | { t: 'chat'; from: string; team: Team | null; text: string };
+
+export const QUICK_CHAT = ['Need help!', 'On my way', 'Nice shot', 'Good game'] as const;
+export const CHAT_MAX = 80;
 
 export const encodeJson = (m: ClientMsg | HostMsg): string => JSON.stringify(m);
 

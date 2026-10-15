@@ -30,6 +30,10 @@ export interface Session {
   pose(id: string, alpha: number, out: RenderPose): boolean;
   readonly ended: null | 'finished' | 'hostLeft';
   readonly net: NetStats | null;
+  /** Respawn screen: the plane for your next spawn (the host checks it and charges spawn points). */
+  chooseRespawn(planeId: string): void;
+  /** What you picked for the next spawn, or null for "same plane". */
+  readonly respawnChoice: string | null;
   dispose(): void;
 }
 
@@ -60,6 +64,12 @@ export function createSoloSession(ctx: WorldContext, opts: SoloOptions): Session
       stepMatch(match, ctx, input ? { [PLAYER_ID]: input } : {}, dt);
       for (const e of match.world.events) if (e.t === 'spawn') prev.delete(e.id);
       return match.world.events;
+    },
+    chooseRespawn(planeId) {
+      if (ctx.planeDefs.get(planeId)?.era === match.era) match.world.respawnPlane[PLAYER_ID] = planeId;
+    },
+    get respawnChoice() {
+      return match.world.respawnPlane[PLAYER_ID] ?? null;
     },
     pose(id, alpha, out) {
       const p = match.world.planes.find((x) => x.id === id);

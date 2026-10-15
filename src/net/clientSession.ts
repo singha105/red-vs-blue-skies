@@ -12,6 +12,7 @@ import { edgeTurnInput, stepPlane, type PlaneState, type Team } from '../game/fl
 import type { Quat, Vec3 } from '../game/math';
 import { addPilot, createWorld, createWorldContext, spawnPlane, type GameEvent, type PilotStats, type WorldContext, type WorldState } from '../game/world';
 import { lerp, nlerpQuat, type NetStats, type RenderPose, type Session } from '../app/session';
+import type { MatchResults } from '../game/results';
 import {
   decodeJson,
   decodePing,
@@ -25,9 +26,10 @@ import {
   MSG_PONG,
   MSG_SNAPSHOT,
   SNAPSHOT_HZ,
+  type ClientMsg,
   type DeviceInfo,
   type HostMsg,
-  type LobbyPlayer,
+  type RoomState,
   type RosterEntry,
   type Snapshot,
   type SnapshotPlane,
@@ -49,18 +51,33 @@ interface Buffered {
 
 export type ClientPhase = 'connecting' | 'lobby' | 'playing' | 'ended' | 'closed' | 'rejected';
 
+export interface ChatLine {
+  from: string;
+  team: Team | null;
+  text: string;
+}
+
 export interface ClientEvents {
   onWelcome?(playerId: string, hostName: string): void;
-  onLobby?(players: LobbyPlayer[], era: string): void;
+  /** The host's room changed (phase, players, votes, timers). */
+  onRoom?(room: RoomState): void;
   onStart?(session: ClientSession): void;
+  onResults?(results: MatchResults): void;
+  onChat?(line: ChatLine): void;
   onReject?(reason: string): void;
   onClosed?(): void;
 }
 
 export interface ClientSession extends Session {
   readonly phase: ClientPhase;
-  readonly lobbyPlayers: LobbyPlayer[];
+  readonly room: RoomState | null;
+  /** Milliseconds left on the room's phase timer, counted down locally between updates. */
+  timeLeftMs(): number | null;
+  readonly results: MatchResults | null;
+  readonly chat: readonly ChatLine[];
   readonly rejectReason: string | null;
+  /** Ask the host for something (ready, vote, pick a plane, chat…). */
+  request(m: ClientMsg): void;
   /** Feed real time to the session while not in a match (lobby pings, stats). */
   idle(dt: number): void;
 }
@@ -68,7 +85,7 @@ export interface ClientSession extends Session {
 export function createClientSession(
   transport: ClientTransport,
   data: GameData,
-  opts: { version: string; callsign: string; device: DeviceInfo; now?: () => number; assist?: number },
+  opts: { version: string; callsign: string; device: DeviceInfo; rp?: number; now?: () => number; assist?: number },
   events: ClientEvents = {},
 ): ClientSession {
   const now = opts.now ?? (() => performance.now());
@@ -78,7 +95,11 @@ export function createClientSession(
   let world: WorldState | null = null;
   let roster: RosterEntry[] = [];
   let rosterVersion = 0;
-  let lobbyPlayers: LobbyPlayer[] = [];
+  let respawnChoice: string | null = null;
+  let room: RoomState | null = null;
+  let roomAt = 0;
+  let results: MatchResults | null = null;
+  const chat: ChatLine[] = [];
   let rejectReason: string | null = null;
   let ended: Session['ended'] = null;
   const pendingEvents: GameEvent[] = [];
@@ -135,7 +156,11 @@ export function createClientSession(
     if (!world || !ctx) return;
     const w = world;
     const byId = new Map(w.planes.map((p) => [p.id, p]));
-    w.planes = r.map((e) => byId.get(e.id) ?? spawnPlane(w, ctx!, { id: e.id, team: e.team, planeId: e.planeId }));
+    // A plane that came back as a different type is rebuilt (its state arrives with the next snapshot).
+    w.planes = r.map((e) => {
+      const p = byId.get(e.id);
+      return p && p.planeId === e.planeId ? p : spawnPlane(w, ctx!, { id: e.id, team: e.team, planeId: e.planeId });
+    });
     for (const p of pilots) addPilot(w, p);
     for (const p of pilots) w.pilots[p.id] = p;
     for (const id of Object.keys(w.pilots)) if (!pilots.some((p) => p.id === id)) delete w.pilots[id];
@@ -246,11 +271,28 @@ export function createClientSession(
         phase = 'rejected';
         events.onReject?.(m.reason);
         break;
-      case 'lobby':
-        lobbyPlayers = m.players;
-        events.onLobby?.(m.players, m.era);
+      case 'room':
+        room = m.room;
+        roomAt = now();
+        if (phase === 'ended' && m.room.phase !== 'playing') phase = 'lobby';
+        events.onRoom?.(m.room);
+        break;
+      case 'results':
+        results = m.results;
+        events.onResults?.(m.results);
         break;
       case 'start':
+        // A new round on the same connection: forget everything about the last match.
+        ended = null;
+        latest = null;
+        synced = false;
+        lastSnapTick = -1;
+        history.length = 0;
+        tickInInput = 0;
+        smooth.pos = [0, 0, 0];
+        pendingEvents.length = 0;
+        results = null;
+        respawnChoice = null;
         playerId = m.you;
         roster = m.roster;
         rosterVersion = m.rosterVersion;
@@ -282,8 +324,13 @@ export function createClientSession(
           phase = 'ended';
         }
         break;
-      case 'chat':
+      case 'chat': {
+        const line = { from: String(m.from).slice(0, 16), team: m.team === 'red' || m.team === 'blue' ? m.team : null, text: String(m.text).slice(0, 80) };
+        chat.push(line);
+        while (chat.length > 30) chat.shift();
+        events.onChat?.(line);
         break;
+      }
     }
   };
 
@@ -313,11 +360,11 @@ export function createClientSession(
     events.onClosed?.();
   });
 
-  send('reliable', encodeJson({ t: 'hello', callsign: opts.callsign, version: opts.version, device: opts.device }));
+  send('reliable', encodeJson({ t: 'hello', callsign: opts.callsign, version: opts.version, device: opts.device, rp: opts.rp ?? 0 }));
 
   const updateStats = (): void => {
     const t = now();
-    if ((phase === 'playing' || phase === 'lobby') && t - lastHeard > SILENCE_MS) {
+    if ((phase === 'playing' || phase === 'lobby' || phase === 'ended') && t - lastHeard > SILENCE_MS) {
       if (phase === 'playing') ended = 'hostLeft';
       phase = 'closed';
       events.onClosed?.();
@@ -384,8 +431,26 @@ export function createClientSession(
     get phase() {
       return phase;
     },
-    get lobbyPlayers() {
-      return lobbyPlayers;
+    get room() {
+      return room;
+    },
+    timeLeftMs() {
+      if (!room || room.endsInMs === null) return null;
+      return Math.max(0, room.endsInMs - (now() - roomAt));
+    },
+    get results() {
+      return results;
+    },
+    chat,
+    request(m) {
+      send('reliable', encodeJson(m));
+    },
+    chooseRespawn(planeId) {
+      respawnChoice = planeId;
+      send('reliable', encodeJson({ t: 'respawn', planeId }));
+    },
+    get respawnChoice() {
+      return respawnChoice;
     },
     get rejectReason() {
       return rejectReason;

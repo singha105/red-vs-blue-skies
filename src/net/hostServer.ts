@@ -1,10 +1,14 @@
-// The authoritative host. It runs the real match (bots included) and is the only one that decides hits,
-// damage, kills and scores. Clients only ever send ControlInput, which is validated and clamped here.
-import type { EraId } from '../data/types';
+// The authoritative host. It owns the room (lobby, vote, teams, plane select, results; see room.ts) and runs
+// the real match (bots included). It is the only one that decides hits, damage, kills and scores. Clients
+// only send ControlInput and requests (ready, vote, pick a plane…), which are validated here.
+import type { GameData } from '../data/types';
 import { neutralInput, type ControlInput } from '../game/controls';
-import { addHumanToMatch, botTakeOver, createMatch, stepMatch, type HumanSlot, type Match } from '../game/match';
-import type { BotDifficulty, GameEvent, WorldContext } from '../game/world';
+import type { Team } from '../game/flight';
+import { addHumanToMatch, botTakeOver, createMatch, rebalanceBots, stepMatch, type Match } from '../game/match';
+import { computeResults, type MatchResults } from '../game/results';
+import { createWorldContext, type GameEvent, type WorldContext } from '../game/world';
 import {
+  CHAT_MAX,
   cleanCallsign,
   decodeInput,
   decodeJson,
@@ -17,29 +21,37 @@ import {
   MSG_PING,
   MSG_PONG,
   SNAPSHOT_HZ,
+  VOTE_CATEGORIES,
   type ClientMsg,
   type DeviceInfo,
   type HostMsg,
-  type LobbyPlayer,
+  type RoomPhase,
+  type RoomSettings,
+  type RoomState,
   type RosterEntry,
+  type VoteCategory,
 } from './protocol';
+import { createRoom, type Room } from './room';
 import { payloadBytes, type Channel, type HostTransport, type Payload } from './transport';
 
 export const MAX_PLAYERS = 20;
 export const TAKEOVER_S = 10;
 const MAX_INPUTS_PER_S = 70; // clients send 30/s; anything far above that is ignored
+const MAX_REQUESTS_PER_S = 10; // lobby requests (votes, picks, chat…)
+const CHAT_PER_S = 1;
+const SILENCE_MS = 8000;
 
 interface ClientRec {
   peerId: string;
   playerId: string;
   name: string;
-  device: DeviceInfo;
   welcomed: boolean;
   isHost: boolean;
   lastSeq: number;
   input: ControlInput;
   tokens: number;
-  pingMs: number | null;
+  requests: number;
+  chat: number;
   connected: boolean;
   leftAt: number;
   inMatch: boolean;
@@ -48,16 +60,16 @@ interface ClientRec {
 
 export interface HostOptions {
   version: string;
-  era: EraId;
-  mapId: string;
-  difficulty: BotDifficulty;
-  /** Picks the plane a newly joined player flies (Day 6 adds a plane picker). */
-  planeFor(playerIndex: number): string;
-  timeLimitS?: number;
+  settings: RoomSettings;
+  /** The host runs with ?debug=1: every plane may be picked. */
+  allUnlocked: boolean;
+  /** Debug: override the match length (?matchtime=30). */
+  matchTimeS?: number;
   killLimit?: number;
-  /** Peer id of the host's own loopback client, so it can be marked as the host in the lobby. */
+  /** Peer id of the host's own loopback client, so it can be marked as the host. */
   hostPeerId?: string;
   now?: () => number;
+  random?: () => number;
 }
 
 export interface NetCounters {
@@ -68,30 +80,43 @@ export interface NetCounters {
 }
 
 export interface HostServer {
-  readonly state: 'lobby' | 'playing' | 'ended';
+  readonly phase: RoomPhase;
   readonly match: Match | null;
+  readonly ctx: WorldContext | null;
   readonly counters: NetCounters;
-  lobby(): LobbyPlayer[];
-  start(): void;
+  readonly results: MatchResults | null;
+  room(): RoomState;
+  // Host-only controls (the host's UI calls these directly).
+  startVote(): boolean;
+  override(cat: VoteCategory, id: string | null): void;
+  setSettings(s: Partial<RoomSettings>): void;
+  kick(playerId: string): void;
+  playAgain(): void;
   tick(dt: number): void;
-  setDifficulty(d: BotDifficulty): void;
   close(): void;
 }
 
-export function createHostServer(ctx: WorldContext, transport: HostTransport, opts: HostOptions): HostServer {
+const cleanChat = (raw: unknown): string =>
+  typeof raw === 'string' ? raw.replace(/[<>&"'`\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX) : '';
+
+export function createHostServer(data: GameData, transport: HostTransport, opts: HostOptions): HostServer {
   const now = opts.now ?? (() => performance.now());
+  const random = opts.random ?? Math.random;
   const clients = new Map<string, ClientRec>();
   const counters: NetCounters = { bytesIn: 0, bytesOut: 0, inputsAccepted: 0 };
-  let state: 'lobby' | 'playing' | 'ended' = 'lobby';
+  const room: Room = createRoom(data, { allUnlocked: opts.allUnlocked, settings: opts.settings, random });
   let match: Match | null = null;
+  let ctx: WorldContext | null = null;
+  let results: MatchResults | null = null;
   let rosterVersion = 0;
+  const rosterPlanes = new Map<string, string>();
   let nextPlayer = 1;
   let tickCount = 0;
   let pingId = 0;
-  let lastLobbySent = 0;
   let lastPing = 0;
   let lastStats = 0;
-  let difficulty = opts.difficulty;
+  let sentVersion = 0;
+  let lastRoomSent = 0;
 
   const send = (peerId: string, channel: Channel, data: Payload): void => {
     counters.bytesOut += payloadBytes(data);
@@ -102,21 +127,24 @@ export function createHostServer(ctx: WorldContext, transport: HostTransport, op
     const data = encodeJson(m);
     for (const c of clients.values()) if (filter(c)) send(c.peerId, 'reliable', data);
   };
-
-  const lobbyPlayers = (): LobbyPlayer[] =>
-    [...clients.values()]
-      .filter((c) => c.welcomed && c.connected)
-      .map((c) => ({ id: c.playerId, name: c.name, host: c.isHost, pingMs: c.isHost ? 0 : c.pingMs, device: c.device }));
+  const inMatch = (c: ClientRec): boolean => c.inMatch && c.connected;
+  const byPlayer = (id: string): ClientRec | undefined => [...clients.values()].find((c) => c.playerId === id);
 
   const roster = (): RosterEntry[] => (match ? match.world.planes.map((p) => ({ id: p.id, planeId: p.planeId, team: p.team })) : []);
   const pilots = () => (match ? Object.values(match.world.pilots) : []);
+  const sendRoster = (): void => {
+    rosterVersion = (rosterVersion + 1) & 0xff;
+    rosterPlanes.clear();
+    if (match) for (const p of match.world.planes) rosterPlanes.set(p.id, p.planeId);
+    broadcast({ t: 'roster', rosterVersion, roster: roster(), pilots: pilots() }, inMatch);
+  };
 
   const sendStart = (c: ClientRec): void => {
-    if (!match) return;
+    if (!match || !ctx || !room.choice) return;
     sendMsg(c.peerId, {
       t: 'start',
-      era: opts.era,
-      mapId: opts.mapId,
+      era: room.choice.era,
+      mapId: room.choice.mapId,
       you: c.playerId,
       rosterVersion,
       roster: roster(),
@@ -127,7 +155,58 @@ export function createHostServer(ctx: WorldContext, transport: HostTransport, op
     c.inMatch = true;
   };
 
-  const humanSlot = (c: ClientRec, index: number): HumanSlot => ({ id: c.playerId, name: c.name, planeId: opts.planeFor(index) });
+  const teamBr = (m: Match, c: WorldContext): Record<Team, number> => {
+    const br = { blue: 0, red: 0 };
+    for (const p of m.world.planes) br[p.team] += c.planeDefs.get(p.planeId)?.br ?? 0;
+    return { blue: Math.round(br.blue * 10) / 10, red: Math.round(br.red * 10) / 10 };
+  };
+
+  const startMatch = (): void => {
+    const choice = room.choice;
+    if (!choice) return;
+    ctx = createWorldContext(data, choice.mapId);
+    const killLimit = opts.killLimit ?? data.modes.find((m) => m.id === choice.mode)?.killLimit;
+    const players = room.players();
+    match = createMatch(ctx, {
+      era: choice.era,
+      difficulty: room.settings.difficulty,
+      humans: players.map((p) => ({ id: p.id, name: p.name, planeId: p.planeId!, team: p.team ?? 'blue' })),
+      bots: room.settings.bots,
+      timeLimitS: opts.matchTimeS ?? room.settings.matchLengthS,
+      ...(killLimit ? { killLimit } : {}),
+      spawnRules: true,
+    });
+    results = null;
+    room.setBr(teamBr(match, ctx));
+    rosterVersion = (rosterVersion + 1) & 0xff;
+    rosterPlanes.clear();
+    for (const p of match.world.planes) rosterPlanes.set(p.id, p.planeId);
+    for (const c of clients.values()) {
+      c.inMatch = false;
+      c.lastSeq = 0;
+      c.input = neutralInput();
+      if (c.welcomed && c.connected && room.get(c.playerId)) sendStart(c);
+    }
+  };
+
+  /** A newcomer during a match takes a bot's seat on the team with fewer humans. */
+  const joinInProgress = (c: ClientRec): void => {
+    if (!match || !ctx || !room.choice) return;
+    const p = room.get(c.playerId);
+    if (!p) return;
+    const planeId = p.planeId && room.allowedPlane(p.planeId) ? p.planeId : room.defaultPlane(room.choice.era);
+    const team = addHumanToMatch(match, ctx, { id: c.playerId, name: c.name, planeId });
+    if (!team) {
+      sendMsg(c.peerId, { t: 'reject', reason: 'This match is full.' });
+      setTimeout(() => transport.kick(c.peerId), 400);
+      return;
+    }
+    room.joinedMatch(c.playerId, team);
+    rebalanceBots(match, ctx);
+    room.setBr(teamBr(match, ctx));
+    sendRoster();
+    sendStart(c);
+  };
 
   const onHello = (c: ClientRec, m: Extract<ClientMsg, { t: 'hello' }>): void => {
     if (c.welcomed) return;
@@ -136,28 +215,64 @@ export function createHostServer(ctx: WorldContext, transport: HostTransport, op
       setTimeout(() => transport.kick(c.peerId), 400);
       return;
     }
-    const active = [...clients.values()].filter((x) => x.welcomed && x.connected).length;
-    if (active >= MAX_PLAYERS) {
+    if (room.players().length >= MAX_PLAYERS) {
       sendMsg(c.peerId, { t: 'reject', reason: 'This room is full.' });
       setTimeout(() => transport.kick(c.peerId), 400);
       return;
     }
     c.name = cleanCallsign(m.callsign);
-    c.device = { touch: Boolean(m.device?.touch), connection: typeof m.device?.connection === 'string' ? m.device.connection.slice(0, 16) : null };
+    const device: DeviceInfo = { touch: Boolean(m.device?.touch), connection: typeof m.device?.connection === 'string' ? m.device.connection.slice(0, 16) : null };
     c.welcomed = true;
     c.isHost = c.peerId === opts.hostPeerId;
-    sendMsg(c.peerId, { t: 'welcome', playerId: c.playerId, version: opts.version, hostName: [...clients.values()].find((x) => x.isHost)?.name ?? c.name });
-    if (state === 'playing' && match) {
-      const team = addHumanToMatch(match, ctx, humanSlot(c, nextPlayer));
-      if (!team) {
-        sendMsg(c.peerId, { t: 'reject', reason: 'This match is full.' });
-        return;
+    const rp = typeof m.rp === 'number' && Number.isFinite(m.rp) ? m.rp : 0;
+    room.add({ id: c.playerId, name: c.name, host: c.isHost, device, rp });
+    const hostName = room.players().find((p) => p.host)?.name ?? c.name;
+    sendMsg(c.peerId, { t: 'welcome', playerId: c.playerId, version: opts.version, hostName });
+    sendMsg(c.peerId, { t: 'room', room: room.state(now()) });
+    if (room.phase === 'playing') joinInProgress(c);
+    if (room.phase === 'results' && results) sendMsg(c.peerId, { t: 'results', results });
+  };
+
+  const onRequest = (c: ClientRec, m: ClientMsg): void => {
+    if (!c.welcomed) return;
+    if (c.requests < 1) return;
+    c.requests -= 1;
+    const id = c.playerId;
+    switch (m.t) {
+      case 'ready':
+        room.ready(id, Boolean(m.ready));
+        break;
+      case 'party':
+        room.party(id, typeof m.with === 'string' ? m.with : null);
+        break;
+      case 'vote':
+        if (VOTE_CATEGORIES.includes(m.cat) && typeof m.id === 'string') room.vote(id, m.cat, m.id);
+        break;
+      case 'pick':
+        if (typeof m.planeId === 'string') room.pick(id, m.planeId, Boolean(m.lock));
+        break;
+      case 'respawn':
+        if (match && ctx && room.phase === 'playing' && typeof m.planeId === 'string' && room.allowedPlane(m.planeId) && match.world.pilots[id] && !match.world.pilots[id]!.bot) {
+          match.world.respawnPlane[id] = m.planeId;
+          const p = room.get(id);
+          if (p) p.planeId = m.planeId;
+          // Bots re-pick at their next respawn so the teams stay even.
+          rebalanceBots(match, ctx);
+        }
+        break;
+      case 'again':
+        room.again(id);
+        break;
+      case 'chat': {
+        if (c.chat < 1) return;
+        c.chat -= 1;
+        const text = cleanChat(m.text);
+        if (text) broadcast({ t: 'chat', from: c.name, team: room.get(id)?.team ?? null, text });
+        break;
       }
-      rosterVersion = (rosterVersion + 1) & 0xff;
-      broadcast({ t: 'roster', rosterVersion, roster: roster(), pilots: pilots() }, (x) => x.inMatch && x.connected);
-      sendStart(c);
+      case 'hello':
+        break;
     }
-    lastLobbySent = 0;
   };
 
   transport.onPeer((peerId) => {
@@ -165,13 +280,13 @@ export function createHostServer(ctx: WorldContext, transport: HostTransport, op
       peerId,
       playerId: `h${nextPlayer++}`,
       name: 'Pilot',
-      device: { touch: false, connection: null },
       welcomed: false,
       isHost: false,
       lastSeq: 0,
       input: neutralInput(),
       tokens: MAX_INPUTS_PER_S,
-      pingMs: null,
+      requests: MAX_REQUESTS_PER_S,
+      chat: 3,
       connected: true,
       leftAt: 0,
       inMatch: false,
@@ -185,11 +300,12 @@ export function createHostServer(ctx: WorldContext, transport: HostTransport, op
     c.connected = false;
     c.leftAt = now();
     c.input = neutralInput(c.input.throttle);
-    if (state === 'lobby') clients.delete(peerId);
-    lastLobbySent = 0;
+    room.remove(c.playerId);
+    // Mid-match their plane flies on (hands off) and a bot takes over after 10 s.
+    if (!(c.inMatch && match && room.phase === 'playing')) clients.delete(peerId);
   });
 
-  transport.onMessage((peerId, channel, data) => {
+  transport.onMessage((peerId, _channel, data) => {
     const c = clients.get(peerId);
     if (!c) return;
     counters.bytesIn += payloadBytes(data);
@@ -198,12 +314,12 @@ export function createHostServer(ctx: WorldContext, transport: HostTransport, op
       const m = decodeJson<ClientMsg>(data);
       if (!m) return;
       if (m.t === 'hello') onHello(c, m);
-      else if (m.t === 'chat' && c.welcomed) broadcast({ t: 'chat', from: c.name, text: cleanCallsign(m.text).slice(0, 80) });
+      else onRequest(c, m);
       return;
     }
     const type = messageType(data);
     if (type === MSG_INPUT) {
-      if (!c.welcomed || state !== 'playing') return;
+      if (!c.welcomed || !c.inMatch || room.phase !== 'playing') return;
       if (c.tokens < 1) return; // flooding: drop
       c.tokens -= 1;
       const decoded = decodeInput(data);
@@ -215,118 +331,146 @@ export function createHostServer(ctx: WorldContext, transport: HostTransport, op
       const p = decodePing(data);
       if (!p) return;
       if (p.type === MSG_PING) send(peerId, 'unreliable', encodePing(MSG_PONG, p.id, p.time));
-      else c.pingMs = Math.max(0, now() - p.time);
+      else room.setPing(c.playerId, Math.round(Math.max(0, now() - p.time)));
     }
-    void channel;
   });
 
   const ticksPerSnapshot = Math.round(60 / SNAPSHOT_HZ);
 
+  const stepTheMatch = (m: Match, c: WorldContext, t: number, dt: number): void => {
+    // Players who left more than 10 s ago are handed to a bot.
+    for (const rec of [...clients.values()]) {
+      if (!rec.connected && rec.inMatch && t - rec.leftAt > TAKEOVER_S * 1000) {
+        botTakeOver(m, rec.playerId);
+        clients.delete(rec.peerId);
+        rebalanceBots(m, c);
+        broadcast({ t: 'roster', rosterVersion, roster: roster(), pilots: pilots() }, inMatch);
+      }
+    }
+
+    const inputs: Record<string, ControlInput> = {};
+    for (const rec of clients.values()) if (rec.inMatch && !m.world.pilots[rec.playerId]?.bot) inputs[rec.playerId] = rec.input;
+    stepMatch(m, c, inputs, dt);
+    tickCount++;
+    const w = m.world;
+
+    // A respawn in a different plane (respawn screen, bot rebalancing, out of SP) changes the roster.
+    if (w.events.some((e) => e.t === 'spawn' && rosterPlanes.get(e.id) !== w.planes.find((p) => p.id === e.id)?.planeId)) sendRoster();
+
+    // Events: hits only to the two pilots involved; everything else to everyone.
+    if (w.events.length > 0) {
+      const general: GameEvent[] = [];
+      const personal = new Map<string, GameEvent[]>();
+      for (const e of w.events) {
+        if (e.t === 'hit') {
+          for (const id of [e.shooter, e.victim]) {
+            const list = personal.get(id) ?? [];
+            list.push(e);
+            personal.set(id, list);
+          }
+        } else general.push(e);
+      }
+      for (const rec of clients.values()) {
+        if (!inMatch(rec)) continue;
+        const mine = personal.get(rec.playerId) ?? [];
+        if (general.length + mine.length > 0) sendMsg(rec.peerId, { t: 'events', events: [...general, ...mine] });
+      }
+      if (w.events.some((e) => e.t === 'kill')) lastStats = 0;
+    }
+    if (t - lastStats > 1000) {
+      lastStats = t;
+      broadcast({ t: 'stats', stats: w.stats }, inMatch);
+    }
+
+    if (tickCount % ticksPerSnapshot === 0 || w.match.state === 'ended') {
+      for (const rec of clients.values()) {
+        if (!inMatch(rec)) continue;
+        const own = w.planes.find((p) => p.id === rec.playerId);
+        const snap = encodeSnapshot(
+          { rosterVersion, tick: w.tick, ackSeq: rec.lastSeq, timeLeftS: w.match.timeLeftS, score: w.match.score, ended: w.match.state === 'ended' },
+          w.planes,
+          own?.ammo ?? [],
+        );
+        send(rec.peerId, 'unreliable', snap);
+      }
+    }
+    if (w.match.state === 'ended') {
+      results = computeResults(w, room.state(t).br);
+      broadcast({ t: 'stats', stats: w.stats }, inMatch);
+      broadcast({ t: 'match', state: 'ended', winner: w.match.winner, score: w.match.score }, inMatch);
+      broadcast({ t: 'results', results });
+      room.matchEnded(t);
+    }
+  };
+
   const api: HostServer = {
-    get state() {
-      return state;
+    get phase() {
+      return room.phase;
     },
     get match() {
       return match;
     },
-    counters,
-    lobby: lobbyPlayers,
-    setDifficulty(d) {
-      difficulty = d;
+    get ctx() {
+      return ctx;
     },
-    start() {
-      if (state !== 'lobby') return;
-      const humans = [...clients.values()].filter((c) => c.welcomed && c.connected);
-      // The host plays blue first, then teams alternate.
-      humans.sort((a, b) => Number(b.isHost) - Number(a.isHost));
-      match = createMatch(ctx, {
-        era: opts.era,
-        difficulty,
-        humans: humans.map((c, i) => humanSlot(c, i)),
-        ...(opts.timeLimitS ? { timeLimitS: opts.timeLimitS } : {}),
-        ...(opts.killLimit ? { killLimit: opts.killLimit } : {}),
-      });
-      state = 'playing';
-      rosterVersion = 1;
-      for (const c of humans) sendStart(c);
+    get results() {
+      return results;
+    },
+    counters,
+    room: () => room.state(now()),
+    startVote: () => room.startVote(now()),
+    override: (cat, id) => {
+      room.override(cat, id);
+    },
+    setSettings: (s) => room.setSettings(s),
+    kick(playerId) {
+      const c = byPlayer(playerId);
+      if (!c || c.isHost) return;
+      sendMsg(c.peerId, { t: 'reject', reason: 'The host removed you from the room.' });
+      room.remove(playerId);
+      if (match && ctx && c.inMatch) {
+        botTakeOver(match, playerId);
+        rebalanceBots(match, ctx);
+        broadcast({ t: 'roster', rosterVersion, roster: roster(), pilots: pilots() }, inMatch);
+      }
+      c.inMatch = false;
+      setTimeout(() => transport.kick(c.peerId), 300);
+    },
+    playAgain() {
+      room.playAgain();
     },
     tick(dt) {
       const t = now();
-      for (const c of clients.values()) c.tokens = Math.min(MAX_INPUTS_PER_S, c.tokens + MAX_INPUTS_PER_S * dt);
-
+      for (const c of clients.values()) {
+        c.tokens = Math.min(MAX_INPUTS_PER_S, c.tokens + MAX_INPUTS_PER_S * dt);
+        c.requests = Math.min(MAX_REQUESTS_PER_S, c.requests + MAX_REQUESTS_PER_S * dt);
+        c.chat = Math.min(3, c.chat + CHAT_PER_S * dt);
+      }
       // Clients answer pings every second; 8 s of silence means the connection died without a close.
       for (const c of clients.values()) {
-        if (c.connected && c.welcomed && !c.isHost && t - c.lastHeard > 8000) transport.kick(c.peerId);
+        if (c.connected && c.welcomed && !c.isHost && t - c.lastHeard > SILENCE_MS) transport.kick(c.peerId);
       }
       if (t - lastPing > 1000) {
         lastPing = t;
         for (const c of clients.values()) if (c.welcomed && c.connected && !c.isHost) send(c.peerId, 'unreliable', encodePing(MSG_PING, pingId++, t));
       }
-      if (state === 'lobby') {
-        if (t - lastLobbySent > 1000) {
-          lastLobbySent = t;
-          broadcast({ t: 'lobby', players: lobbyPlayers(), era: opts.era, mapId: opts.mapId });
-        }
-        return;
-      }
-      if (!match || state === 'ended') return;
 
-      // Players who left more than 10 s ago are handed to a bot.
-      for (const c of clients.values()) {
-        if (!c.connected && c.inMatch && t - c.leftAt > TAKEOVER_S * 1000) {
-          botTakeOver(match, c.playerId);
-          clients.delete(c.peerId);
-          broadcast({ t: 'roster', rosterVersion, roster: roster(), pilots: pilots() }, (x) => x.inMatch && x.connected);
+      const wasPhase = room.phase;
+      if (room.tick(t) === 'start') startMatch();
+      if (wasPhase === 'results' && room.phase === 'lobby') {
+        match = null;
+        for (const [peerId, c] of clients) {
+          c.inMatch = false;
+          if (!c.connected) clients.delete(peerId);
         }
       }
+      if (match && ctx && room.phase === 'playing') stepTheMatch(match, ctx, t, dt);
 
-      const inputs: Record<string, ControlInput> = {};
-      for (const c of clients.values()) if (c.inMatch && !match.world.pilots[c.playerId]?.bot) inputs[c.playerId] = c.input;
-      stepMatch(match, ctx, inputs, dt);
-      tickCount++;
-      const w = match.world;
-
-      // Events: hits only to the two pilots involved; everything else to everyone.
-      if (w.events.length > 0) {
-        const general: GameEvent[] = [];
-        const personal = new Map<string, GameEvent[]>();
-        for (const e of w.events) {
-          if (e.t === 'hit') {
-            for (const id of [e.shooter, e.victim]) {
-              const list = personal.get(id) ?? [];
-              list.push(e);
-              personal.set(id, list);
-            }
-          } else general.push(e);
-        }
-        for (const c of clients.values()) {
-          if (!c.inMatch || !c.connected) continue;
-          const mine = personal.get(c.playerId) ?? [];
-          if (general.length + mine.length > 0) sendMsg(c.peerId, { t: 'events', events: [...general, ...mine] });
-        }
-        if (w.events.some((e) => e.t === 'kill')) lastStats = 0;
-      }
-      if (t - lastStats > 1000) {
-        lastStats = t;
-        broadcast({ t: 'stats', stats: w.stats }, (c) => c.inMatch && c.connected);
-      }
-
-      if (tickCount % ticksPerSnapshot === 0 || w.match.state === 'ended') {
-        for (const c of clients.values()) {
-          if (!c.inMatch || !c.connected) continue;
-          const own = w.planes.find((p) => p.id === c.playerId);
-          const snap = encodeSnapshot(
-            { rosterVersion, tick: w.tick, ackSeq: c.lastSeq, timeLeftS: w.match.timeLeftS, score: w.match.score, ended: w.match.state === 'ended' },
-            w.planes,
-            own?.ammo ?? [],
-          );
-          send(c.peerId, 'unreliable', snap);
-        }
-      }
-      if (w.match.state === 'ended') {
-        state = 'ended';
-        broadcast({ t: 'stats', stats: w.stats }, (c) => c.inMatch && c.connected);
-        broadcast({ t: 'match', state: 'ended', winner: w.match.winner, score: w.match.score }, (c) => c.inMatch && c.connected);
+      // The room goes out when it changes (at most 10/s) and once a second for pings and timers.
+      if ((room.version !== sentVersion && t - lastRoomSent > 100) || t - lastRoomSent > 1000) {
+        sentVersion = room.version;
+        lastRoomSent = t;
+        broadcast({ t: 'room', room: room.state(t) });
       }
     },
     close() {

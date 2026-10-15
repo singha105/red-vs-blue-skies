@@ -3,7 +3,6 @@ import { loadGameData } from '../../src/data';
 import type { ControlInput } from '../../src/game/controls';
 import { neutralInput } from '../../src/game/controls';
 import { createRng } from '../../src/game/rng';
-import { createWorldContext } from '../../src/game/world';
 import { createClientSession, type ClientSession } from '../../src/net/clientSession';
 import { createFakeNetwork, type FakeNetwork } from '../../src/net/fakeTransport';
 import { createHostServer, type HostServer } from '../../src/net/hostServer';
@@ -16,15 +15,35 @@ import {
   PLANE_BYTES,
   unpackQuat,
 } from '../../src/net/protocol';
+import { createRoom, PARTY_MAX, TEAMS_S, voteCounts } from '../../src/net/room';
 import { makeRoomCode, parseRoomCode, ROOM_ALPHABET } from '../../src/net/roomCode';
+import { brGap } from '../../src/game/teams';
 import type { Quat } from '../../src/game/math';
 
 const result = loadGameData();
 if (!result.ok) throw new Error('data invalid');
 const data = result.data;
-const ctx = createWorldContext(data, 'island_chain');
 const DT = 1 / 60;
 const STEP_MS = 1000 / 60;
+const SETTINGS = { difficulty: 'easy' as const, bots: true, matchLengthS: 600 };
+
+/** Lobby → vote (everyone votes Early WW2, Island Chain, TDM) → teams → plane select (Spitfire) → playing. */
+function playThrough(server: HostServer, clients: ClientSession[], step: () => void, plane = 'spitfire_mk5'): void {
+  expect(server.startVote()).toBe(true);
+  for (let i = 0; i < 5; i++) step();
+  for (const c of clients) {
+    c.request({ t: 'vote', cat: 'era', id: 'early_ww2' });
+    c.request({ t: 'vote', cat: 'map', id: 'island_chain' });
+    c.request({ t: 'vote', cat: 'mode', id: 'tdm' });
+  }
+  for (let i = 0; i < 60 * 10 && server.phase !== 'select'; i++) step();
+  expect(server.phase).toBe('select');
+  for (const c of clients) c.request({ t: 'pick', planeId: plane, lock: true });
+  for (let i = 0; i < 120 && server.phase !== 'playing'; i++) step();
+  expect(server.phase).toBe('playing');
+  for (let i = 0; i < 5; i++) step();
+}
+const start = (r: Rig): void => playThrough(r.server, r.clients, () => r.step());
 
 interface Rig {
   net: FakeNetwork;
@@ -34,11 +53,18 @@ interface Rig {
   step(n?: number): void;
 }
 
-async function rig(opts: { clients: number; delayMs?: number; loss?: number; jitterMs?: number; version?: string[] }): Promise<Rig> {
+async function rig(opts: { clients: number; delayMs?: number; loss?: number; jitterMs?: number; version?: string[]; matchTimeS?: number }): Promise<Rig> {
   const rng = createRng(5);
   const net = createFakeNetwork({ delayMs: opts.delayMs ?? 0, loss: opts.loss ?? 0, jitterMs: opts.jitterMs ?? 0, random: rng });
   const ht = await net.host('ABCD');
-  const server = createHostServer(ctx, ht, { version: 'test', era: 'early_ww2', mapId: 'island_chain', difficulty: 'easy', planeFor: () => 'spitfire_mk5', now: () => net.now });
+  const server = createHostServer(data, ht, {
+    version: 'test',
+    settings: SETTINGS,
+    allUnlocked: true,
+    now: () => net.now,
+    random: rng,
+    ...(opts.matchTimeS ? { matchTimeS: opts.matchTimeS } : {}),
+  });
   const clients: ClientSession[] = [];
   for (let i = 0; i < opts.clients; i++) {
     const ct = await net.join('ABCD');
@@ -92,7 +118,7 @@ describe('protocol', () => {
   it('snapshots are small and round-trip within quantisation', async () => {
     const r = await rig({ clients: 1 });
     r.step(5);
-    r.server.start();
+    start(r);
     r.step(30);
     const w = r.server.match!.world;
     const buf = encodeSnapshot({ rosterVersion: 1, tick: w.tick, ackSeq: 7, timeLeftS: 432.1, score: { red: 3, blue: 5 }, ended: false }, w.planes, [120, 1400]);
@@ -126,14 +152,14 @@ describe('host and clients over a fake network', () => {
     expect(r.clients[1]!.phase).toBe('lobby');
     expect(r.clients[2]!.phase).toBe('rejected');
     expect(r.clients[2]!.rejectReason).toMatch(/version/i);
-    expect(r.server.lobby().map((p) => p.name).sort()).toEqual(['P1', 'P2']);
-    expect(r.clients[0]!.lobbyPlayers.length).toBe(2);
+    expect(r.server.room().players.map((p) => p.name).sort()).toEqual(['P1', 'P2']);
+    expect(r.clients[0]!.room!.players.length).toBe(2);
   });
 
   it('starting fills the match to 20 with bots, humans on both teams', async () => {
     const r = await rig({ clients: 2 });
     r.step(10);
-    r.server.start();
+    start(r);
     r.step(10);
     const w = r.server.match!.world;
     expect(w.planes).toHaveLength(20);
@@ -146,7 +172,7 @@ describe('host and clients over a fake network', () => {
   it('prediction keeps your own plane close to the host\'s with 100 ms RTT and 10% loss', async () => {
     const r = await rig({ clients: 1, delayMs: 50, loss: 0.1, jitterMs: 10 });
     r.step(10);
-    r.server.start();
+    start(r);
     r.step(30);
     const c = r.clients[0]!;
     const id = c.playerId;
@@ -176,7 +202,7 @@ describe('host and clients over a fake network', () => {
   it('other planes are drawn ~100 ms in the past, smoothly, even with 20% loss', async () => {
     const r = await rig({ clients: 2, delayMs: 40, loss: 0.2 });
     r.step(10);
-    r.server.start();
+    start(r);
     r.step(60);
     const a = r.clients[0]!;
     const b = r.clients[1]!;
@@ -207,7 +233,7 @@ describe('host and clients over a fake network', () => {
   it('bandwidth per client stays far under 30 KB/s with 20 planes', async () => {
     const r = await rig({ clients: 2 });
     r.step(10);
-    r.server.start();
+    start(r);
     r.step(60 * 6);
     const s = r.clients[0]!.net!;
     console.log(`client in ${(s.bytesInPerS / 1024).toFixed(1)} KB/s, out ${(s.bytesOutPerS / 1024).toFixed(2)} KB/s, ${s.snapshotsPerS.toFixed(1)} snapshots/s`);
@@ -220,7 +246,7 @@ describe('host and clients over a fake network', () => {
   it('the host decides hits: spamming fire cannot beat the gun\'s rate of fire', async () => {
     const r = await rig({ clients: 1 });
     r.step(10);
-    r.server.start();
+    start(r);
     r.step(10);
     const c = r.clients[0]!;
     const truth = hostPlane(r, c.playerId);
@@ -236,16 +262,16 @@ describe('host and clients over a fake network', () => {
   it('a flood of input packets is rate-limited', async () => {
     const net = createFakeNetwork();
     const ht = await net.host('WXYZ');
-    const server = createHostServer(ctx, ht, { version: 'v', era: 'early_ww2', mapId: 'island_chain', difficulty: 'easy', planeFor: () => 'spitfire_mk5', now: () => net.now });
+    const server = createHostServer(data, ht, { version: 'v', settings: SETTINGS, allUnlocked: true, now: () => net.now });
     const ct = await net.join('WXYZ');
     const c = createClientSession(ct, data, { version: 'v', callsign: 'Flood', device: { touch: false, connection: null }, now: () => net.now });
     net.advance(10);
     server.tick(DT);
-    server.start();
-    for (let i = 0; i < 10; i++) {
+    playThrough(server, [c], () => {
+      c.idle(DT);
       net.advance(STEP_MS);
       server.tick(DT);
-    }
+    });
     expect(c.phase).toBe('playing');
     // Let the token bucket drain once, then flood 1,200 packets over one second.
     for (let k = 0; k < 200; k++) ct.send('unreliable', encodeInput(k + 1, neutralInput()));
@@ -265,7 +291,7 @@ describe('host and clients over a fake network', () => {
   it('a player who leaves is replaced by a bot after 10 s; the host leaving ends the match for clients', async () => {
     const r = await rig({ clients: 2 });
     r.step(10);
-    r.server.start();
+    start(r);
     r.step(30);
     const leaver = r.clients[1]!;
     const id = leaver.playerId;
@@ -286,7 +312,7 @@ describe('host and clients over a fake network', () => {
   it('join in progress takes a bot slot and everyone gets the new roster', async () => {
     const r = await rig({ clients: 1 });
     r.step(10);
-    r.server.start();
+    start(r);
     r.step(30);
     const ct = await r.net.join('ABCD');
     const late = createClientSession(ct, data, { version: 'test', callsign: 'Late', device: { touch: true, connection: 'cellular' }, now: () => r.net.now });
@@ -299,5 +325,120 @@ describe('host and clients over a fake network', () => {
     expect(w.pilots[late.playerId]?.bot).toBe(false);
     expect(r.clients[0]!.world.pilots[late.playerId]?.name).toBe('Late');
     expect(late.world.planes.find((p) => p.id === late.playerId)).toBeDefined();
+  });
+});
+
+describe('room (host-owned lobby state)', () => {
+  const device = { touch: false, connection: null };
+  const make = (random = () => 0.5) => {
+    const room = createRoom(data, { allUnlocked: false, settings: SETTINGS, random });
+    for (const [id, host] of [['h1', true], ['h2', false], ['h3', false], ['h4', false], ['h5', false]] as const) room.add({ id, name: id, host, device, rp: 0 });
+    return room;
+  };
+
+  it('vote: live counts, a tie is broken randomly, the host override wins, unplayable modes are refused', () => {
+    const room = make(() => 0.99);
+    expect(room.vote('h1', 'era', 'ww1')).toBe(false); // not voting yet
+    room.startVote(0);
+    room.vote('h1', 'era', 'ww1');
+    room.vote('h2', 'era', 'ww1');
+    room.vote('h3', 'era', 'modern');
+    room.vote('h4', 'era', 'modern');
+    expect(room.vote('h5', 'mode', 'air_domination')).toBe(false); // Day 9
+    expect(room.vote('h5', 'era', 'not_an_era')).toBe(false);
+    expect(voteCounts(room.state(0), 'era')).toEqual({ ww1: 2, modern: 2 });
+    room.tick(20_001);
+    expect(room.phase).toBe('teams');
+    // Tied 2–2: random pick among the tied options (0.99 → the last, alphabetically "ww1").
+    expect(room.choice?.era).toBe('ww1');
+    expect(room.choice?.mode).toBe('tdm');
+
+    const r2 = make(() => 0);
+    r2.startVote(0);
+    for (const id of ['h1', 'h2', 'h3']) r2.vote(id, 'era', 'ww1');
+    r2.override('era', 'cold_war');
+    r2.tick(20_001);
+    expect(r2.choice?.era).toBe('cold_war');
+  });
+
+  it('the vote ends early once everyone has voted on all three', () => {
+    const room = make();
+    room.startVote(0);
+    for (const p of room.players()) for (const [cat, id] of [['era', 'late_ww2'], ['map', 'desert_mesas'], ['mode', 'tdm']] as const) room.vote(p.id, cat, id);
+    room.tick(1000);
+    expect(room.phase).toBe('teams');
+    expect(room.choice).toEqual({ era: 'late_ww2', mapId: 'desert_mesas', mode: 'tdm' });
+  });
+
+  it('parties hold at most 3 and stay on one team; plane picks are checked', () => {
+    const room = make();
+    expect(room.party('h2', 'h1')).toBe(true);
+    expect(room.party('h3', 'h1')).toBe(true);
+    expect(room.party('h4', 'h1')).toBe(false); // PARTY_MAX
+    expect(PARTY_MAX).toBe(3);
+    room.startVote(0);
+    for (const p of room.players()) room.vote(p.id, 'era', 'early_ww2');
+    room.tick(20_001);
+    const team = (id: string) => room.get(id)!.team;
+    expect(team('h2')).toBe(team('h1'));
+    expect(team('h3')).toBe(team('h1'));
+    room.tick(20_001 + TEAMS_S * 1000);
+    expect(room.phase).toBe('select');
+    expect(room.pick('h2', 'bf109f4', true)).toBe(false); // tier 10: locked without debug
+    expect(room.pick('h2', 'sopwith_camel', true)).toBe(false); // wrong era
+    expect(room.pick('h2', 'cr42', true)).toBe(true);
+    for (const p of room.players()) room.pick(p.id, room.get(p.id)!.planeId!, true);
+    expect(room.tick(30_000)).toBe('start');
+    expect(room.phase).toBe('playing');
+    expect(room.get('h2')!.planeId).toBe('cr42');
+  });
+
+  it('two full rounds on the same connections: vote → play → results → lobby, BR within 10% each time', async () => {
+    const r = await rig({ clients: 3, delayMs: 20, matchTimeS: 3 });
+    r.step(20);
+    for (let round = 1; round <= 2; round++) {
+      // Humans fly very different tiers; bots even it out.
+      playThrough(r.server, r.clients, () => r.step(), round === 1 ? 'spitfire_mk5' : 'p26');
+      expect(r.clients.every((c) => c.phase === 'playing')).toBe(true);
+      const br = r.server.room().br!;
+      expect(brGap(br)).toBeLessThanOrEqual(0.1);
+      r.step(60 * 4);
+      expect(r.server.phase).toBe('results');
+      expect(r.clients.every((c) => c.ended === 'finished')).toBe(true);
+      const res = r.clients[0]!.results!;
+      expect(res.rows).toHaveLength(20);
+      expect(res.rows.filter((x) => !x.bot).every((x) => x.rp >= 50)).toBe(true);
+      expect(res.br).toEqual(br);
+      r.clients[1]!.request({ t: 'again' });
+      r.step(5);
+      expect(r.server.room().players.find((p) => p.id === r.clients[1]!.playerId)!.ready).toBe(true);
+      r.server.playAgain();
+      r.step(10);
+      expect(r.server.phase).toBe('lobby');
+      expect(r.clients.every((c) => c.phase === 'lobby' && c.room?.phase === 'lobby')).toBe(true);
+      expect(r.server.room().round).toBe(round + 1);
+    }
+  });
+
+  it('a respawn in a different plane updates the roster everywhere', async () => {
+    const r = await rig({ clients: 1 });
+    r.step(10);
+    start(r);
+    const c = r.clients[0]!;
+    c.request({ t: 'respawn', planeId: 'p26' });
+    r.step(5);
+    expect(r.server.match!.world.respawnPlane[c.playerId]).toBe('p26');
+    c.request({ t: 'respawn', planeId: 'sopwith_camel' }); // wrong era: ignored
+    r.step(5);
+    expect(r.server.match!.world.respawnPlane[c.playerId]).toBe('p26');
+    // Crash into the sea: the first respawn after that costs SP, so with none it's the free tier-1 (also p26).
+    const me = r.server.match!.world.planes.find((p) => p.id === c.playerId)!;
+    me.pos[1] = 1;
+    me.vel = [0, -80, 0];
+    r.step(60 * 7);
+    const after = r.server.match!.world.planes.find((p) => p.id === c.playerId)!;
+    expect(after.alive).toBe(true);
+    expect(after.planeId).toBe('p26');
+    expect(c.world.planes.find((p) => p.id === c.playerId)!.planeId).toBe('p26');
   });
 });
