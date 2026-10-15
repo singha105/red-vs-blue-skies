@@ -2730,14 +2730,14 @@ body.is-flying {
   background: #ff6b5e;
 }
 .hud__map .mo--zone {
-  width: 14px;
-  height: 14px;
-  margin: -7px 0 0 -7px;
+  width: clamp(10px, 2.2vmin, 14px);
+  height: clamp(10px, 2.2vmin, 14px);
+  margin: calc(clamp(10px, 2.2vmin, 14px) / -2) 0 0 calc(clamp(10px, 2.2vmin, 14px) / -2);
   border-radius: 50%;
   border: 1px solid var(--paper);
   font-family: var(--display);
-  font-size: 10px;
-  line-height: 12px;
+  font-size: clamp(7px, 1.6vmin, 10px);
+  line-height: clamp(8px, 2vmin, 12px);
   text-align: center;
   background: rgba(14, 33, 56, 0.6);
 }
@@ -2763,5 +2763,25 @@ body.is-flying {
 @media (max-height: 430px) {
   .setup__head p {
     display: none;
+  }
+}
+
+.field--row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.field--row .field {
+  margin: 0;
+}
+.field__note {
+  display: block;
+  margin: -4px 0 10px;
+  opacity: 0.75;
+  font-size: 13px;
+}
+@media (max-width: 560px) {
+  .field--row {
+    grid-template-columns: 1fr;
   }
 }

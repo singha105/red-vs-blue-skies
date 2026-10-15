@@ -35,6 +35,7 @@ import { createEffects } from './render/effects';
 import { createMissileFx, type GlowSource } from './render/missiles';
 import { createPylonMissiles } from './render/pylonMissiles';
 import { createCockpitAudio } from './core/audio';
+import { createSound, gunClass, type EngineInput, type GunClass } from './core/sound';
 import { cockpitState, cycleTarget, targetAt } from './app/weapons';
 import { afterburner, launch as launchMissile } from './game/missiles';
 import { createMapScene } from './render/mapScene';
@@ -42,7 +43,7 @@ import { createGroundRenderer } from './render/groundUnits';
 import { bomberFor, isBomber, unitDef } from './game/objectives';
 import type { ObjectiveFrame, ObjectiveMarker } from './ui/hud';
 import { createPlaneVisual, isModelReady, loadEra, loadPlane, type PlaneVisual } from './render/models';
-import { planeSize } from './game/planeModels';
+import { isProp, PLANE_MODELS, planeSize } from './game/planeModels';
 import { createView } from './render/renderer';
 import { createTitleShot } from './render/titleShot';
 import { createTracers } from './render/tracers';
@@ -97,7 +98,8 @@ function boot(): void {
   const missileClass = new Map(data.missiles.missiles.map((m) => [m.id, m.class]));
   const pylonMissiles = createPylonMissiles((type) => missileClass.get(type));
   const ground = createGroundRenderer(effects);
-  const audio = createCockpitAudio(() => getSettings().volume);
+  const sound = createSound();
+  const audio = createCockpitAudio(sound);
   const silhouettes = createSilhouettes(view.renderer);
   // One scene per map, built the first time a match is voted onto it and kept (at most 4), so switching back is free.
   interface MapWorld {
@@ -130,6 +132,7 @@ function boot(): void {
     view.setMaxPixelRatio(QUALITY[level].maxPixelRatio);
     mapScene.setQuality(level, view.renderer, view.camera);
     effects.density = level === 'low' ? 0.5 : 1;
+    effects.heavy = level !== 'low';
   };
   applyQuality(quality);
   let auto = !forced && settings.graphics === 'auto' ? createAutoQuality((level) => applyQuality(level)) : null;
@@ -304,6 +307,7 @@ function boot(): void {
     pylonMissiles.clear();
     ground.clear();
     audio.mute();
+    sound.quiet();
     mapScene.shadowTarget = null;
     document.body.classList.remove('is-flying');
   };
@@ -809,6 +813,123 @@ function boot(): void {
     return v && v.root.visible ? toScreen(vc.copy(v.root.position)) : null;
   };
 
+  // ---------------------------------------------------------------- sound
+  const camPos = new Vector3();
+  const camRel = new Vector3();
+  /** Loudness 0–1 and stereo pan for a sound at a world position, heard from the camera. */
+  const hear = (x: number, y: number, z: number, refM = 250): { gain: number; pan: number } => {
+    camPos.copy(view.camera.position);
+    const d = camRel.set(x, y, z).distanceTo(camPos);
+    camRel.applyMatrix4(camInvSound.copy(view.camera.matrixWorld).invert());
+    const pan = d > 1 ? Math.max(-1, Math.min(1, camRel.x / Math.max(30, d))) : 0;
+    return { gain: 1 / (1 + Math.pow(d / refM, 1.4)), pan };
+  };
+  const camInvSound = new Matrix4();
+  const soundForEvent = (e: GameEvent, myId: string): void => {
+    if (e.t === 'explode' || e.t === 'detonate') {
+      const h = hear(e.pos[0], e.pos[1], e.pos[2], 500);
+      sound.explosion(h.gain, h.pan);
+    } else if (e.t === 'unit') {
+      const u = session?.world.objectives.units[e.id];
+      if (u) {
+        const h = hear(u.pos[0], u.pos[1], u.pos[2], 700);
+        sound.explosion(h.gain, h.pan, true);
+      }
+    } else if (e.t === 'hit') {
+      if (e.shooter === myId) sound.hit('dealt');
+      if (e.victim === myId) sound.hit('taken');
+    } else if (e.t === 'launch') {
+      const shooter = session?.world.planes.find((p) => p.id === e.owner);
+      if (shooter) {
+        const h = hear(shooter.pos[0], shooter.pos[1], shooter.pos[2], 300);
+        sound.whoosh(h.gain, h.pan);
+      }
+    } else if (e.t === 'drop' && e.kind === 'rocket') {
+      const h = hear(e.pos[0], e.pos[1], e.pos[2], 300);
+      sound.whoosh(h.gain * 0.7, h.pan);
+    }
+  };
+  /** The loudest gun class on a plane (its heaviest gun). */
+  const gunClassCache = new Map<string, GunClass>();
+  const planeGunClass = (planeId: string): GunClass => {
+    let c = gunClassCache.get(planeId);
+    if (!c) {
+      const order: GunClass[] = ['mg', 'hmg', 'cannon', 'heavy'];
+      c = 'mg';
+      for (const g of ctx.planeDefs.get(planeId)?.guns ?? []) {
+        const k = gunClass(g.type);
+        if (order.indexOf(k) > order.indexOf(c)) c = k;
+      }
+      gunClassCache.set(planeId, c);
+    }
+    return c;
+  };
+  const gunAcc = new Map<string, number>();
+  const engineInputs: EngineInput[] = [];
+  const enginePool: EngineInput[] = [];
+  const engineNear: { p: PlaneState; d: number }[] = [];
+  /** Engines (yours and the three nearest), and gunfire from you, nearby planes, AA sites and bomber gunners. */
+  const updateSound = (s: Session, me: PlaneState | null, frameDt: number): void => {
+    if (!sound.unlocked) return;
+    const w = s.world;
+    engineInputs.length = 0;
+    engineNear.length = 0;
+    const cam = view.camera.position;
+    for (const p of w.planes) {
+      if (!p.alive) continue;
+      const d = Math.hypot(p.pos[0] - cam.x, p.pos[1] - cam.y, p.pos[2] - cam.z);
+      if (p === me || d < 1600) engineNear.push({ p, d: p === me ? -1 : d });
+    }
+    engineNear.sort((a, b) => a.d - b.d);
+    for (let i = 0; i < Math.min(4, engineNear.length); i++) {
+      const { p } = engineNear[i]!;
+      const def = ctx.planeDefs.get(p.planeId);
+      const params = ctx.params.get(p.planeId);
+      if (!def || !params) continue;
+      const e = enginePool[i] ?? ({} as EngineInput);
+      enginePool[i] = e;
+      const h = p === me ? { gain: 1, pan: 0 } : hear(p.pos[0], p.pos[1], p.pos[2], isBomber(w, p.id) ? 400 : 180);
+      e.kind = PLANE_MODELS[p.planeId]?.engine ?? (isProp(def.era) ? 'inline' : 'jet');
+      e.throttle = p.throttle;
+      e.speed = Math.hypot(p.vel[0], p.vel[1], p.vel[2]) / params.topSpeedMs;
+      e.afterburner = afterburner(p, def);
+      e.gain = h.gain * (p === me ? 0.8 : 0.9);
+      e.pan = h.pan;
+      engineInputs.push(e);
+    }
+    sound.engines(engineInputs);
+    // Guns: one shot sound per ~1/14 s while firing (yours), fewer and quieter for others.
+    for (const p of w.planes) {
+      if (!p.alive || !p.firing) {
+        gunAcc.delete(p.id);
+        continue;
+      }
+      const mine = p === me;
+      const h = mine ? { gain: 0.9, pan: 0 } : hear(p.pos[0], p.pos[1], p.pos[2], 160);
+      if (h.gain < 0.03) continue;
+      const cls = isBomber(w, p.id) ? 'hmg' : planeGunClass(p.planeId);
+      const rate = mine ? (cls === 'heavy' ? 9 : 14) : 8;
+      let acc = (gunAcc.get(p.id) ?? Math.random()) + rate * frameDt;
+      while (acc >= 1) {
+        acc -= 1;
+        sound.gunshot(cls, h.gain, h.pan);
+      }
+      gunAcc.set(p.id, acc);
+    }
+    for (const u of w.objectives.units) {
+      if (!u.firing) continue;
+      const key = `u${u.id}`;
+      const h = hear(u.pos[0], u.pos[1], u.pos[2], 220);
+      if (h.gain < 0.03) continue;
+      let acc = (gunAcc.get(key) ?? Math.random()) + 5 * frameDt;
+      while (acc >= 1) {
+        acc -= 1;
+        sound.gunshot('cannon', h.gain * 0.8, h.pan);
+      }
+      gunAcc.set(key, acc);
+    }
+  };
+
   const handleEvents = (): void => {
     if (!session || !hud) {
       frameEvents.length = 0;
@@ -818,6 +939,7 @@ function boot(): void {
     const me = player();
     const myId = playerId();
     for (const e of frameEvents) {
+      soundForEvent(e, myId);
       if (e.t === 'explode') {
         effects.explosion(e.pos[0], e.pos[1], e.pos[2]);
         if (me && vc.set(e.pos[0], e.pos[1], e.pos[2]).distanceTo(view.camera.position) < 250) chase.shake(0.5);
@@ -846,6 +968,8 @@ function boot(): void {
         const teamName = (t: string): string => `<b class="t-${t}">${t === 'blue' ? 'Blue' : 'Red'}</b>`;
         hud.killFeed(e.team ? `${teamName(e.team)} captured zone ${letter}` : `Zone ${letter} is neutral`, e.by.includes(myId));
       } else if (e.t === 'unit') {
+        const u = w.objectives.units[e.id];
+        if (u) effects.explosion(u.pos[0], u.pos[1] + 4, u.pos[2], true);
         const by = e.by ? w.pilots[e.by] : null;
         const name = unitDef(session.ctx, e.kind).name;
         hud.killFeed(by ? `<b class="t-${by.team}">${esc(by.name)}</b> destroyed a <span class="t-${e.team}">${esc(name)}</span>` : `A <span class="t-${e.team}">${esc(name)}</span> was destroyed`, e.by === myId);
@@ -969,7 +1093,7 @@ function boot(): void {
         renderMatch(session, alpha, frameDt);
         if (netOverlay && Math.floor(clock * 2) !== Math.floor((clock - frameDt) * 2)) netOverlay.update(netLines(session));
       }
-      effects.update(frameDt);
+      effects.update(frameDt, view.camera.position);
       mapScene.update(clock, view.camera);
       view.renderer.render(mapScene.scene, view.camera);
       fps?.frame(frameDt);
@@ -1042,6 +1166,41 @@ function boot(): void {
     };
   }
 
+  const trailAcc = new Map<string, number>();
+  const tipLocal = new Vector3();
+  const CONTRAIL_ALT_M = 8000;
+  function emitTrails(p: PlaneState, visual: PlaneVisual, mesh: Object3D, frameDt: number): void {
+    const def = ctx.planeDefs.get(p.planeId);
+    if (!def) return;
+    const jet = !isProp(def.era) || PLANE_MODELS[p.planeId]?.engine === 'jet';
+    const contrail = jet && p.pos[1] > CONTRAIL_ALT_M;
+    const vapour = p.g > (jet ? 6 : 5);
+    if (!contrail && !vapour) return;
+    let acc = (trailAcc.get(p.id) ?? 0) + frameDt * (contrail ? 22 : 30);
+    const half = planeSize(def).wingspanM * 0.48;
+    while (acc >= 1) {
+      acc -= 1;
+      if (contrail) {
+        if (visual.exhausts.length > 0) {
+          for (const ex of visual.exhausts) {
+            ex.getWorldPosition(vc);
+            effects.emit('contrail', vc.x, vc.y, vc.z);
+          }
+        } else {
+          const f = rotate(p.quat, FORWARD);
+          effects.emit('contrail', mesh.position.x - f[0] * 8, mesh.position.y - f[1] * 8, mesh.position.z - f[2] * 8);
+        }
+      }
+      if (vapour) {
+        for (const side of [1, -1]) {
+          tipLocal.set(side * half, 0, -0.5).applyMatrix4(mesh.matrixWorld);
+          effects.emit('vapour', tipLocal.x, tipLocal.y, tipLocal.z);
+        }
+      }
+    }
+    trailAcc.set(p.id, acc);
+  }
+
   function renderMatch(s: Session, alpha: number, frameDt: number): void {
     const w = s.world;
     const me = player();
@@ -1091,6 +1250,8 @@ function boot(): void {
           add(mesh.position.x - f[0] * 7, mesh.position.y - f[1] * 7, mesh.position.z - f[2] * 7);
         }
       }
+      // Contrails behind jets above 8,000 m, and vapour off the wingtips in hard turns (heavy effects only).
+      if (p.alive && effects.heavy) emitTrails(p, visual, mesh, frameDt);
       // Smoke from damaged engines, fire, and falling wrecks, out of the exhausts when the model has them.
       const rate = (p.wreck ? 40 : (p.fireFor > 0 ? 30 : 0) + (p.damaged.engine ? 18 : 0)) * effects.density;
       if (rate > 0) {
@@ -1195,6 +1356,7 @@ function boot(): void {
 
     const cockpit = cockpitState(w, ctx, me, controls.target, screenOfPlane);
     audio.update(cockpit.seeker, cockpit.warning, clock);
+    updateSound(s, me.alive ? me : null, frameDt);
     touch?.setWeapons(cockpit.touch);
 
     hud?.update({
@@ -1380,6 +1542,8 @@ function boot(): void {
         };
       },
       fps: () => fpsAvg,
+      /** Sound engine state (the iPhone test checks the first tap unlocks it). */
+      sound: () => ({ state: sound.ctx?.state ?? 'none', unlocked: sound.unlocked, level: sound.level() }),
       drawCalls: () => view.renderer.info.render.calls,
       triangles: () => view.renderer.info.render.triangles,
       terrainChunks: () => mapScene.stats.terrainChunks,

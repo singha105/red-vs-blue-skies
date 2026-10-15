@@ -73,6 +73,7 @@ for (const f of readdirSync(raw).filter((x) => x.endsWith('.glb')).sort()) {
     pylons: info.pylons,
     exhausts: info.exhausts,
     prop: info.prop,
+    engine: info.engine,
   };
   rows.push([id, info.era, info.tris, bytes]);
 }

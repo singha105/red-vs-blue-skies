@@ -732,6 +732,16 @@ class Plane:
                 for side in ((1, -1) if x else (1,)):
                     self.pylons.append((x * side, yc + p.get("yOffsetM", -h / 2 - 0.1), self.z_at(t)))
 
+    def engine_kind(self):
+        e = self.s.get("engine", {})
+        if "sound" in e:  # the AI bombers have no spinning props but piston engines
+            return e["sound"]
+        if not self.prop_hub:
+            return "jet"
+        if e.get("type") in ("radial_cowl", "rotary"):
+            return "rotary" if self.s["era"] == "ww1" else "radial"
+        return "inline"
+
     def build(self):
         self.fuselage()
         self.wings()
@@ -767,6 +777,8 @@ class Plane:
             "exhausts": [[round(c, 3) for c in p] for p in self.exhausts],
             "prop": [round(c, 3) for c in self.prop_hub] if self.prop_hub else None,
             "finTopM": round(getattr(self, "fin_top", 0), 2),
+            # Engine sound: rotary (WW1 radials), radial, inline, or jet (no propeller).
+            "engine": self.engine_kind(),
         }
         return objs, info
 

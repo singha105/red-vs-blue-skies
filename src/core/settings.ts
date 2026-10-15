@@ -11,6 +11,10 @@ export interface Settings {
   aimAssist: number;
   /** Master volume, 0–1. */
   volume: number;
+  /** Per-bus volumes, 0–1: engines; guns, hits and explosions; cockpit tones and UI clicks. */
+  engineVolume: number;
+  effectsVolume: number;
+  cockpitVolume: number;
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
@@ -18,6 +22,9 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   sensitivity: 1,
   aimAssist: 0.6,
   volume: 0.8,
+  engineVolume: 0.7,
+  effectsVolume: 0.8,
+  cockpitVolume: 0.8,
 };
 
 const KEY = 'rvbs.settings.v1';
@@ -35,6 +42,9 @@ export function sanitizeSettings(raw: unknown): Settings {
     sensitivity: clamp(o['sensitivity'], 0.2, 3, DEFAULT_SETTINGS.sensitivity),
     aimAssist: clamp(o['aimAssist'], 0, 1, DEFAULT_SETTINGS.aimAssist),
     volume: clamp(o['volume'], 0, 1, DEFAULT_SETTINGS.volume),
+    engineVolume: clamp(o['engineVolume'], 0, 1, DEFAULT_SETTINGS.engineVolume),
+    effectsVolume: clamp(o['effectsVolume'], 0, 1, DEFAULT_SETTINGS.effectsVolume),
+    cockpitVolume: clamp(o['cockpitVolume'], 0, 1, DEFAULT_SETTINGS.cockpitVolume),
   };
 }
 

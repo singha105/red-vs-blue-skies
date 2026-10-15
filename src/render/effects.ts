@@ -1,10 +1,11 @@
-// Pooled particle puffs (smoke, fire, explosions, hit sparks) in one InstancedMesh. No allocation per particle.
-// Day 9 replaces these with nicer effects; the emit API stays the same.
+// Pooled particle puffs in one InstancedMesh (one draw call): damage smoke, fire, explosions with debris, hit
+// sparks, muzzle flashes, contrails and wingtip vapour. No allocation per particle. On low graphics `heavy` is
+// off: no contrails, vapour or explosion debris, and `density` halves the smoke.
 import { Color, IcosahedronGeometry, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, Vector3 } from 'three';
 
-const MAX = 1400;
+const MAX = 2400;
 
-export type PuffKind = 'smoke' | 'darkSmoke' | 'fire' | 'flash' | 'spark' | 'muzzle' | 'trail' | 'chaff';
+export type PuffKind = 'smoke' | 'darkSmoke' | 'fire' | 'flash' | 'spark' | 'muzzle' | 'trail' | 'chaff' | 'contrail' | 'vapour' | 'debris';
 
 const KINDS: Record<PuffKind, { colour: Color; life: number; size: number; grow: number; rise: number }> = {
   smoke: { colour: new Color('#9aa1a8'), life: 2.4, size: 2, grow: 3.2, rise: 2 },
@@ -12,18 +13,28 @@ const KINDS: Record<PuffKind, { colour: Color; life: number; size: number; grow:
   fire: { colour: new Color('#ff8a2a'), life: 0.6, size: 1.8, grow: 1.5, rise: 1 },
   flash: { colour: new Color('#ffd27a'), life: 0.7, size: 6, grow: 22, rise: 0 },
   spark: { colour: new Color('#ffe9a8'), life: 0.25, size: 1, grow: 2, rise: 0 },
-  muzzle: { colour: new Color('#fff0b0'), life: 0.05, size: 0.35, grow: 8, rise: 0 },
+  muzzle: { colour: new Color('#fff0b0'), life: 0.06, size: 0.55, grow: 9, rise: 0 },
   trail: { colour: new Color('#e8ecef'), life: 2.2, size: 0.7, grow: 1.6, rise: 0.3 },
   chaff: { colour: new Color('#b9c2cc'), life: 2.5, size: 1.2, grow: 3, rise: -0.5 },
+  contrail: { colour: new Color('#f6f8fa'), life: 7, size: 1.1, grow: 1.1, rise: 0 },
+  vapour: { colour: new Color('#ffffff'), life: 0.35, size: 0.5, grow: 4, rise: 0 },
+  debris: { colour: new Color('#2e2a26'), life: 1.4, size: 0.5, grow: 0, rise: 0 },
 };
+
+/** Particles closer than this to the camera shrink away, so your own smoke and fire never fill the screen. */
+const NEAR_FADE_M = 14;
 
 export interface Effects {
   mesh: InstancedMesh;
   emit(kind: PuffKind, x: number, y: number, z: number, vx?: number, vy?: number, vz?: number): void;
-  explosion(x: number, y: number, z: number): void;
-  update(dt: number): void;
+  /** `big`: a ground target or wreck (more fire, a taller smoke column). */
+  explosion(x: number, y: number, z: number, big?: boolean): void;
+  /** `camera`: particles right next to it shrink away. */
+  update(dt: number, camera?: Vector3): void;
   /** 0.5 on low graphics: half the smoke. */
   density: number;
+  /** False on low graphics: contrails, wingtip vapour and explosion debris are skipped. */
+  heavy: boolean;
 }
 
 export function createEffects(): Effects {
@@ -51,8 +62,10 @@ export function createEffects(): Effects {
   const api: Effects = {
     mesh,
     density: 1,
+    heavy: true,
     emit(k, x, y, z, ivx = 0, ivy = 0, ivz = 0) {
       if (live >= MAX) return;
+      if (!api.heavy && (k === 'contrail' || k === 'vapour' || k === 'debris')) return;
       const def = KINDS[k];
       const i = live++;
       px[i] = x; py[i] = y; pz[i] = z;
@@ -63,16 +76,27 @@ export function createEffects(): Effects {
       grow[i] = def.grow;
       kind[i] = kindList.indexOf(k);
     },
-    explosion(x, y, z) {
+    explosion(x, y, z, big = false) {
       api.emit('flash', x, y, z);
-      for (let i = 0; i < 10; i++) {
+      const n = Math.round((big ? 22 : 12) * (api.heavy ? 1 : 0.6));
+      for (let i = 0; i < n; i++) {
         const a = Math.random() * Math.PI * 2;
         const e = (Math.random() - 0.3) * Math.PI;
-        const sp = 8 + Math.random() * 18;
-        api.emit(i < 5 ? 'fire' : 'darkSmoke', x, y, z, Math.cos(a) * Math.cos(e) * sp, Math.sin(e) * sp, Math.sin(a) * Math.cos(e) * sp);
+        const sp = (big ? 12 : 8) + Math.random() * 18;
+        api.emit(i < n * 0.45 ? 'fire' : 'darkSmoke', x, y, z, Math.cos(a) * Math.cos(e) * sp, Math.sin(e) * sp, Math.sin(a) * Math.cos(e) * sp);
+      }
+      // Debris: dark chunks thrown out that fall (heavy only).
+      for (let i = 0; i < (big ? 10 : 6); i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 20 + Math.random() * 30;
+        api.emit('debris', x, y, z, Math.cos(a) * sp, 15 + Math.random() * 25, Math.sin(a) * sp);
       }
     },
-    update(dt) {
+    update(dt, camera) {
+      const cx = camera?.x ?? 1e9;
+      const cy = camera?.y ?? 1e9;
+      const cz = camera?.z ?? 1e9;
+      const debrisKind = kindList.indexOf('debris');
       let i = 0;
       while (i < live) {
         age[i]! += dt;
@@ -86,9 +110,14 @@ export function createEffects(): Effects {
         }
         const drag = 1 - 1.5 * dt;
         vx[i]! *= drag; vy[i]! *= drag; vz[i]! *= drag;
+        // Debris falls.
+        if (kind[i] === debrisKind) vy[i]! -= 25 * dt;
         px[i]! += vx[i]! * dt; py[i]! += vy[i]! * dt; pz[i]! += vz[i]! * dt;
         const t = age[i]! / life[i]!;
-        const r = (size[i]! + grow[i]! * age[i]!) * (1 - t * t * 0.6);
+        let r = (size[i]! + grow[i]! * age[i]!) * (1 - t * t * 0.6);
+        const dx = px[i]! - cx, dy = py[i]! - cy, dz = pz[i]! - cz;
+        const near = dx * dx + dy * dy + dz * dz;
+        if (near < NEAR_FADE_M * NEAR_FADE_M) r *= Math.sqrt(near) / NEAR_FADE_M;
         p.set(px[i]!, py[i]!, pz[i]!);
         s.setScalar(r);
         m.compose(p, q, s);

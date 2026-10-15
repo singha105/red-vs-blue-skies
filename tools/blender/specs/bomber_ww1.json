@@ -95,7 +95,8 @@
     "finOffsetM": 1.2
   },
   "engine": {
-    "type": "inline_nose"
+    "type": "inline_nose",
+    "sound": "inline"
   },
   "pods": [
     {

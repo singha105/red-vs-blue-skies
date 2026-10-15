@@ -1,4 +1,4 @@
-// Settings: graphics, sensitivity, touch aim assist, volume (saved immediately), and your account: progress
+// Settings: graphics, sensitivity, touch aim assist, volume per sound bus (saved immediately), and your account: progress
 // lives on an anonymous Firebase account until you link Google, which carries it to other devices.
 import { getSettings, updateSettings, type GraphicsLevel } from '../core/settings';
 
@@ -34,6 +34,21 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
       <label class="field"><span>Volume <output data-o="volume">${Math.round(s.volume * 100)}%</output></span>
         <input type="range" data-k="volume" min="0" max="1" step="0.05" value="${s.volume}" />
       </label>
+      <div class="field field--row">
+        ${(
+          [
+            ['engineVolume', 'Engines'],
+            ['effectsVolume', 'Guns and explosions'],
+            ['cockpitVolume', 'Warnings and clicks'],
+          ] as const
+        )
+          .map(
+            ([k, label]) => `<label class="field"><span>${label} <output data-o="${k}">${Math.round(s[k] * 100)}%</output></span>
+          <input type="range" data-k="${k}" min="0" max="1" step="0.05" value="${s[k]}" /></label>`,
+          )
+          .join('')}
+      </div>
+      <small class="field__note">Sound starts on your first tap or key press. On iPhone it plays even with the silent switch on; use these sliders instead.</small>
       ${
         opts.account
           ? `<div class="field account"><span>Account</span>
@@ -52,6 +67,9 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
     sensitivity: (v) => `${v.toFixed(1)}×`,
     aimAssist: (v) => `${Math.round(v * 100)}%`,
     volume: (v) => `${Math.round(v * 100)}%`,
+    engineVolume: (v) => `${Math.round(v * 100)}%`,
+    effectsVolume: (v) => `${Math.round(v * 100)}%`,
+    cockpitVolume: (v) => `${Math.round(v * 100)}%`,
   };
   el.addEventListener('input', (e) => {
     const t = e.target as HTMLInputElement | HTMLSelectElement;

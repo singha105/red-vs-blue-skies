@@ -3,11 +3,17 @@ import { expect, test } from '@playwright/test';
 // Frame-rate budget: 30 fps on a throttled "phone" at low, 60 on the laptop at high.
 // Chromium only (CPU throttling needs the DevTools protocol).
 
-async function measure(page: import('@playwright/test').Page, query: string, seconds: number): Promise<{ fps: number; calls: number; quality: string }> {
+async function measure(
+  page: import('@playwright/test').Page,
+  query: string,
+  seconds: number,
+  solo?: object,
+): Promise<{ fps: number; calls: number; quality: string }> {
   await page.goto(`./${query}`);
   await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
   await page.getByRole('button', { name: 'Play Solo' }).click();
-  await page.getByRole('button', { name: 'Start match' }).click();
+  if (solo) await page.evaluate((c) => (window as unknown as { __rvbs: { startSolo(c: object): void } }).__rvbs.startSolo(c), solo);
+  else await page.getByRole('button', { name: 'Start match' }).click();
   // Let the two teams meet so the measurement includes tracers and effects.
   await page.waitForTimeout(25_000);
   return page.evaluate(async (s) => {
@@ -45,5 +51,23 @@ test.describe('fps budget', () => {
     console.log(`low, 4x CPU throttle: ${r.fps.toFixed(1)} fps, ${r.calls} draw calls`);
     expect(r.quality).toBe('low');
     expect(r.fps).toBeGreaterThanOrEqual(30);
+  });
+
+  // Day 9's heaviest scene: canyon terrain, 28 ground targets with AA, rockets and bombs, burning wrecks.
+  test('throttled phone profile at low holds 30 fps in Ground Strike over Mountain Valley', async ({ page, context }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+    const r = await measure(page, '?debug=1&gfx=low', 6, { era: 'late_ww2', planeId: 'p47d', map: 'mountain_valley', mode: 'ground_strike' });
+    console.log(`low, 4x CPU throttle, Ground Strike: ${r.fps.toFixed(1)} fps, ${r.calls} draw calls`);
+    expect(r.quality).toBe('low');
+    expect(r.fps).toBeGreaterThanOrEqual(30);
+  });
+
+  test('laptop at high holds about 60 fps in Bomber Escort with jets', async ({ page }) => {
+    const r = await measure(page, '?debug=1&gfx=high', 5, { era: 'modern', planeId: 'f15c', map: 'desert_mesas', mode: 'bomber_escort' });
+    console.log(`high, Bomber Escort: ${r.fps.toFixed(1)} fps, ${r.calls} draw calls`);
+    expect(r.fps).toBeGreaterThanOrEqual(55);
+    expect(r.calls).toBeLessThan(150);
   });
 });

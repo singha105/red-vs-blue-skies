@@ -72,7 +72,8 @@
     }
   },
   "engine": {
-    "type": "inline_nose"
+    "type": "inline_nose",
+    "sound": "radial"
   },
   "pods": [
     {

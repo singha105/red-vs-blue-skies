@@ -15,6 +15,8 @@ export interface PlaneModelInfo {
   pylons: Vec3[];
   exhausts: Vec3[];
   prop: Vec3 | null;
+  /** Which engine sound it gets. */
+  engine?: 'rotary' | 'radial' | 'inline' | 'jet';
 }
 
 export const PLANE_MODELS = raw as unknown as Record<string, PlaneModelInfo>;

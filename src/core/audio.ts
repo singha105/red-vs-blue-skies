@@ -2,7 +2,9 @@
 // * IR seeker: a low growl while it searches, a steady high tone once it has locked.
 // * Radar: quick beeps while locking, a steady tone when locked.
 // * Radar warning: slow beeps while someone's radar is locked on you, fast loud beeps when a missile is inbound.
-// The context starts on the first tap or key press (browsers, iOS Safari especially, need a gesture).
+// They play on the shared sound engine's context (sound.ts), which starts on the first tap or key press, through
+// its cockpit bus (volume slider "Warnings and clicks").
+import type { SoundEngine } from './sound';
 
 export type SeekerTone = 'off' | 'ir_search' | 'ir_lock' | 'radar_search' | 'radar_lock';
 export type WarningTone = 'off' | 'spike' | 'launch';
@@ -21,7 +23,7 @@ interface Voice {
   gate: GainNode;
 }
 
-export function createCockpitAudio(volume: () => number): CockpitAudio {
+export function createCockpitAudio(sound: SoundEngine): CockpitAudio {
   let ctx: Ctx | null = null;
   let master: GainNode | null = null;
   let seekerV: Voice | null = null;
@@ -38,21 +40,11 @@ export function createCockpitAudio(volume: () => number): CockpitAudio {
     return { osc, gate };
   };
 
-  const start = (): void => {
-    if (ctx) {
-      if (ctx.state === 'suspended') void ctx.resume().catch(() => undefined);
-      return;
-    }
-    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return;
-    try {
-      ctx = new AC();
-    } catch {
-      return;
-    }
-    master = ctx.createGain();
-    master.gain.value = 0.18 * volume();
-    master.connect(ctx.destination);
+  sound.onUnlock(() => {
+    if (ctx || !sound.ctx) return;
+    ctx = sound.ctx;
+    master = sound.bus('cockpit');
+    if (!master) return;
     // The growl: the seeker's tone with its loudness wobbling at ~22 Hz.
     const amp = ctx.createGain();
     amp.gain.value = 0.5;
@@ -66,10 +58,7 @@ export function createCockpitAudio(volume: () => number): CockpitAudio {
     growl = { amp, lfo };
     seekerV = voice(ctx, amp, 'sawtooth');
     warnV = voice(ctx, master, 'square');
-  };
-  const onGesture = (): void => start();
-  window.addEventListener('pointerdown', onGesture, { passive: true });
-  window.addEventListener('keydown', onGesture);
+  });
 
   const set = (param: AudioParam, value: number): void => {
     if (!ctx) return;
@@ -81,7 +70,6 @@ export function createCockpitAudio(volume: () => number): CockpitAudio {
   return {
     update(seeker, warning, time) {
       if (!ctx || !master || !seekerV || !warnV || !growl) return;
-      set(master.gain, 0.18 * volume());
       // Seeker voice.
       let f = 0;
       let g = 0;
@@ -125,9 +113,9 @@ export function createCockpitAudio(volume: () => number): CockpitAudio {
       if (warnV) set(warnV.gate.gain, 0);
     },
     dispose() {
-      window.removeEventListener('pointerdown', onGesture);
-      window.removeEventListener('keydown', onGesture);
-      void ctx?.close().catch(() => undefined);
+      seekerV?.osc.stop();
+      warnV?.osc.stop();
+      growl?.lfo.stop();
       ctx = null;
     },
   };

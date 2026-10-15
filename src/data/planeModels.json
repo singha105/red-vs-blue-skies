@@ -51,7 +51,8 @@
       0,
       0,
       4.68
-    ]
+    ],
+    "engine": "radial"
   },
   "airco_dh2": {
     "file": "models/ww1/airco_dh2.glb",
@@ -81,7 +82,8 @@
       0,
       0.06,
       0.414
-    ]
+    ],
+    "engine": "rotary"
   },
   "albatros_d3": {
     "file": "models/ww1/albatros_d3.glb",
@@ -119,7 +121,8 @@
       0,
       0,
       3.765
-    ]
+    ],
+    "engine": "inline"
   },
   "bf109e4": {
     "file": "models/early_ww2/bf109e4.glb",
@@ -173,7 +176,8 @@
       0,
       0,
       4.52
-    ]
+    ],
+    "engine": "inline"
   },
   "bf109f4": {
     "file": "models/early_ww2/bf109f4.glb",
@@ -219,7 +223,8 @@
       0,
       0,
       4.67
-    ]
+    ],
+    "engine": "inline"
   },
   "bomber_jet": {
     "file": "models/bombers/bomber_jet.glb",
@@ -268,7 +273,8 @@
         -4.355
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "bomber_ww1": {
     "file": "models/bombers/bomber_ww1.glb",
@@ -310,7 +316,8 @@
         4.6
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "inline"
   },
   "bomber_ww2": {
     "file": "models/bombers/bomber_ww2.glb",
@@ -352,7 +359,8 @@
         9.9
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "radial"
   },
   "cr42": {
     "file": "models/early_ww2/cr42.glb",
@@ -390,7 +398,8 @@
       0,
       0,
       4.275
-    ]
+    ],
+    "engine": "radial"
   },
   "f104g": {
     "file": "models/cold_war/f104g.glb",
@@ -435,7 +444,8 @@
         -8.63
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "f14a": {
     "file": "models/cold_war/f14a.glb",
@@ -505,7 +515,8 @@
         -9.85
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "f15a": {
     "file": "models/cold_war/f15a.glb",
@@ -575,7 +586,8 @@
         -10.015
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "f15c": {
     "file": "models/modern/f15c.glb",
@@ -645,7 +657,8 @@
         -10.015
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "f16a": {
     "file": "models/cold_war/f16a.glb",
@@ -700,7 +713,8 @@
         -7.815
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "f16c_b50": {
     "file": "models/modern/f16c_b50.glb",
@@ -755,7 +769,8 @@
         -7.815
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "f22a": {
     "file": "models/modern/f22a.glb",
@@ -825,7 +840,8 @@
         -9.76
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "f4e": {
     "file": "models/cold_war/f4e.glb",
@@ -897,7 +913,8 @@
         -9.9
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "f4u4": {
     "file": "models/late_ww2/f4u4.glb",
@@ -1018,7 +1035,8 @@
       0,
       0,
       5.28
-    ]
+    ],
+    "engine": "radial"
   },
   "f5e": {
     "file": "models/cold_war/f5e.glb",
@@ -1068,7 +1086,8 @@
         -7.525
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "f6f5": {
     "file": "models/late_ww2/f6f5.glb",
@@ -1138,7 +1157,8 @@
       0,
       0,
       5.27
-    ]
+    ],
+    "engine": "radial"
   },
   "f8": {
     "file": "models/early_jets/f8.glb",
@@ -1193,7 +1213,8 @@
         -8.565
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "f84g": {
     "file": "models/early_jets/f84g.glb",
@@ -1227,7 +1248,8 @@
         -6.1
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "f86f": {
     "file": "models/early_jets/f86f.glb",
@@ -1261,7 +1283,8 @@
         -6.02
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "fa18c": {
     "file": "models/modern/fa18c.glb",
@@ -1313,7 +1336,8 @@
         -8.85
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "fokker_d7": {
     "file": "models/ww1/fokker_d7.glb",
@@ -1351,7 +1375,8 @@
       0,
       0,
       3.595
-    ]
+    ],
+    "engine": "inline"
   },
   "fokker_dr1": {
     "file": "models/ww1/fokker_dr1.glb",
@@ -1389,7 +1414,8 @@
       0,
       0,
       3.005
-    ]
+    ],
+    "engine": "rotary"
   },
   "fokker_e3": {
     "file": "models/ww1/fokker_e3.glb",
@@ -1419,7 +1445,8 @@
       0,
       0,
       3.72
-    ]
+    ],
+    "engine": "rotary"
   },
   "fw190a8": {
     "file": "models/late_ww2/fw190a8.glb",
@@ -1505,7 +1532,8 @@
       0,
       0,
       4.65
-    ]
+    ],
+    "engine": "radial"
   },
   "gladiator": {
     "file": "models/early_ww2/gladiator.glb",
@@ -1559,7 +1587,8 @@
       0,
       0,
       4.33
-    ]
+    ],
+    "engine": "radial"
   },
   "hunter_f6": {
     "file": "models/early_jets/hunter_f6.glb",
@@ -1604,7 +1633,8 @@
         -7.29
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "hurricane_mk1": {
     "file": "models/early_ww2/hurricane_mk1.glb",
@@ -1690,7 +1720,8 @@
       0,
       0,
       5.12
-    ]
+    ],
+    "engine": "inline"
   },
   "i16": {
     "file": "models/early_ww2/i16.glb",
@@ -1744,7 +1775,8 @@
       0,
       0,
       3.215
-    ]
+    ],
+    "engine": "radial"
   },
   "jas39c": {
     "file": "models/modern/jas39c.glb",
@@ -1799,7 +1831,8 @@
         -7.35
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "me262": {
     "file": "models/late_ww2/me262.glb",
@@ -1854,7 +1887,8 @@
         -1.696
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "meteor_f8": {
     "file": "models/early_jets/meteor_f8.glb",
@@ -1893,7 +1927,8 @@
         -1.631
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "mig15bis": {
     "file": "models/early_jets/mig15bis.glb",
@@ -1946,7 +1981,8 @@
         -5.1
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "mig17f": {
     "file": "models/early_jets/mig17f.glb",
@@ -1999,7 +2035,8 @@
         -5.93
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "mig19s": {
     "file": "models/early_jets/mig19s.glb",
@@ -2065,7 +2102,8 @@
         -6.57
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "mig21f13": {
     "file": "models/cold_war/mig21f13.glb",
@@ -2110,7 +2148,8 @@
         -7.03
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "mig23mld": {
     "file": "models/cold_war/mig23mld.glb",
@@ -2157,7 +2196,8 @@
         -8.65
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "mig29a": {
     "file": "models/modern/mig29a.glb",
@@ -2227,7 +2267,8 @@
         -8.96
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "mirage2000_5": {
     "file": "models/modern/mirage2000_5.glb",
@@ -2292,7 +2333,8 @@
         -7.48
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "mirage3e": {
     "file": "models/cold_war/mirage3e.glb",
@@ -2337,7 +2379,8 @@
         -7.815
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "mirage_f1c": {
     "file": "models/cold_war/mirage_f1c.glb",
@@ -2392,7 +2435,8 @@
         -7.95
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "nieuport_11": {
     "file": "models/ww1/nieuport_11.glb",
@@ -2422,7 +2466,8 @@
       0,
       0,
       3.02
-    ]
+    ],
+    "engine": "rotary"
   },
   "p26": {
     "file": "models/early_ww2/p26.glb",
@@ -2476,7 +2521,8 @@
       0,
       0,
       3.74
-    ]
+    ],
+    "engine": "radial"
   },
   "p36": {
     "file": "models/early_ww2/p36.glb",
@@ -2522,7 +2568,8 @@
       0,
       0,
       4.5
-    ]
+    ],
+    "engine": "radial"
   },
   "p39q": {
     "file": "models/late_ww2/p39q.glb",
@@ -2584,7 +2631,8 @@
       0,
       0,
       4.795
-    ]
+    ],
+    "engine": "inline"
   },
   "p40e": {
     "file": "models/late_ww2/p40e.glb",
@@ -2654,7 +2702,8 @@
       0,
       0,
       5.03
-    ]
+    ],
+    "engine": "inline"
   },
   "p47d": {
     "file": "models/late_ww2/p47d.glb",
@@ -2791,7 +2840,8 @@
       0,
       0,
       5.65
-    ]
+    ],
+    "engine": "radial"
   },
   "p51d": {
     "file": "models/late_ww2/p51d.glb",
@@ -2861,7 +2911,8 @@
       0,
       0,
       5.115
-    ]
+    ],
+    "engine": "inline"
   },
   "p80": {
     "file": "models/early_jets/p80.glb",
@@ -2895,7 +2946,8 @@
         -5.545
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "rafale_c": {
     "file": "models/modern/rafale_c.glb",
@@ -2965,7 +3017,8 @@
         -7.935
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "se5a": {
     "file": "models/ww1/se5a.glb",
@@ -3011,7 +3064,8 @@
       0,
       0,
       3.31
-    ]
+    ],
+    "engine": "inline"
   },
   "sopwith_camel": {
     "file": "models/ww1/sopwith_camel.glb",
@@ -3049,7 +3103,8 @@
       0,
       0,
       2.98
-    ]
+    ],
+    "engine": "rotary"
   },
   "sopwith_pup": {
     "file": "models/ww1/sopwith_pup.glb",
@@ -3079,7 +3134,8 @@
       0,
       0,
       3.065
-    ]
+    ],
+    "engine": "rotary"
   },
   "spad_s13": {
     "file": "models/ww1/spad_s13.glb",
@@ -3117,7 +3173,8 @@
       0,
       0,
       3.245
-    ]
+    ],
+    "engine": "inline"
   },
   "spitfire_mk14": {
     "file": "models/late_ww2/spitfire_mk14.glb",
@@ -3171,7 +3228,8 @@
       0,
       0,
       5.18
-    ]
+    ],
+    "engine": "inline"
   },
   "spitfire_mk5": {
     "file": "models/early_ww2/spitfire_mk5.glb",
@@ -3241,7 +3299,8 @@
       0,
       0,
       4.76
-    ]
+    ],
+    "engine": "inline"
   },
   "su27s": {
     "file": "models/modern/su27s.glb",
@@ -3321,7 +3380,8 @@
         -11.27
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "typhoon": {
     "file": "models/modern/typhoon.glb",
@@ -3391,7 +3451,8 @@
         -8.28
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "vampire": {
     "file": "models/early_jets/vampire.glb",
@@ -3425,7 +3486,8 @@
         -0.862
       ]
     ],
-    "prop": null
+    "prop": null,
+    "engine": "jet"
   },
   "yak3": {
     "file": "models/late_ww2/yak3.glb",
@@ -3471,6 +3533,7 @@
       0,
       0,
       4.45
-    ]
+    ],
+    "engine": "inline"
   }
 }
