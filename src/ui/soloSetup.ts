@@ -1,7 +1,7 @@
-// Play Solo → pick an era, a plane and bot difficulty. Planes are open as far as you've researched each era
+// Play Solo → pick an era, a plane, bot difficulty, the map and the mode. Planes are open as far as you've researched each era
 // (everything with ?debug=1 on localhost).
 import { readStorage, writeStorage } from '../core/storage';
-import type { EraId, GameData, Plane } from '../data/types';
+import type { EraId, GameData, GameMode, Plane } from '../data/types';
 import type { BotDifficulty } from '../game/world';
 import { isUnlocked, unlockCost, type Unlocks } from '../game/unlocks';
 import { escapeHtml as esc } from './hud';
@@ -12,16 +12,22 @@ export interface SoloChoice {
   era: EraId;
   planeId: string;
   difficulty: BotDifficulty;
+  /** Map and mode ids (default: the default map, Team Deathmatch). */
+  map?: string;
+  mode?: GameMode['id'];
 }
 
 function loadChoice(data: GameData): SoloChoice {
-  const fallback: SoloChoice = { era: 'early_ww2', planeId: 'gladiator', difficulty: 'normal' };
+  const map = data.maps.find((m) => m.default)!.id;
+  const fallback: SoloChoice = { era: 'early_ww2', planeId: 'gladiator', difficulty: 'normal', map, mode: 'tdm' };
   try {
     const saved = JSON.parse(readStorage(KEY) ?? 'null') as Partial<SoloChoice> | null;
     if (!saved) return fallback;
     const plane = data.planes.find((p) => p.id === saved.planeId);
     const difficulty = saved.difficulty === 'easy' || saved.difficulty === 'hard' ? saved.difficulty : 'normal';
-    return plane ? { era: plane.era, planeId: plane.id, difficulty } : { ...fallback, difficulty };
+    const savedMap = data.maps.find((m) => m.id === saved.map)?.id ?? map;
+    const savedMode = data.modes.find((m) => m.id === saved.mode && m.playable)?.id ?? 'tdm';
+    return plane ? { era: plane.era, planeId: plane.id, difficulty, map: savedMap, mode: savedMode } : { ...fallback, difficulty, map: savedMap, mode: savedMode };
   } catch {
     return fallback;
   }
@@ -40,7 +46,7 @@ export function gunsSummary(plane: Plane, data: GameData): string {
 export function createSoloSetup(
   parent: HTMLElement,
   data: GameData,
-  opts: { unlocks: () => Unlocks; title?: string; intro?: string; startLabel?: string; hangar?: boolean },
+  opts: { unlocks: () => Unlocks; title?: string; intro?: string; startLabel?: string; hangar?: boolean; matchPickers?: boolean },
   handlers: { onStart(choice: SoloChoice): void; onBack(): void; onHangar(choice: SoloChoice): void; onResearch?(era: EraId): void },
 ): { dispose(): void } {
   const choice = loadChoice(data);
@@ -53,11 +59,21 @@ export function createSoloSetup(
   const render = (): void => {
     const planes = data.planes.filter((p) => p.era === choice.era).sort((a, b) => a.tier - b.tier);
     if (!planes.some((p) => p.id === choice.planeId && unlocked(p))) choice.planeId = planes.find(unlocked)?.id ?? planes[0]!.id;
+    const mapName = data.maps.find((m) => m.id === choice.map)?.name ?? '';
+    const mode = data.modes.find((m) => m.id === choice.mode) ?? data.modes[0]!;
+    // Map and mode cycle on each tap: two compact buttons instead of two more rows of chips on a phone.
+    const pickers = opts.matchPickers === false
+      ? ''
+      : `<div class="setup__match">
+          <button type="button" class="chip chip--small" data-cycle="map" aria-label="Map: ${esc(mapName)}. Tap for the next map"><small>Map</small>${esc(mapName)}</button>
+          <button type="button" class="chip chip--small" data-cycle="mode" aria-label="Mode: ${esc(mode.name)}. Tap for the next mode"><small>Mode</small>${esc(mode.name)}</button>
+        </div>`;
     el.innerHTML = `
       <header class="setup__head">
         <button type="button" class="btn btn--secondary btn--small" data-act="back">Back</button>
         <h2>${esc(opts.title ?? 'Solo match')}</h2>
-        <p>${esc(opts.intro ?? 'Team Deathmatch, 10 vs 10 with bots. First to 50 kills, or most kills after 10 minutes.')}</p>
+        ${pickers}
+        <p>${esc(opts.intro ?? `${mode.name}, 10 vs 10 with bots. ${mode.description}`)}</p>
       </header>
       <div class="setup__eras" role="radiogroup" aria-label="Era">
         ${data.eras
@@ -108,6 +124,15 @@ export function createSoloSetup(
     if (t.dataset['act'] === 'start') {
       writeStorage(KEY, JSON.stringify(choice));
       return handlers.onStart({ ...choice });
+    }
+    if (t.dataset['cycle'] === 'map') {
+      const i = data.maps.findIndex((m) => m.id === choice.map);
+      choice.map = data.maps[(i + 1) % data.maps.length]!.id;
+    }
+    if (t.dataset['cycle'] === 'mode') {
+      const modes = data.modes.filter((m) => m.playable);
+      const i = modes.findIndex((m) => m.id === choice.mode);
+      choice.mode = modes[(i + 1) % modes.length]!.id;
     }
     if (t.dataset['era']) choice.era = t.dataset['era'] as EraId;
     if (t.dataset['plane']) choice.planeId = t.dataset['plane'];

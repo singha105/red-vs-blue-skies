@@ -15,7 +15,7 @@ import type { GameData } from './data/types';
 import { leadPoint } from './game/ballistics';
 import type { ControlInput } from './game/controls';
 import { speedKmh, type PlaneState } from './game/flight';
-import { dirFromYawPitch, FORWARD, rotate } from './game/math';
+import { dirFromYawPitch, FORWARD, normalize, quatLookRotation, rotate } from './game/math';
 import { createWorldContext, newStats, type GameEvent, type WorldContext } from './game/world';
 import { computeResults } from './game/results';
 import { createSilhouettes } from './render/silhouettes';
@@ -38,6 +38,9 @@ import { createCockpitAudio } from './core/audio';
 import { cockpitState, cycleTarget, targetAt } from './app/weapons';
 import { afterburner, launch as launchMissile } from './game/missiles';
 import { createMapScene } from './render/mapScene';
+import { createGroundRenderer } from './render/groundUnits';
+import { bomberFor, isBomber, unitDef } from './game/objectives';
+import type { ObjectiveFrame, ObjectiveMarker } from './ui/hud';
 import { createPlaneVisual, isModelReady, loadEra, loadPlane, type PlaneVisual } from './render/models';
 import { planeSize } from './game/planeModels';
 import { createView } from './render/renderer';
@@ -93,6 +96,7 @@ function boot(): void {
   const missileFx = createMissileFx(effects);
   const missileClass = new Map(data.missiles.missiles.map((m) => [m.id, m.class]));
   const pylonMissiles = createPylonMissiles((type) => missileClass.get(type));
+  const ground = createGroundRenderer(effects);
   const audio = createCockpitAudio(() => getSettings().volume);
   const silhouettes = createSilhouettes(view.renderer);
   // One scene per map, built the first time a match is voted onto it and kept (at most 4), so switching back is free.
@@ -118,7 +122,7 @@ function boot(): void {
   let ctx: WorldContext = current.ctx;
   let mapScene = current.scene;
   let titleShot = current.titleShot;
-  mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root, pylonMissiles.root);
+  mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root, pylonMissiles.root, ground.root);
 
   let quality: QualityLevel = forced ?? initialLevel(settings.graphics, env.isTouch);
   const applyQuality = (level: QualityLevel): void => {
@@ -148,7 +152,7 @@ function boot(): void {
     mapScene = current.scene;
     titleShot = current.titleShot;
     titleShot.setVisible(visible);
-    mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root, pylonMissiles.root);
+    mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root, pylonMissiles.root, ground.root);
     applyQuality(quality);
   };
 
@@ -263,7 +267,14 @@ function boot(): void {
 
   const playerId = (): string => session?.playerId ?? '';
   const player = (): PlaneState | null => session?.world.planes.find((p) => p.id === playerId()) ?? null;
-  const pilotName = (id: string | null): string => (id ? session?.world.pilots[id]?.name ?? id : '');
+  const pilotName = (id: string | null): string => {
+    if (!id || !session) return '';
+    const pilot = session.world.pilots[id];
+    if (pilot) return pilot.name;
+    // Ground units shoot as "u<index>".
+    const unit = id.startsWith('u') ? session.world.objectives.units[Number(id.slice(1))] : undefined;
+    return unit ? (unit.kind === 'aa' ? 'an AA gun' : `${unitDef(session.ctx, unit.kind).name} AA fire`) : id;
+  };
   const planeName = (id: string): string => ctx.planeDefs.get(id)?.name ?? id;
 
   const clearScreen = (): void => {
@@ -291,6 +302,7 @@ function boot(): void {
     controls.target = null;
     missileFx.clear();
     pylonMissiles.clear();
+    ground.clear();
     audio.mute();
     mapScene.shadowTarget = null;
     document.body.classList.remove('is-flying');
@@ -557,7 +569,7 @@ function boot(): void {
 
   // --- Hangar: the selected plane parked high above the islands, orbited by the camera.
   const HANGAR_POS = new Vector3(0, 3400, 0);
-  const hangarCarrier = [{ id: 'hangar', planeId: '', alive: true, missiles: [] as number[] }];
+  const hangarCarrier = [{ id: 'hangar', planeId: '', alive: true, missiles: [] as number[], rockets: 0, bombs: 0 }];
   const hangar = { visual: null as PlaneVisual | null, planeId: '', team: 'blue' as PlaneState['team'], yaw: 2.4, pitch: 0.25, dist: 22, touched: false };
   const setHangarVisual = (): void => {
     if (hangar.visual) mapScene.scene.remove(hangar.visual.root);
@@ -584,7 +596,9 @@ function boot(): void {
     void loadPlane(plane.id);
     hangarCarrier[0]!.planeId = plane.id;
     hangarCarrier[0]!.missiles = plane.missiles.map((m) => m.count);
-    if (plane.missiles.length > 0) void pylonMissiles.load();
+    hangarCarrier[0]!.rockets = plane.ordnance?.rockets ?? 0;
+    hangarCarrier[0]!.bombs = plane.ordnance?.bombs ?? 0;
+    if (plane.missiles.length > 0 || plane.ordnance) void pylonMissiles.load();
     const ui2 = createHangarUi(ui, plane, data, {
       onRotate: (dx, dy) => {
         hangar.touched = true;
@@ -630,12 +644,13 @@ function boot(): void {
   function startSolo(choice: SoloChoice): void {
     closeNet();
     lastChoice = choice;
-    useMap(map!.id);
+    useMap(data.maps.some((m) => m.id === choice.map) ? choice.map! : map!.id);
     enterMatch(
       createSoloSession(ctx, {
         era: choice.era,
         planeId: choice.planeId,
         difficulty: choice.difficulty,
+        mode: data.modes.find((m) => m.id === choice.mode && m.playable)?.id ?? 'tdm',
         assist: env.isTouch ? getSettings().aimAssist : 0,
         ...(matchTime ? { timeLimitS: matchTime } : {}),
       }),
@@ -655,8 +670,10 @@ function boot(): void {
     // Only this match's era models are downloaded.
     const era = mine?.era ?? lastChoice?.era;
     if (era) void loadEra(era, data.planes.filter((p) => p.era === era).map((p) => p.id));
-    // Weapon models only for eras whose planes carry missiles.
-    if (era && data.planes.some((p) => p.era === era && p.missiles.length > 0)) void pylonMissiles.load();
+    // Weapon models only for eras whose planes carry missiles, rockets or bombs.
+    if (era && data.planes.some((p) => p.era === era && (p.missiles.length > 0 || p.ordnance))) void pylonMissiles.load();
+    // Bomber Escort: that era's bomber model.
+    if (era && s.world.objectives.escort) void loadPlane(bomberFor(s.ctx, era).id);
     chase.setScale(mine ? planeSize(mine).lengthM / 9 : 1);
     if (me) controls.resetTo(me);
     controls.freeLook = false;
@@ -735,6 +752,7 @@ function boot(): void {
     const w = session.world;
     const me = session.playerId;
     return Object.values(w.pilots)
+      .filter((p) => p.role !== 'bomber')
       .map((p) => {
         const st = w.stats[p.id] ?? newStats();
         const plane = w.planes.find((x) => x.id === p.id);
@@ -823,11 +841,32 @@ function boot(): void {
         if (shooter) for (let k = 0; k < 3; k++) effects.emit('smoke', shooter.pos[0], shooter.pos[1] - 2, shooter.pos[2]);
       } else if (e.t === 'decoy' && e.kind === 'chaff') {
         missileFx.chaffBurst(e.pos[0], e.pos[1], e.pos[2]);
+      } else if (e.t === 'capture') {
+        const letter = 'ABC'[e.zone] ?? '?';
+        const teamName = (t: string): string => `<b class="t-${t}">${t === 'blue' ? 'Blue' : 'Red'}</b>`;
+        hud.killFeed(e.team ? `${teamName(e.team)} captured zone ${letter}` : `Zone ${letter} is neutral`, e.by.includes(myId));
+      } else if (e.t === 'unit') {
+        const by = e.by ? w.pilots[e.by] : null;
+        const name = unitDef(session.ctx, e.kind).name;
+        hud.killFeed(by ? `<b class="t-${by.team}">${esc(by.name)}</b> destroyed a <span class="t-${e.team}">${esc(name)}</span>` : `A <span class="t-${e.team}">${esc(name)}</span> was destroyed`, e.by === myId);
+        if (e.by === myId) hud.hitMarker(true);
+      } else if (e.t === 'bombed') {
+        const mine = me?.team === e.team;
+        hud.killFeed(mine ? 'Our bombers hit the target' : 'Enemy bombers hit our base', true);
+      } else if (e.t === 'wave') {
+        const mine = me?.team === e.escort;
+        hud.killFeed(mine ? `Bomber wave ${e.wave} is taking off: escort it` : `Enemy bomber wave ${e.wave} inbound: intercept`, true);
+      } else if (e.t === 'drop') {
+        if (e.kind === 'rocket') effects.emit('smoke', e.pos[0], e.pos[1], e.pos[2]);
       } else if (e.t === 'kill') {
         const victim = w.pilots[e.victim];
         const killer = e.killer ? w.pilots[e.killer] : null;
         const tag = (p: { name: string; team: string } | null | undefined): string => (p ? `<b class="t-${p.team}">${esc(p.name)}</b>` : '');
-        const html = killer ? `${tag(killer)} shot down ${tag(victim)}` : `${tag(victim)} crashed`;
+        const html = killer
+          ? `${tag(killer)} shot down ${tag(victim)}`
+          : e.killer?.startsWith('u')
+            ? `${tag(victim)} was shot down by AA fire`
+            : `${tag(victim)} crashed`;
         const mine = e.killer === myId || e.victim === myId || e.assists.includes(myId);
         hud.killFeed(html, mine);
         if (e.killer === myId) hud.hitMarker(true);
@@ -938,6 +977,71 @@ function boot(): void {
     },
   });
 
+  /** Mode objectives for the HUD: the score label, a role line, zone chips, markers and minimap symbols. */
+  function objectiveHud(s: Session, me: PlaneState): { objective: ObjectiveFrame; objMarkers: ObjectiveMarker[]; mapObjects: { x: number; z: number; kind: 'zone' | 'unit'; team: PlaneState['team'] | null; label: string }[] } {
+    const w = s.world;
+    const o = w.objectives;
+    const half = ctx.terrain.half;
+    const objMarkers: ObjectiveMarker[] = [];
+    const mapObjects: { x: number; z: number; kind: 'zone' | 'unit'; team: PlaneState['team'] | null; label: string }[] = [];
+    const cam = view.camera.position;
+    let status = '';
+    let role = '';
+    let scoreLabel = 'Kills';
+    if (o.mode === 'air_domination') {
+      scoreLabel = 'Tickets';
+      role = `Capture zones: fly below ${o.rules.captureAltitudeM} m inside them`;
+      o.zones.forEach((z, i) => {
+        const letter = 'ABC'[i] ?? '?';
+        mapObjects.push({ x: z.x / half, z: z.z / half, kind: 'zone', team: z.owner, label: letter });
+        const ground = ctx.terrain.surfaceAt(z.x, z.z);
+        const sp = toScreen(vc.set(z.x, ground + 40, z.z));
+        const d = Math.round(vc.distanceTo(cam));
+        if (sp) objMarkers.push({ x: sp.x, y: sp.y, kind: 'zone', team: z.owner, enemy: z.owner !== null && z.owner !== me.team, label: `${letter} ${d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(1)} km`}` });
+        const inside = Math.hypot(me.pos[0] - z.x, me.pos[2] - z.z) < o.rules.zoneRadiusM;
+        if (inside && me.alive) {
+          const agl = me.pos[1] - ctx.terrain.surfaceAt(me.pos[0], me.pos[2]);
+          const pct = Math.round(Math.abs(z.progress) * 100);
+          const ours = (me.team === 'blue') === (z.progress > 0);
+          status = agl > o.rules.captureAltitudeM ? `Zone ${letter}: go below ${o.rules.captureAltitudeM} m to capture` : z.owner === me.team ? `Holding zone ${letter}` : `Capturing ${letter} · ${ours ? pct : 0}%`;
+        }
+      });
+    } else if (o.mode === 'ground_strike') {
+      scoreLabel = 'Tickets';
+      role = me.rockets + me.bombs > 0 ? 'Destroy enemy ground targets: rockets and bombs on Q / Missile' : 'Destroy enemy ground targets, protect yours';
+    } else if (o.mode === 'bomber_escort' && o.escort) {
+      scoreLabel = 'Points';
+      const flying = w.planes.filter((p) => p.alive && isBomber(w, p.id)).length;
+      const mine = o.escort.escort === me.team;
+      role = mine ? 'Escort your bombers to the target' : 'Shoot down the enemy bombers';
+      status = flying > 0 ? `${mine ? 'Our' : 'Enemy'} bombers: ${flying} flying` : `Next bomber wave in ${Math.max(0, Math.ceil(o.escort.nextIn))} s`;
+    }
+    // Ground targets: diamonds for the nearest ones on screen, squares on the minimap.
+    let n = 0;
+    for (const u of o.units) {
+      if (!u.alive || !u.target) continue;
+      mapObjects.push({ x: u.pos[0] / half, z: u.pos[2] / half, kind: 'unit', team: u.team, label: '' });
+      if (n >= 10) continue;
+      const d = vc.set(u.pos[0], u.pos[1] + 12, u.pos[2]).distanceTo(cam);
+      if (d > 6000) continue;
+      const sp = toScreen(vc);
+      if (!sp) continue;
+      n++;
+      objMarkers.push({ x: sp.x, y: sp.y, kind: 'unit', team: u.team, enemy: u.team !== me.team, label: u.team !== me.team && d < 2500 ? unitDef(s.ctx, u.kind).name : '' });
+    }
+    for (const p of w.planes) {
+      if (!p.alive || !isBomber(w, p.id)) continue;
+      const v = visuals.get(p.id);
+      const sp = v ? toScreen(vc.copy(v.root.position)) : null;
+      if (sp) objMarkers.push({ x: sp.x, y: sp.y, kind: 'bomber', team: p.team, enemy: p.team !== me.team, label: `${Math.round((p.hp / p.maxHp) * 100)}%` });
+    }
+    return {
+      objective: { scoreLabel, role, status, zones: o.zones.map((z, i) => ({ letter: 'ABC'[i] ?? '?', owner: z.owner, progress: z.progress })) },
+      objMarkers: objMarkers.slice(0, 16),
+      mapObjects: mapObjects.slice(0, 40),
+    };
+  }
+
   function renderMatch(s: Session, alpha: number, frameDt: number): void {
     const w = s.world;
     const me = player();
@@ -1006,10 +1110,16 @@ function boot(): void {
     }
     tracers.update(w.bullets, 1 - alpha, 1 / 60, view.camera.position);
     missileFx.update(w, (1 - alpha) / 60, frameDt, burners);
-    pylonMissiles.update(w.planes, ctx.planeDefs, (p) => {
-      const v = visuals.get(p.id);
-      return v && !v.placeholder && v.root.visible ? v.root : null;
-    });
+    pylonMissiles.update(
+      w.planes,
+      ctx.planeDefs,
+      (p) => {
+        const v = visuals.get(p.id);
+        return v && !v.placeholder && v.root.visible ? v.root : null;
+      },
+      w.objectives.ordnance,
+    );
+    ground.update(w.objectives.units, w.objectives.zones, w.objectives.rules.zoneRadiusM, w.objectives.rules.captureAltitudeM, ctx.terrain, frameDt);
     burners.length = 0;
     if (!me) return;
 
@@ -1080,8 +1190,8 @@ function boot(): void {
     const hint = env.isTouch || desktop.pointerLocked || desktop.gamepadConnected
       ? ''
       : desktop.cursorSteering
-        ? `Hold the cursor where you want to fly. Click or Space fires${def.missiles.length ? ', Q missile, R target, F flares' : ''}, Tab shows scores`
-        : `Click to steer with the mouse. Space fires${def.missiles.length ? ', Q missile, R target, F flares' : ''}, W/S throttle, Tab shows scores`;
+        ? `Hold the cursor where you want to fly. Click or Space fires${def.missiles.length ? ', Q missile, R target, F flares' : def.ordnance ? ', Q rockets and bombs' : ''}, Tab shows scores`
+        : `Click to steer with the mouse. Space fires${def.missiles.length ? ', Q missile, R target, F flares' : def.ordnance ? ', Q rockets and bombs' : ''}, W/S throttle, Tab shows scores`;
 
     const cockpit = cockpitState(w, ctx, me, controls.target, screenOfPlane);
     audio.update(cockpit.seeker, cockpit.warning, clock);
@@ -1102,7 +1212,11 @@ function boot(): void {
       damaged: me.damaged,
       onFire: me.fireFor > 0,
       protectedFor: me.protectedFor,
-      ammo: def.guns.map((g, i) => ({ label: ctx.guns.get(g.type)?.name.split(' ').slice(0, 2).join(' ') ?? g.type, rounds: me.ammo[i] ?? 0 })),
+      ammo: [
+        ...def.guns.map((g, i) => ({ label: ctx.guns.get(g.type)?.name.split(' ').slice(0, 2).join(' ') ?? g.type, rounds: me.ammo[i] ?? 0 })),
+        ...(def.ordnance ? [{ label: 'Rockets', rounds: me.rockets }, { label: 'Bombs', rounds: me.bombs }] : []),
+      ],
+      ...objectiveHud(s, me),
       aim: aimScreen,
       nose: noseScreen,
       lead: leadScreen,
@@ -1176,7 +1290,7 @@ function boot(): void {
       teamBr: () => {
         if (!session || mode !== 'match') return null;
         const br = { blue: 0, red: 0 };
-        for (const p of session.world.planes) br[p.team] += ctx.planeDefs.get(p.planeId)?.br ?? 0;
+        for (const p of session.world.planes) if (!isBomber(session.world, p.id)) br[p.team] += ctx.planeDefs.get(p.planeId)?.br ?? 0;
         return br;
       },
       /** Other human players' planes as this browser sees them (the multiplayer test compares these). */
@@ -1212,6 +1326,21 @@ function boot(): void {
         enemy.protectedFor = 0;
         return enemy.id;
       },
+      /** Solo only: put the player `distM` from a ground unit of `kind` (any team), `heightM` up, facing it. */
+      placeNearUnit: (kind: string, distM = 700, heightM = 250) => {
+        const me = player();
+        if (!session || session.kind !== 'solo' || !me) return null;
+        const w = session.world;
+        const u = kind === 'bomber' ? w.planes.find((x) => x.alive && isBomber(w, x.id)) : w.objectives.units.find((x) => x.kind === kind && x.alive);
+        if (!u) return null;
+        const dir = normalize([me.pos[0] - u.pos[0], 0, me.pos[2] - u.pos[2]]);
+        me.pos = [u.pos[0] + dir[0] * distM, u.pos[1] + heightM, u.pos[2] + dir[2] * distM];
+        const fwd = normalize([u.pos[0] - me.pos[0], u.pos[1] - me.pos[1], u.pos[2] - me.pos[2]]);
+        me.quat = quatLookRotation(fwd);
+        me.vel = [fwd[0] * 120, fwd[1] * 120, fwd[2] * 120];
+        controls.resetTo(me);
+        return u.id;
+      },
       /** Solo only: an enemy behind the player launches `type` at it. */
       launchAtPlayer: (type: string, distM = 1800) => {
         const me = player();
@@ -1234,6 +1363,22 @@ function boot(): void {
       },
       quality: () => quality,
       pylonMissiles: () => ({ total: pylonMissiles.shown, mine: session ? pylonMissiles.shownOn(session.playerId) : 0 }),
+      /** The mode's state as this browser sees it: zones, ground targets, bombers, rockets and bombs. */
+      objectives: () => {
+        if (!session || mode !== 'match') return null;
+        const w = session.world;
+        const o = w.objectives;
+        return {
+          mode: o.mode,
+          score: { ...w.match.score },
+          zones: o.zones.map((z) => ({ owner: z.owner, progress: z.progress })),
+          units: o.units.map((u) => ({ kind: u.kind, team: u.team, alive: u.alive, pos: [...u.pos] })),
+          drawnUnits: ground.shown,
+          bombers: w.planes.filter((p) => isBomber(w, p.id)).map((p) => ({ id: p.id, alive: p.alive, team: p.team, hp: p.hp, pos: [...p.pos] })),
+          escort: o.escort?.escort ?? null,
+          ordnance: o.ordnance.length,
+        };
+      },
       fps: () => fpsAvg,
       drawCalls: () => view.renderer.info.render.calls,
       triangles: () => view.renderer.info.render.triangles,

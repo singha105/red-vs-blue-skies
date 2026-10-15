@@ -2596,3 +2596,172 @@ body.is-flying {
 .account__msg:empty {
   display: none;
 }
+
+/* Day 9: objectives on the HUD */
+.hud__mid {
+  display: grid;
+  justify-items: center;
+  line-height: 1;
+}
+.hud__label {
+  font-family: var(--text);
+  font-size: 0.42em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+.hud__zones {
+  top: calc(52px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+}
+.zc {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-family: var(--display);
+  font-weight: 700;
+  background: conic-gradient(var(--toward) var(--fill), rgba(14, 33, 56, 0.55) 0);
+  border: 2px solid rgba(244, 247, 251, 0.8);
+}
+.zc--blue {
+  background: var(--blue);
+}
+.zc--red {
+  background: var(--red);
+}
+.hud__obj {
+  top: calc(84px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 10px;
+  border-radius: 4px;
+  background: rgba(14, 33, 56, 0.45);
+  font-size: 0.85em;
+  font-weight: 600;
+  max-width: 60vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hud__obj:empty {
+  display: none;
+}
+.hud__objmarks {
+  inset: 0;
+}
+.omk {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  will-change: transform;
+}
+.omk b {
+  position: absolute;
+  left: -11px;
+  top: -11px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 15px;
+}
+.omk span {
+  position: absolute;
+  left: 0;
+  top: 13px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.omk--zone b {
+  border-radius: 50%;
+  border: 2px solid var(--paper);
+  background: rgba(14, 33, 56, 0.5);
+}
+.omk--zone.omk--blue b {
+  background: var(--blue);
+}
+.omk--zone.omk--red b {
+  background: var(--red);
+}
+.omk--unit b {
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg);
+  border: 2px solid #6aa8ff;
+}
+.omk--unit.omk--enemy b {
+  border-color: #ff6b5e;
+}
+.omk--bomber b {
+  left: -9px;
+  top: -9px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #6aa8ff;
+  border-radius: 3px;
+}
+.omk--bomber.omk--enemy b {
+  border-color: #ff6b5e;
+}
+.hud__map .mo {
+  position: absolute;
+  margin: -3px 0 0 -3px;
+  width: 6px;
+  height: 6px;
+  font-style: normal;
+}
+.mo--unit {
+  background: #6aa8ff;
+}
+.mo--unit.mo--red {
+  background: #ff6b5e;
+}
+.hud__map .mo--zone {
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 1px solid var(--paper);
+  font-family: var(--display);
+  font-size: 10px;
+  line-height: 12px;
+  text-align: center;
+  background: rgba(14, 33, 56, 0.6);
+}
+.mo--zone.mo--blue {
+  background: var(--blue);
+}
+.mo--zone.mo--red {
+  background: var(--red);
+}
+
+.setup__head .setup__match {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  display: flex;
+  gap: 8px;
+}
+.setup__head {
+  grid-template-columns: auto 1fr auto;
+}
+.setup__match .chip small {
+  display: block;
+}
+@media (max-height: 430px) {
+  .setup__head p {
+    display: none;
+  }
+}

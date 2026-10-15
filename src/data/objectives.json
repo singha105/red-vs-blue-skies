@@ -9,7 +9,7 @@
     { "id": "carrier", "name": "Carrier", "hp": 9000, "radiusM": 28, "lengthM": 200, "tickets": 150, "speedKmh": 18 },
     { "id": "depot", "name": "Depot", "hp": 1, "radiusM": 40, "tickets": 0, "speedKmh": 0 }
   ],
-  "aa": { "rangeM": 1500, "roundsPerS": 4, "muzzleVelocityMs": 800, "damage": 3, "spreadDeg": 1.8, "leadQuality": 0.7, "burstS": 1.6, "pauseS": 1.4 },
+  "aa": { "rangeM": 1400, "roundsPerS": 4, "muzzleVelocityMs": 800, "damage": 2, "spreadDeg": 1.8, "leadQuality": 0.7, "burstS": 1.6, "pauseS": 1.4 },
   "gunners": { "rangeM": 800, "roundsPerS": 6, "muzzleVelocityMs": 760, "damage": 2, "spreadDeg": 2.5, "leadQuality": 0.6, "burstS": 1.2, "pauseS": 0.8 },
   "ordnance": {
     "rocket": { "speedMs": 320, "damage": 500, "splashM": 22, "intervalS": 0.25 },

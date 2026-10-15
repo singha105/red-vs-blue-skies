@@ -1,26 +1,28 @@
 // Missiles hanging on the pylons, one InstancedMesh per weapon model (at most four draw calls for every plane
 // in the match). Each plane shows as many missiles per mount as it has left, so they disappear as they're fired
 // and come back on respawn. The weapon models are only downloaded for eras that have missiles.
-import { DoubleSide, InstancedMesh, Matrix4, MeshLambertMaterial, Object3D, type BufferGeometry, type Mesh } from 'three';
+import { DoubleSide, InstancedMesh, Matrix4, MeshLambertMaterial, Object3D, Quaternion, Vector3, type BufferGeometry, type Mesh } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import type { MissileClassId, Plane } from '../data/types';
 import type { PlaneState } from '../game/flight';
-import { MISSILE_MODEL, pylonSlots, type PylonSlot } from '../game/planeModels';
+import type { Ordnance } from '../game/objectives';
+import { MISSILE_MODEL, ORDNANCE_MODEL, ordnanceSlots, pylonSlots, type PylonSlot } from '../game/planeModels';
 
-const MODELS = [...new Set(Object.values(MISSILE_MODEL))];
-/** 20 planes × 8 pylons is the most a match can show. */
-const MAX_PER_MODEL = 160;
+const MODELS = [...new Set([...Object.values(MISSILE_MODEL), ...Object.values(ORDNANCE_MODEL)])];
+/** 20 planes × 10 pylons is the most a match can show, plus what's in the air. */
+const MAX_PER_MODEL = 240;
 
-/** What's needed to hang a plane's missiles: a live plane in a match, or the hangar's parked one. */
-export type Carrier = Pick<PlaneState, 'id' | 'planeId' | 'alive' | 'missiles'>;
+/** What's needed to hang a plane's missiles, rockets and bombs: a live plane in a match, or the hangar's parked one. */
+export type Carrier = Pick<PlaneState, 'id' | 'planeId' | 'alive' | 'missiles' | 'rockets' | 'bombs'>;
 
 export interface PylonMissiles {
   readonly root: Object3D;
   /** Download the weapon models (once). */
   load(): Promise<void>;
-  /** Draw every live plane's remaining missiles; `rootOf` gives the plane's drawn object (or null to skip). */
-  update(planes: readonly Carrier[], defs: ReadonlyMap<string, Plane>, rootOf: (p: Carrier) => Object3D | null): void;
+  /** Draw every live plane's remaining missiles, rockets and bombs, plus rockets and bombs in flight; `rootOf`
+   *  gives the plane's drawn object (or null to skip). */
+  update(planes: readonly Carrier[], defs: ReadonlyMap<string, Plane>, rootOf: (p: Carrier) => Object3D | null, flying?: readonly Ordnance[]): void;
   /** Missiles drawn last frame, in total and on one plane (tests). */
   readonly shown: number;
   shownOn(planeId: string): number;
@@ -37,6 +39,11 @@ export function createPylonMissiles(classOf: (missileType: string) => MissileCla
   const perPlane = new Map<string, number>();
   const local = new Matrix4();
   const world = new Matrix4();
+  const q = new Quaternion();
+  const v = new Vector3();
+  const one = new Vector3(1, 1, 1);
+  const zAxis = new Vector3(0, 0, 1);
+  const ordCache = new Map<string, ReturnType<typeof ordnanceSlots>>();
 
   const slotsFor = (def: Plane): PylonSlot[] => {
     let s = slotCache.get(def.id);
@@ -81,16 +88,45 @@ export function createPylonMissiles(classOf: (missileType: string) => MissileCla
       ).then(() => undefined);
       return loading;
     },
-    update(planes, defs, rootOf) {
+    update(planes, defs, rootOf, flying = []) {
       for (const m of meshes.values()) m.count = 0;
       shown = 0;
       perPlane.clear();
       if (meshes.size === 0) return;
+      for (const o of flying) {
+        const mesh = meshes.get(ORDNANCE_MODEL[o.kind]);
+        if (!mesh || mesh.count >= MAX_PER_MODEL) continue;
+        v.set(o.vel[0], o.vel[1], o.vel[2]).normalize();
+        q.setFromUnitVectors(zAxis, v);
+        world.compose(v.set(o.pos[0], o.pos[1], o.pos[2]), q, one);
+        mesh.setMatrixAt(mesh.count++, world);
+      }
       for (const p of planes) {
         if (!p.alive) continue;
         const before = shown;
         const def = defs.get(p.planeId);
-        if (!def || def.missiles.length === 0) continue;
+        if (!def) continue;
+        if (def.ordnance) {
+          const obj = rootOf(p);
+          if (!obj) continue;
+          let slots = ordCache.get(def.id);
+          if (!slots) {
+            slots = ordnanceSlots(def.id, def.ordnance);
+            ordCache.set(def.id, slots);
+          }
+          for (const s of slots) {
+            if (s.index >= (s.kind === 'rocket' ? p.rockets : p.bombs)) continue;
+            const mesh = meshes.get(ORDNANCE_MODEL[s.kind]);
+            if (!mesh || mesh.count >= MAX_PER_MODEL) continue;
+            local.makeTranslation(s.pos[0], s.pos[1], s.pos[2]);
+            world.multiplyMatrices(obj.matrixWorld, local);
+            mesh.setMatrixAt(mesh.count++, world);
+            shown++;
+          }
+          perPlane.set(p.id, shown - before);
+          continue;
+        }
+        if (def.missiles.length === 0) continue;
         const obj = rootOf(p);
         if (!obj) continue;
         const slots = slotsFor(def);

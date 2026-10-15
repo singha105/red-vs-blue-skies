@@ -90,3 +90,25 @@ export function pylonSlots(
 
 /** Missile centre below the pylon point. */
 const HANG_M = 0.22;
+
+/**
+ * Rockets and bombs on an attacker's pylons: bombs on the innermost (the centreline or inner wing), rockets
+ * outboard of them, in left/right pairs. Each slot says which it carries and its index, so a plane with
+ * `rockets` and `bombs` left shows exactly that many.
+ */
+export function ordnanceSlots(planeId: string, ordnance: { rockets: number; bombs: number }): { kind: 'rocket' | 'bomb'; index: number; pos: Vec3 }[] {
+  const pylons = [...(PLANE_MODELS[planeId]?.pylons ?? [])].sort((a, b) => Math.abs(a[0]) - Math.abs(b[0]) || b[0] - a[0]);
+  const out: { kind: 'rocket' | 'bomb'; index: number; pos: Vec3 }[] = [];
+  let i = 0;
+  for (let k = 0; k < ordnance.bombs && i < pylons.length; k++, i++) {
+    const p = pylons[i]!;
+    out.push({ kind: 'bomb', index: k, pos: [p[0], p[1] - 0.3, p[2]] });
+  }
+  for (let k = 0; k < ordnance.rockets && i < pylons.length; k++, i++) {
+    const p = pylons[i]!;
+    out.push({ kind: 'rocket', index: k, pos: [p[0], p[1] - 0.15, p[2]] });
+  }
+  return out;
+}
+
+export const ORDNANCE_MODEL = { rocket: 'rocket', bomb: 'bomb_250' } as const;

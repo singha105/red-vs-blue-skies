@@ -25,6 +25,27 @@ export interface ScoreRow {
   you: boolean;
 }
 
+/** Mode objectives on screen: zones (letters), ground targets and bombers. */
+export interface ObjectiveMarker {
+  x: number;
+  y: number;
+  kind: 'zone' | 'unit' | 'bomber';
+  /** Owner (zones), the unit's team, or null for a neutral zone. */
+  team: Team | null;
+  enemy: boolean;
+  label: string;
+}
+
+export interface ObjectiveFrame {
+  /** What the two numbers at the top count: Kills, Tickets or Points. */
+  scoreLabel: string;
+  /** The mode in a line (shown at the start and while nothing else is happening). */
+  role: string;
+  zones: { letter: string; owner: Team | null; progress: number }[];
+  /** Live status: "Capturing B · 45%", "Bombers inbound · 3 left"… */
+  status: string;
+}
+
 export interface HudFrame {
   speedKmh: number;
   altitudeM: number;
@@ -53,6 +74,10 @@ export interface HudFrame {
   hint: string;
   /** Missiles, countermeasures and threats (null for planes without any, and in menus). */
   weapons: WeaponsFrame | null;
+  objective: ObjectiveFrame;
+  objMarkers: ObjectiveMarker[];
+  /** Minimap symbols: zones as letters, ground targets as squares (x, z in −1..1 like mapDots). */
+  mapObjects: { x: number; z: number; kind: 'zone' | 'unit'; team: Team | null; label: string }[];
   death: null | { phase: 'killcam' | 'respawn'; killer: string | null; respawnIn: number };
 }
 
@@ -70,6 +95,8 @@ export interface Hud {
 
 const MAX_MARKERS = 24;
 const MAX_DOTS = 24;
+const MAX_OBJ = 16;
+const MAX_MAP_OBJ = 40;
 
 const esc = (s: string): string => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] ?? ch);
 export { esc as escapeHtml };
@@ -81,11 +108,14 @@ export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onSco
     <div class="hud__markers" aria-hidden="true">${'<div class="mk"><span></span></div>'.repeat(MAX_MARKERS)}</div>
     <button type="button" class="hud__menu" aria-label="Leave the match">Menu</button>
     <button type="button" class="hud__scores-btn" aria-label="Scoreboard" aria-pressed="false">Scores</button>
+    <div class="hud__objmarks" aria-hidden="true">${'<div class="omk"><b></b><span></span></div>'.repeat(MAX_OBJ)}</div>
     <div class="hud__top" aria-live="off">
       <span class="hud__team hud__team--blue" data-k="blue">0</span>
-      <span class="hud__clock" data-k="clock">10:00</span>
+      <span class="hud__mid"><span class="hud__clock" data-k="clock">10:00</span><span class="hud__label" data-k="label">Kills</span></span>
       <span class="hud__team hud__team--red" data-k="red">0</span>
     </div>
+    <div class="hud__zones" aria-label="Zones"></div>
+    <div class="hud__obj" role="status" data-k="obj"></div>
     <div class="hud__reticle" data-testid="reticle" aria-hidden="true"></div>
     <div class="hud__nose" data-testid="nose" aria-hidden="true"></div>
     <div class="hud__lead" data-testid="lead" aria-hidden="true"></div>
@@ -109,7 +139,7 @@ export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onSco
     <div class="hud__warn" role="status" aria-live="assertive"></div>
     <div class="hud__feed" aria-live="polite"></div>
     <div class="hud__hint"></div>
-    <div class="hud__map" aria-label="Minimap">${'<i class="dot"></i>'.repeat(MAX_DOTS)}<div class="hud__map-dot"></div></div>
+    <div class="hud__map" aria-label="Minimap">${'<i class="mo"></i>'.repeat(MAX_MAP_OBJ)}${'<i class="dot"></i>'.repeat(MAX_DOTS)}<div class="hud__map-dot"></div></div>
     <div class="hud__death" hidden><div class="hud__death-title"></div><div class="hud__death-sub"></div></div>
     <div class="hud__board" hidden><table><thead><tr><th>Pilot</th><th>Plane</th><th>K</th><th>D</th><th>A</th><th>Dmg</th></tr></thead><tbody></tbody></table></div>
   `;
@@ -130,6 +160,9 @@ export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onSco
   const arrows = qa('.hud__arrow');
   const markers = qa('.mk');
   const dots = qa('.hud__map .dot');
+  const mapObjs = qa('.hud__map .mo');
+  const objMarks = qa('.omk');
+  const zonesEl = q('.hud__zones');
   const playerDot = q('.hud__map-dot');
   const hpFill = q('.hud__hp-fill');
   const hpBar = q('.hud__hp');
@@ -169,8 +202,52 @@ export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onSco
       text('alt', String(Math.round(f.altitudeM)));
       text('thr', String(Math.round(f.throttle * 100)));
       text('g', f.g.toFixed(1));
-      text('blue', String(f.score.blue));
-      text('red', String(f.score.red));
+      text('blue', String(Math.ceil(f.score.blue)));
+      text('red', String(Math.ceil(f.score.red)));
+      text('label', f.objective.scoreLabel);
+      text('obj', f.objective.status || f.objective.role);
+      const zkey = f.objective.zones.map((z) => `${z.letter}${z.owner ?? '-'}${Math.round(z.progress * 10)}`).join('|');
+      if (last['zones'] !== zkey) {
+        last['zones'] = zkey;
+        zonesEl.innerHTML = f.objective.zones
+          .map((z) => {
+            const toward = z.progress > 0 ? 'blue' : 'red';
+            const fill = Math.round(Math.abs(z.progress) * 100);
+            return `<span class="zc zc--${z.owner ?? 'none'}" style="--fill:${fill}%;--toward:var(--${toward})">${z.letter}</span>`;
+          })
+          .join('');
+      }
+      for (let i = 0; i < MAX_OBJ; i++) {
+        const node = objMarks[i]!;
+        const m = f.objMarkers[i];
+        if (!m) {
+          if (node.style.display !== 'none') node.style.display = 'none';
+          continue;
+        }
+        node.style.display = '';
+        const cls = `omk omk--${m.kind} omk--${m.team ?? 'none'}${m.enemy ? ' omk--enemy' : ''}`;
+        if (node.className !== cls) node.className = cls;
+        node.style.transform = `translate(${m.x.toFixed(0)}px, ${m.y.toFixed(0)}px)`;
+        const b = node.firstElementChild as HTMLElement;
+        const letter = m.kind === 'zone' ? m.label.slice(0, 1) : '';
+        if (b.textContent !== letter) b.textContent = letter;
+        const span = node.lastElementChild as HTMLElement;
+        const label = m.kind === 'zone' ? m.label.slice(2) : m.label;
+        if (span.textContent !== label) span.textContent = label;
+      }
+      for (let i = 0; i < MAX_MAP_OBJ; i++) {
+        const node = mapObjs[i]!;
+        const o = f.mapObjects[i];
+        if (!o) {
+          if (node.style.display !== 'none') node.style.display = 'none';
+          continue;
+        }
+        node.style.display = '';
+        node.className = `mo mo--${o.kind} mo--${o.team ?? 'none'}`;
+        node.style.left = `${((1 - o.x) * 50).toFixed(1)}%`;
+        node.style.top = `${((1 - o.z) * 50).toFixed(1)}%`;
+        if (node.textContent !== o.label) node.textContent = o.label;
+      }
       const t = Math.ceil(f.timeLeftS);
       text('clock', f.timeLeftS > 1e8 ? 'Free flight' : `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`);
       text('ammo', f.ammo.map((a) => `${a.label} ${a.rounds}`).join('   '));
