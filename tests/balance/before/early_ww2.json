@@ -1,0 +1,98 @@
+{
+ "era": "early_ww2",
+ "duels": 200,
+ "seed": 1,
+ "seconds": 11.892,
+ "pairs": [
+  {
+   "era": "early_ww2",
+   "lower": "p26",
+   "higher": "gladiator",
+   "lowerTier": 1,
+   "higherWins": 113,
+   "lowerWins": 82,
+   "draws": 5,
+   "higherRate": 0.5794871794871795
+  },
+  {
+   "era": "early_ww2",
+   "lower": "gladiator",
+   "higher": "cr42",
+   "lowerTier": 2,
+   "higherWins": 129,
+   "lowerWins": 70,
+   "draws": 1,
+   "higherRate": 0.6482412060301508
+  },
+  {
+   "era": "early_ww2",
+   "lower": "cr42",
+   "higher": "i16",
+   "lowerTier": 3,
+   "higherWins": 129,
+   "lowerWins": 70,
+   "draws": 1,
+   "higherRate": 0.6482412060301508
+  },
+  {
+   "era": "early_ww2",
+   "lower": "i16",
+   "higher": "p36",
+   "lowerTier": 4,
+   "higherWins": 32,
+   "lowerWins": 165,
+   "draws": 3,
+   "higherRate": 0.16243654822335024
+  },
+  {
+   "era": "early_ww2",
+   "lower": "p36",
+   "higher": "hurricane_mk1",
+   "lowerTier": 5,
+   "higherWins": 143,
+   "lowerWins": 56,
+   "draws": 1,
+   "higherRate": 0.7185929648241206
+  },
+  {
+   "era": "early_ww2",
+   "lower": "hurricane_mk1",
+   "higher": "a6m2",
+   "lowerTier": 6,
+   "higherWins": 139,
+   "lowerWins": 59,
+   "draws": 2,
+   "higherRate": 0.702020202020202
+  },
+  {
+   "era": "early_ww2",
+   "lower": "a6m2",
+   "higher": "bf109e4",
+   "lowerTier": 7,
+   "higherWins": 105,
+   "lowerWins": 93,
+   "draws": 2,
+   "higherRate": 0.5303030303030303
+  },
+  {
+   "era": "early_ww2",
+   "lower": "bf109e4",
+   "higher": "spitfire_mk5",
+   "lowerTier": 8,
+   "higherWins": 96,
+   "lowerWins": 101,
+   "draws": 3,
+   "higherRate": 0.4873096446700508
+  },
+  {
+   "era": "early_ww2",
+   "lower": "spitfire_mk5",
+   "higher": "bf109f4",
+   "lowerTier": 9,
+   "higherWins": 87,
+   "lowerWins": 105,
+   "draws": 8,
+   "higherRate": 0.453125
+  }
+ ]
+}

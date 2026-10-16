@@ -9,3 +9,4 @@ playwright-report/
 tools/blender/refs/
 *.log
 tools/blender/build/
+tests/balance/out/

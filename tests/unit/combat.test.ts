@@ -132,9 +132,10 @@ describe('damage', () => {
   it('kills credit the killer, assists go to anyone with 25%+, the team scores', () => {
     const { w, b } = duel();
     addPilot(w, { id: 'c', name: 'C', team: 'blue', bot: false });
-    applyDamage(w, b, 'c', 30, 'fuselage', 'mg_50');
-    applyDamage(w, b, 'a', 10, 'fuselage', 'cannon_20mm');
-    applyDamage(w, b, 'a', 200, 'fuselage', 'cannon_20mm');
+    // Shares of max HP (tuning changes the HP): C does 30%, A the rest.
+    applyDamage(w, b, 'c', b.maxHp * 0.3, 'fuselage', 'mg_50');
+    applyDamage(w, b, 'a', b.maxHp * 0.1, 'fuselage', 'cannon_20mm');
+    applyDamage(w, b, 'a', b.maxHp * 2, 'fuselage', 'cannon_20mm');
     expect(b.alive).toBe(false);
     expect(b.wreck).toBe(true);
     expect(w.stats['a']!.kills).toBe(1);

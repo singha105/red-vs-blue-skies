@@ -1,0 +1,98 @@
+{
+ "era": "modern",
+ "duels": 200,
+ "seed": 4242,
+ "seconds": 31.542,
+ "pairs": [
+  {
+   "era": "modern",
+   "lower": "mig29a",
+   "higher": "mirage2000_5",
+   "lowerTier": 1,
+   "higherWins": 135,
+   "lowerWins": 54,
+   "draws": 11,
+   "higherRate": 0.7142857142857143
+  },
+  {
+   "era": "modern",
+   "lower": "mirage2000_5",
+   "higher": "fa18c",
+   "lowerTier": 2,
+   "higherWins": 125,
+   "lowerWins": 69,
+   "draws": 6,
+   "higherRate": 0.6443298969072165
+  },
+  {
+   "era": "modern",
+   "lower": "fa18c",
+   "higher": "f16c_b50",
+   "lowerTier": 3,
+   "higherWins": 130,
+   "lowerWins": 68,
+   "draws": 2,
+   "higherRate": 0.6565656565656566
+  },
+  {
+   "era": "modern",
+   "lower": "f16c_b50",
+   "higher": "jas39c",
+   "lowerTier": 4,
+   "higherWins": 135,
+   "lowerWins": 60,
+   "draws": 5,
+   "higherRate": 0.6923076923076923
+  },
+  {
+   "era": "modern",
+   "lower": "jas39c",
+   "higher": "su27s",
+   "lowerTier": 5,
+   "higherWins": 121,
+   "lowerWins": 63,
+   "draws": 16,
+   "higherRate": 0.657608695652174
+  },
+  {
+   "era": "modern",
+   "lower": "su27s",
+   "higher": "f15c",
+   "lowerTier": 6,
+   "higherWins": 118,
+   "lowerWins": 82,
+   "draws": 0,
+   "higherRate": 0.59
+  },
+  {
+   "era": "modern",
+   "lower": "f15c",
+   "higher": "typhoon",
+   "lowerTier": 7,
+   "higherWins": 122,
+   "lowerWins": 60,
+   "draws": 18,
+   "higherRate": 0.6703296703296703
+  },
+  {
+   "era": "modern",
+   "lower": "typhoon",
+   "higher": "rafale_c",
+   "lowerTier": 8,
+   "higherWins": 130,
+   "lowerWins": 60,
+   "draws": 10,
+   "higherRate": 0.6842105263157895
+  },
+  {
+   "era": "modern",
+   "lower": "rafale_c",
+   "higher": "f22a",
+   "lowerTier": 9,
+   "higherWins": 107,
+   "lowerWins": 83,
+   "draws": 10,
+   "higherRate": 0.5631578947368421
+  }
+ ]
+}

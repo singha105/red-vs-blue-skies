@@ -1,0 +1,98 @@
+{
+ "era": "ww1",
+ "duels": 200,
+ "seed": 1,
+ "seconds": 10.945,
+ "pairs": [
+  {
+   "era": "ww1",
+   "lower": "fokker_e3",
+   "higher": "airco_dh2",
+   "lowerTier": 1,
+   "higherWins": 96,
+   "lowerWins": 104,
+   "draws": 0,
+   "higherRate": 0.48
+  },
+  {
+   "era": "ww1",
+   "lower": "airco_dh2",
+   "higher": "nieuport_11",
+   "lowerTier": 2,
+   "higherWins": 89,
+   "lowerWins": 110,
+   "draws": 1,
+   "higherRate": 0.4472361809045226
+  },
+  {
+   "era": "ww1",
+   "lower": "nieuport_11",
+   "higher": "sopwith_pup",
+   "lowerTier": 3,
+   "higherWins": 104,
+   "lowerWins": 95,
+   "draws": 1,
+   "higherRate": 0.5226130653266332
+  },
+  {
+   "era": "ww1",
+   "lower": "sopwith_pup",
+   "higher": "albatros_d3",
+   "lowerTier": 4,
+   "higherWins": 186,
+   "lowerWins": 14,
+   "draws": 0,
+   "higherRate": 0.93
+  },
+  {
+   "era": "ww1",
+   "lower": "albatros_d3",
+   "higher": "fokker_dr1",
+   "lowerTier": 5,
+   "higherWins": 109,
+   "lowerWins": 88,
+   "draws": 3,
+   "higherRate": 0.5532994923857868
+  },
+  {
+   "era": "ww1",
+   "lower": "fokker_dr1",
+   "higher": "sopwith_camel",
+   "lowerTier": 6,
+   "higherWins": 87,
+   "lowerWins": 113,
+   "draws": 0,
+   "higherRate": 0.435
+  },
+  {
+   "era": "ww1",
+   "lower": "sopwith_camel",
+   "higher": "se5a",
+   "lowerTier": 7,
+   "higherWins": 116,
+   "lowerWins": 80,
+   "draws": 4,
+   "higherRate": 0.5918367346938775
+  },
+  {
+   "era": "ww1",
+   "lower": "se5a",
+   "higher": "spad_s13",
+   "lowerTier": 8,
+   "higherWins": 99,
+   "lowerWins": 99,
+   "draws": 2,
+   "higherRate": 0.5
+  },
+  {
+   "era": "ww1",
+   "lower": "spad_s13",
+   "higher": "fokker_d7",
+   "lowerTier": 9,
+   "higherWins": 66,
+   "lowerWins": 131,
+   "draws": 3,
+   "higherRate": 0.3350253807106599
+  }
+ ]
+}

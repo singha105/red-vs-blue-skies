@@ -75,6 +75,9 @@ export interface BotBrain {
   /** Zone or ground unit being worked on (−1 none), and seconds of climbing away after a strike pass. */
   goal: number;
   pullOut: number;
+  /** Seconds chasing the current target without a shot, and seconds left extending away to rebuild speed. */
+  noShotFor: number;
+  extendFor: number;
 }
 
 export function createBrain(id: string, difficulty: BotDifficulty): BotBrain {
@@ -103,10 +106,15 @@ export function createBrain(id: string, difficulty: BotDifficulty): BotBrain {
     role: Number(id.replace(/\D/g, '')) % 5 < 2 ? 'objective' : 'fighter',
     goal: -1,
     pullOut: 0,
+    noShotFor: 0,
+    extendFor: 0,
   };
 }
 
 const DEG = Math.PI / 180;
+/** A turning fight with no shot for this long is a stalemate (two planes circling); extend away and come back. */
+const STALEMATE_S = 12;
+const EXTEND_S = 10;
 
 const LOOK_AHEAD = [1.5, 3, 5];
 /** Shorter look-ahead while diving on a ground target, so the bot gets into gun range before pulling out. */
@@ -117,9 +125,12 @@ function terrainThreat(me: PlaneState, ctx: WorldContext, striking = false): num
   const speed = len(me.vel);
   const margin = 140 + speed * 0.5;
   let worst = 0;
+  const ceiling = ctx.terrain.maxSurfaceM + margin;
   for (const t of striking ? STRIKE_LOOK_AHEAD : LOOK_AHEAD) {
-    const p = add(me.pos, scale(me.vel, t));
-    const clearance = p[1] - ctx.terrain.surfaceAt(p[0], p[2]);
+    const py = me.pos[1] + me.vel[1] * t;
+    // Above the highest ground on the map plus the margin: nothing to hit there, skip the lookup.
+    if (py > ceiling) continue;
+    const clearance = py - ctx.terrain.surfaceAt(me.pos[0] + me.vel[0] * t, me.pos[2] + me.vel[2] * t);
     if (clearance < margin) worst = Math.max(worst, (margin - clearance) / margin);
   }
   const below = me.pos[1] - ctx.terrain.surfaceAt(me.pos[0], me.pos[2]);
@@ -251,7 +262,10 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
         best = e;
       }
     }
-    if (best && best.id !== brain.targetId) brain.reactIn = skill.reactionS;
+    if (best && best.id !== brain.targetId) {
+      brain.reactIn = skill.reactionS;
+      brain.noShotFor = 0;
+    }
     target = best;
     brain.targetId = best?.id ?? null;
     brain.retargetIn = 1.5 + skill.reactionS;
@@ -276,7 +290,15 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
     }
   }
 
-  // 7. Attack.
+  // 7. Attack. A stalemate (circling with no shot) breaks off: unload, full throttle, then turn back in with
+  // the speed to make a pass, so speed and climb count in a duel and not only turn rate.
+  brain.extendFor = Math.max(0, brain.extendFor - dt);
+  if (!aim && target && brain.extendFor > 0) {
+    brain.mode = 'attack';
+    const flat = normalize([me.vel[0], 0, me.vel[2]]);
+    aim = normalize([flat[0], me.pos[1] > 1500 ? -0.2 : 0.02, flat[2]]);
+    throttle = 1;
+  }
   if (!aim && target) {
     brain.mode = 'attack';
     const to: Vec3 = [target.pos[0] - me.pos[0], target.pos[1] - me.pos[1], target.pos[2] - me.pos[2]];
@@ -310,6 +332,15 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
     const offNose = Math.acos(clamp(dot(nose, leadDir), -1, 1));
     const cone = Math.atan(skill.fireMissM / Math.max(dist, 1));
     fire = brain.reactIn <= 0 && brain.triggerOn && dist < skill.fireRangeM && offNose < cone && target.protectedFor <= 0;
+    brain.noShotFor = fire ? 0 : brain.noShotFor + dt;
+    if (brain.noShotFor > STALEMATE_S) {
+      // Only in a real circle: the target is neither running away (chase it) nor pointing at us (the break
+      // turn's job), and it's close.
+      const fromTarget = normalize([me.pos[0] - target.pos[0], me.pos[1] - target.pos[1], me.pos[2] - target.pos[2]]);
+      const along = dot(rotate(target.quat, FORWARD), fromTarget);
+      if (dist < 900 && along < 0.9 && along > -0.5) brain.extendFor = EXTEND_S;
+      brain.noShotFor = 0;
+    }
 
     // Missiles: once the seeker is locked, inside the missile's comfortable range and outside gun range.
     if (me.lockTarget === target.id && me.lockProgress >= 1 && me.lockMount >= 0 && brain.missileIn <= 0 && brain.reactIn <= 0 && target.protectedFor <= 0) {

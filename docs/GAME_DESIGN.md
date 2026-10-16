@@ -39,11 +39,11 @@ Tier 1 = weakest, tier 10 = best. Data: `src/data/planes.json`.
 | 5 | Albatros D.III | Curtiss P-36 Hawk | P-47D Thunderbolt | MiG-15bis | F-4E Phantom II | JAS 39C Gripen |
 | 6 | Fokker Dr.I | Hurricane Mk I | F4U-4 Corsair | F-86F Sabre | MiG-23MLD | Su-27S |
 | 7 | Sopwith Camel | A6M2 Zero | Yak-3 | MiG-17 | Mirage F1C | F-15C Eagle |
-| 8 | S.E.5a | Bf 109 E-4 | P-51D Mustang | Hawker Hunter F.6 | F-14A Tomcat | Rafale C |
-| 9 | SPAD S.XIII | Spitfire Mk V | Spitfire Mk XIV | MiG-19 | F-16A | Eurofighter Typhoon |
-| 10 | Fokker D.VII | Bf 109 F-4 | Me 262 A-1 | F-8 Crusader | F-15A Eagle | F-22A Raptor |
+| 8 | S.E.5a | Bf 109 E-4 | P-51D Mustang | Hawker Hunter F.6 | F-14A Tomcat | Eurofighter Typhoon |
+| 9 | SPAD S.XIII | Spitfire Mk V | Me 262 A-1 | F-8 Crusader | F-16A | Rafale C |
+| 10 | Fokker D.VII | Bf 109 F-4 | Spitfire Mk XIV | MiG-19 | F-15A Eagle | F-22A Raptor |
 
-The order is a starting point for balance, not a historical ranking. A plane may be swapped if a better fit for the tier exists.
+The order is a starting point for balance, not a historical ranking. A plane may be swapped if a better fit for the tier exists. Day 10's bot tournament swapped three pairs (Spitfire Mk XIV ↔ Me 262, MiG-19 ↔ F-8, Rafale C ↔ Typhoon) and tuned HP and turn rates so each tier beats the one below it about 60–70% of the time one on one; see `docs/BALANCE_REPORT.md`.
 
 **Data policy:** use real figures where they are easy to find (a spec sheet or Wikipedia infobox), and sensible guesses for everything else (ammo counts, exact variant figures, loadouts). Don't spend time on deep historical verification; this is an arcade game.
 

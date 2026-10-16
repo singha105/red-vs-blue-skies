@@ -6,7 +6,7 @@
     "tier": 1,
     "br": 1,
     "years": "1915",
-    "stats": { "topSpeedKmh": 140, "turnRateDegS": 27, "climbMs": 4, "rollRateDegS": 80, "hp": 80 },
+    "stats": { "topSpeedKmh": 140, "turnRateDegS": 23.5, "climbMs": 4, "rollRateDegS": 80, "hp": 59 },
     "guns": [
       { "type": "mg_792", "count": 1, "ammoPerGun": 500 }
     ],
@@ -22,7 +22,7 @@
     "tier": 2,
     "br": 1.3,
     "years": "1916",
-    "stats": { "topSpeedKmh": 150, "turnRateDegS": 28, "climbMs": 4, "rollRateDegS": 85, "hp": 80 },
+    "stats": { "topSpeedKmh": 150, "turnRateDegS": 26, "climbMs": 4, "rollRateDegS": 85, "hp": 67 },
     "guns": [
       { "type": "mg_303", "count": 1, "ammoPerGun": 291 }
     ],
@@ -38,7 +38,7 @@
     "tier": 3,
     "br": 1.6,
     "years": "1916",
-    "stats": { "topSpeedKmh": 162, "turnRateDegS": 30, "climbMs": 4, "rollRateDegS": 85, "hp": 80 },
+    "stats": { "topSpeedKmh": 162, "turnRateDegS": 30, "climbMs": 4, "rollRateDegS": 85, "hp": 81 },
     "guns": [
       { "type": "mg_303", "count": 1, "ammoPerGun": 291 }
     ],
@@ -54,7 +54,7 @@
     "tier": 4,
     "br": 1.9,
     "years": "1916",
-    "stats": { "topSpeedKmh": 180, "turnRateDegS": 31, "climbMs": 4, "rollRateDegS": 90, "hp": 80 },
+    "stats": { "topSpeedKmh": 180, "turnRateDegS": 33.5, "climbMs": 4, "rollRateDegS": 90, "hp": 93 },
     "guns": [
       { "type": "mg_303", "count": 1, "ammoPerGun": 500 }
     ],
@@ -70,7 +70,7 @@
     "tier": 5,
     "br": 2.2,
     "years": "1917",
-    "stats": { "topSpeedKmh": 175, "turnRateDegS": 30, "climbMs": 4, "rollRateDegS": 90, "hp": 80 },
+    "stats": { "topSpeedKmh": 175, "turnRateDegS": 25.5, "climbMs": 4, "rollRateDegS": 90, "hp": 56 },
     "guns": [
       { "type": "mg_792", "count": 2, "ammoPerGun": 500 }
     ],
@@ -86,7 +86,7 @@
     "tier": 6,
     "br": 2.5,
     "years": "1917",
-    "stats": { "topSpeedKmh": 180, "turnRateDegS": 35, "climbMs": 5, "rollRateDegS": 90, "hp": 80 },
+    "stats": { "topSpeedKmh": 180, "turnRateDegS": 31, "climbMs": 5, "rollRateDegS": 90, "hp": 63 },
     "guns": [
       { "type": "mg_792", "count": 2, "ammoPerGun": 500 }
     ],
@@ -102,7 +102,7 @@
     "tier": 7,
     "br": 2.8,
     "years": "1917",
-    "stats": { "topSpeedKmh": 182, "turnRateDegS": 36, "climbMs": 4, "rollRateDegS": 95, "hp": 80 },
+    "stats": { "topSpeedKmh": 182, "turnRateDegS": 36.5, "climbMs": 4, "rollRateDegS": 95, "hp": 82 },
     "guns": [
       { "type": "mg_303", "count": 2, "ammoPerGun": 500 }
     ],
@@ -118,7 +118,7 @@
     "tier": 8,
     "br": 3.1,
     "years": "1917",
-    "stats": { "topSpeedKmh": 222, "turnRateDegS": 31, "climbMs": 4, "rollRateDegS": 95, "hp": 90 },
+    "stats": { "topSpeedKmh": 222, "turnRateDegS": 33, "climbMs": 4, "rollRateDegS": 95, "hp": 101 },
     "guns": [
       { "type": "mg_303", "count": 2, "ammoPerGun": 400 }
     ],
@@ -134,7 +134,7 @@
     "tier": 9,
     "br": 3.4,
     "years": "1917",
-    "stats": { "topSpeedKmh": 211, "turnRateDegS": 30, "climbMs": 4, "rollRateDegS": 100, "hp": 90 },
+    "stats": { "topSpeedKmh": 211, "turnRateDegS": 34, "climbMs": 4, "rollRateDegS": 100, "hp": 113 },
     "guns": [
       { "type": "mg_303", "count": 2, "ammoPerGun": 400 }
     ],
@@ -150,7 +150,7 @@
     "tier": 10,
     "br": 3.7,
     "years": "1918",
-    "stats": { "topSpeedKmh": 189, "turnRateDegS": 34, "climbMs": 5, "rollRateDegS": 100, "hp": 80 },
+    "stats": { "topSpeedKmh": 189, "turnRateDegS": 44, "climbMs": 5, "rollRateDegS": 100, "hp": 134 },
     "guns": [
       { "type": "mg_792", "count": 2, "ammoPerGun": 500 }
     ],
@@ -166,7 +166,7 @@
     "tier": 1,
     "br": 1,
     "years": "1934",
-    "stats": { "topSpeedKmh": 377, "turnRateDegS": 22, "climbMs": 11, "rollRateDegS": 100, "hp": 100 },
+    "stats": { "topSpeedKmh": 377, "turnRateDegS": 15.5, "climbMs": 11, "rollRateDegS": 100, "hp": 53 },
     "guns": [
       { "type": "mg_30", "count": 1, "ammoPerGun": 500 },
       { "type": "mg_50", "count": 1, "ammoPerGun": 200 }
@@ -183,7 +183,7 @@
     "tier": 2,
     "br": 1.3,
     "years": "1937",
-    "stats": { "topSpeedKmh": 407, "turnRateDegS": 24, "climbMs": 11, "rollRateDegS": 100, "hp": 100 },
+    "stats": { "topSpeedKmh": 407, "turnRateDegS": 18, "climbMs": 11, "rollRateDegS": 100, "hp": 57 },
     "guns": [
       { "type": "mg_303", "count": 4, "ammoPerGun": 500 }
     ],
@@ -199,7 +199,7 @@
     "tier": 3,
     "br": 1.6,
     "years": "1939",
-    "stats": { "topSpeedKmh": 441, "turnRateDegS": 26, "climbMs": 11, "rollRateDegS": 105, "hp": 100 },
+    "stats": { "topSpeedKmh": 441, "turnRateDegS": 20.5, "climbMs": 11, "rollRateDegS": 105, "hp": 59 },
     "guns": [
       { "type": "mg_127", "count": 2, "ammoPerGun": 400 }
     ],
@@ -215,7 +215,7 @@
     "tier": 4,
     "br": 1.9,
     "years": "1939",
-    "stats": { "topSpeedKmh": 489, "turnRateDegS": 25, "climbMs": 12, "rollRateDegS": 130, "hp": 100 },
+    "stats": { "topSpeedKmh": 489, "turnRateDegS": 21, "climbMs": 12, "rollRateDegS": 130, "hp": 73 },
     "guns": [
       { "type": "mg_762", "count": 4, "ammoPerGun": 650 }
     ],
@@ -231,7 +231,7 @@
     "tier": 5,
     "br": 2.2,
     "years": "1938",
-    "stats": { "topSpeedKmh": 504, "turnRateDegS": 24, "climbMs": 12, "rollRateDegS": 110, "hp": 100 },
+    "stats": { "topSpeedKmh": 504, "turnRateDegS": 28.5, "climbMs": 12, "rollRateDegS": 110, "hp": 141 },
     "guns": [
       { "type": "mg_50", "count": 1, "ammoPerGun": 200 },
       { "type": "mg_30", "count": 1, "ammoPerGun": 500 }
@@ -248,7 +248,7 @@
     "tier": 6,
     "br": 2.5,
     "years": "1937",
-    "stats": { "topSpeedKmh": 529, "turnRateDegS": 25, "climbMs": 12, "rollRateDegS": 115, "hp": 110 },
+    "stats": { "topSpeedKmh": 529, "turnRateDegS": 27, "climbMs": 12, "rollRateDegS": 115, "hp": 132 },
     "guns": [
       { "type": "mg_303", "count": 8, "ammoPerGun": 334 }
     ],
@@ -264,7 +264,7 @@
     "tier": 7,
     "br": 2.8,
     "years": "1940",
-    "stats": { "topSpeedKmh": 533, "turnRateDegS": 29, "climbMs": 13, "rollRateDegS": 115, "hp": 75 },
+    "stats": { "topSpeedKmh": 533, "turnRateDegS": 31, "climbMs": 13, "rollRateDegS": 115, "hp": 86 },
     "guns": [
       { "type": "cannon_20mm_mgff", "count": 2, "ammoPerGun": 60 },
       { "type": "mg_303", "count": 2, "ammoPerGun": 500 }
@@ -281,7 +281,7 @@
     "tier": 8,
     "br": 3.1,
     "years": "1940",
-    "stats": { "topSpeedKmh": 560, "turnRateDegS": 26, "climbMs": 13, "rollRateDegS": 120, "hp": 100 },
+    "stats": { "topSpeedKmh": 560, "turnRateDegS": 29.5, "climbMs": 13, "rollRateDegS": 120, "hp": 130 },
     "guns": [
       { "type": "cannon_20mm_mgff", "count": 2, "ammoPerGun": 60 },
       { "type": "mg_792", "count": 2, "ammoPerGun": 1000 }
@@ -298,7 +298,7 @@
     "tier": 9,
     "br": 3.4,
     "years": "1941",
-    "stats": { "topSpeedKmh": 594, "turnRateDegS": 26, "climbMs": 13, "rollRateDegS": 120, "hp": 100 },
+    "stats": { "topSpeedKmh": 594, "turnRateDegS": 32.5, "climbMs": 13, "rollRateDegS": 120, "hp": 157 },
     "guns": [
       { "type": "cannon_20mm", "count": 2, "ammoPerGun": 60 },
       { "type": "mg_303", "count": 4, "ammoPerGun": 350 }
@@ -315,7 +315,7 @@
     "tier": 10,
     "br": 3.7,
     "years": "1941",
-    "stats": { "topSpeedKmh": 635, "turnRateDegS": 27, "climbMs": 14, "rollRateDegS": 125, "hp": 100 },
+    "stats": { "topSpeedKmh": 635, "turnRateDegS": 37.5, "climbMs": 14, "rollRateDegS": 125, "hp": 187 },
     "guns": [
       { "type": "cannon_20mm", "count": 1, "ammoPerGun": 200 },
       { "type": "mg_792", "count": 2, "ammoPerGun": 500 }
@@ -332,7 +332,7 @@
     "tier": 1,
     "br": 1,
     "years": "1941",
-    "stats": { "topSpeedKmh": 581, "turnRateDegS": 19, "climbMs": 14, "rollRateDegS": 110, "hp": 120 },
+    "stats": { "topSpeedKmh": 581, "turnRateDegS": 13.5, "climbMs": 14, "rollRateDegS": 110, "hp": 60 },
     "guns": [
       { "type": "mg_50", "count": 6, "ammoPerGun": 281 }
     ],
@@ -348,7 +348,7 @@
     "tier": 2,
     "br": 1.3,
     "years": "1943",
-    "stats": { "topSpeedKmh": 605, "turnRateDegS": 19, "climbMs": 15, "rollRateDegS": 110, "hp": 110 },
+    "stats": { "topSpeedKmh": 605, "turnRateDegS": 14.5, "climbMs": 15, "rollRateDegS": 110, "hp": 63 },
     "guns": [
       { "type": "cannon_37mm", "count": 1, "ammoPerGun": 30 },
       { "type": "mg_50", "count": 4, "ammoPerGun": 250 }
@@ -365,7 +365,7 @@
     "tier": 3,
     "br": 1.6,
     "years": "1944",
-    "stats": { "topSpeedKmh": 629, "turnRateDegS": 20, "climbMs": 15, "rollRateDegS": 115, "hp": 130 },
+    "stats": { "topSpeedKmh": 629, "turnRateDegS": 15.5, "climbMs": 15, "rollRateDegS": 115, "hp": 77 },
     "guns": [
       { "type": "mg_50", "count": 6, "ammoPerGun": 400 }
     ],
@@ -381,7 +381,7 @@
     "tier": 4,
     "br": 1.9,
     "years": "1944",
-    "stats": { "topSpeedKmh": 652, "turnRateDegS": 19, "climbMs": 16, "rollRateDegS": 145, "hp": 125 },
+    "stats": { "topSpeedKmh": 652, "turnRateDegS": 16.5, "climbMs": 16, "rollRateDegS": 145, "hp": 95 },
     "guns": [
       { "type": "cannon_20mm", "count": 4, "ammoPerGun": 200 },
       { "type": "mg_13", "count": 2, "ammoPerGun": 475 }
@@ -399,7 +399,7 @@
     "tier": 5,
     "br": 2.2,
     "years": "1943",
-    "stats": { "topSpeedKmh": 715, "turnRateDegS": 18, "climbMs": 16, "rollRateDegS": 120, "hp": 150 },
+    "stats": { "topSpeedKmh": 715, "turnRateDegS": 19, "climbMs": 16, "rollRateDegS": 120, "hp": 162 },
     "guns": [
       { "type": "mg_50", "count": 8, "ammoPerGun": 425 }
     ],
@@ -416,7 +416,7 @@
     "tier": 6,
     "br": 2.5,
     "years": "1945",
-    "stats": { "topSpeedKmh": 717, "turnRateDegS": 22, "climbMs": 16, "rollRateDegS": 125, "hp": 125 },
+    "stats": { "topSpeedKmh": 717, "turnRateDegS": 22, "climbMs": 16, "rollRateDegS": 125, "hp": 124 },
     "guns": [
       { "type": "mg_50", "count": 6, "ammoPerGun": 400 }
     ],
@@ -433,7 +433,7 @@
     "tier": 7,
     "br": 2.8,
     "years": "1944",
-    "stats": { "topSpeedKmh": 646, "turnRateDegS": 25, "climbMs": 17, "rollRateDegS": 125, "hp": 100 },
+    "stats": { "topSpeedKmh": 646, "turnRateDegS": 23.5, "climbMs": 17, "rollRateDegS": 125, "hp": 87 },
     "guns": [
       { "type": "cannon_20mm", "count": 1, "ammoPerGun": 150 },
       { "type": "mg_127", "count": 2, "ammoPerGun": 170 }
@@ -450,7 +450,7 @@
     "tier": 8,
     "br": 3.1,
     "years": "1944",
-    "stats": { "topSpeedKmh": 708, "turnRateDegS": 23, "climbMs": 17, "rollRateDegS": 130, "hp": 110 },
+    "stats": { "topSpeedKmh": 708, "turnRateDegS": 28.5, "climbMs": 17, "rollRateDegS": 130, "hp": 167 },
     "guns": [
       { "type": "mg_50", "count": 2, "ammoPerGun": 380 },
       { "type": "mg_50", "count": 4, "ammoPerGun": 270 }
@@ -461,30 +461,13 @@
     "verify": false
   },
   {
-    "id": "spitfire_mk14",
-    "name": "Supermarine Spitfire Mk XIV",
+    "id": "me262",
+    "name": "Messerschmitt Me 262 A-1a",
     "era": "late_ww2",
     "tier": 9,
     "br": 3.4,
     "years": "1944",
-    "stats": { "topSpeedKmh": 710, "turnRateDegS": 24, "climbMs": 18, "rollRateDegS": 130, "hp": 110 },
-    "guns": [
-      { "type": "cannon_20mm", "count": 2, "ammoPerGun": 120 },
-      { "type": "mg_50", "count": 2, "ammoPerGun": 250 }
-    ],
-    "missiles": [],
-    "countermeasures": { "flares": 0, "chaff": 0 },
-    "model": "models/late_ww2/spitfire_mk14.glb",
-    "verify": false
-  },
-  {
-    "id": "me262",
-    "name": "Messerschmitt Me 262 A-1a",
-    "era": "late_ww2",
-    "tier": 10,
-    "br": 3.7,
-    "years": "1944",
-    "stats": { "topSpeedKmh": 900, "turnRateDegS": 19, "climbMs": 18, "rollRateDegS": 135, "hp": 120 },
+    "stats": { "topSpeedKmh": 900, "turnRateDegS": 28, "climbMs": 18, "rollRateDegS": 135, "hp": 260 },
     "guns": [
       { "type": "cannon_30mm_mk108", "count": 2, "ammoPerGun": 100 },
       { "type": "cannon_30mm_mk108", "count": 2, "ammoPerGun": 80 }
@@ -495,13 +478,30 @@
     "verify": false
   },
   {
+    "id": "spitfire_mk14",
+    "name": "Supermarine Spitfire Mk XIV",
+    "era": "late_ww2",
+    "tier": 10,
+    "br": 3.7,
+    "years": "1944",
+    "stats": { "topSpeedKmh": 710, "turnRateDegS": 36, "climbMs": 18, "rollRateDegS": 130, "hp": 249 },
+    "guns": [
+      { "type": "cannon_20mm", "count": 2, "ammoPerGun": 120 },
+      { "type": "mg_50", "count": 2, "ammoPerGun": 250 }
+    ],
+    "missiles": [],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/late_ww2/spitfire_mk14.glb",
+    "verify": false
+  },
+  {
     "id": "p80",
     "name": "Lockheed P-80 Shooting Star",
     "era": "early_jets",
     "tier": 1,
     "br": 1,
     "years": "1945",
-    "stats": { "topSpeedKmh": 956, "turnRateDegS": 15, "climbMs": 32, "rollRateDegS": 125, "hp": 110 },
+    "stats": { "topSpeedKmh": 956, "turnRateDegS": 11.5, "climbMs": 32, "rollRateDegS": 125, "hp": 65 },
     "guns": [
       { "type": "mg_50", "count": 6, "ammoPerGun": 300 }
     ],
@@ -517,7 +517,7 @@
     "tier": 2,
     "br": 1.3,
     "years": "1949",
-    "stats": { "topSpeedKmh": 882, "turnRateDegS": 17, "climbMs": 32, "rollRateDegS": 130, "hp": 110 },
+    "stats": { "topSpeedKmh": 882, "turnRateDegS": 12, "climbMs": 32, "rollRateDegS": 130, "hp": 54 },
     "guns": [
       { "type": "cannon_20mm", "count": 4, "ammoPerGun": 150 }
     ],
@@ -533,7 +533,7 @@
     "tier": 3,
     "br": 1.6,
     "years": "1950",
-    "stats": { "topSpeedKmh": 965, "turnRateDegS": 16, "climbMs": 33, "rollRateDegS": 135, "hp": 125 },
+    "stats": { "topSpeedKmh": 965, "turnRateDegS": 13, "climbMs": 33, "rollRateDegS": 135, "hp": 83 },
     "guns": [
       { "type": "cannon_20mm", "count": 4, "ammoPerGun": 195 }
     ],
@@ -549,7 +549,7 @@
     "tier": 4,
     "br": 1.9,
     "years": "1951",
-    "stats": { "topSpeedKmh": 1001, "turnRateDegS": 15, "climbMs": 34, "rollRateDegS": 135, "hp": 125 },
+    "stats": { "topSpeedKmh": 1001, "turnRateDegS": 14, "climbMs": 34, "rollRateDegS": 135, "hp": 116 },
     "guns": [
       { "type": "mg_50", "count": 6, "ammoPerGun": 300 }
     ],
@@ -565,7 +565,7 @@
     "tier": 5,
     "br": 2.2,
     "years": "1950",
-    "stats": { "topSpeedKmh": 1076, "turnRateDegS": 17, "climbMs": 35, "rollRateDegS": 140, "hp": 110 },
+    "stats": { "topSpeedKmh": 1076, "turnRateDegS": 15, "climbMs": 35, "rollRateDegS": 140, "hp": 87 },
     "guns": [
       { "type": "cannon_37mm", "count": 1, "ammoPerGun": 40 },
       { "type": "cannon_23mm", "count": 2, "ammoPerGun": 80 }
@@ -582,7 +582,7 @@
     "tier": 6,
     "br": 2.5,
     "years": "1952",
-    "stats": { "topSpeedKmh": 1106, "turnRateDegS": 17, "climbMs": 36, "rollRateDegS": 160, "hp": 110 },
+    "stats": { "topSpeedKmh": 1106, "turnRateDegS": 17, "climbMs": 36, "rollRateDegS": 160, "hp": 116 },
     "guns": [
       { "type": "mg_50", "count": 6, "ammoPerGun": 300 }
     ],
@@ -598,7 +598,7 @@
     "tier": 7,
     "br": 2.8,
     "years": "1953",
-    "stats": { "topSpeedKmh": 1145, "turnRateDegS": 19, "climbMs": 37, "rollRateDegS": 145, "hp": 110 },
+    "stats": { "topSpeedKmh": 1145, "turnRateDegS": 18, "climbMs": 37, "rollRateDegS": 145, "hp": 98 },
     "guns": [
       { "type": "cannon_37mm", "count": 1, "ammoPerGun": 40 },
       { "type": "cannon_23mm", "count": 2, "ammoPerGun": 80 }
@@ -615,7 +615,7 @@
     "tier": 8,
     "br": 3.1,
     "years": "1956",
-    "stats": { "topSpeedKmh": 1002, "turnRateDegS": 18, "climbMs": 38, "rollRateDegS": 150, "hp": 110 },
+    "stats": { "topSpeedKmh": 1002, "turnRateDegS": 18.5, "climbMs": 38, "rollRateDegS": 150, "hp": 112 },
     "guns": [
       { "type": "cannon_30mm_aden_defa", "count": 4, "ammoPerGun": 150 }
     ],
@@ -625,13 +625,31 @@
     "verify": false
   },
   {
-    "id": "mig19s",
-    "name": "Mikoyan-Gurevich MiG-19S",
+    "id": "f8",
+    "name": "Vought F-8 Crusader",
     "era": "early_jets",
     "tier": 9,
     "br": 3.4,
+    "years": "1957",
+    "stats": { "topSpeedKmh": 1974, "turnRateDegS": 31.5, "climbMs": 39, "rollRateDegS": 160, "hp": 300 },
+    "guns": [
+      { "type": "cannon_20mm_colt", "count": 4, "ammoPerGun": 125 }
+    ],
+    "missiles": [
+      { "type": "aim9b", "count": 4 }
+    ],
+    "countermeasures": { "flares": 0, "chaff": 0 },
+    "model": "models/early_jets/f8.glb",
+    "verify": false
+  },
+  {
+    "id": "mig19s",
+    "name": "Mikoyan-Gurevich MiG-19S",
+    "era": "early_jets",
+    "tier": 10,
+    "br": 3.7,
     "years": "1955",
-    "stats": { "topSpeedKmh": 1452, "turnRateDegS": 19, "climbMs": 39, "rollRateDegS": 155, "hp": 110 },
+    "stats": { "topSpeedKmh": 1452, "turnRateDegS": 29.5, "climbMs": 39, "rollRateDegS": 155, "hp": 261 },
     "guns": [
       { "type": "cannon_30mm_nr30", "count": 2, "ammoPerGun": 75 },
       { "type": "cannon_30mm_nr30", "count": 1, "ammoPerGun": 55 }
@@ -644,31 +662,13 @@
     "verify": false
   },
   {
-    "id": "f8",
-    "name": "Vought F-8 Crusader",
-    "era": "early_jets",
-    "tier": 10,
-    "br": 3.7,
-    "years": "1957",
-    "stats": { "topSpeedKmh": 1974, "turnRateDegS": 19, "climbMs": 39, "rollRateDegS": 160, "hp": 110 },
-    "guns": [
-      { "type": "cannon_20mm_colt", "count": 4, "ammoPerGun": 125 }
-    ],
-    "missiles": [
-      { "type": "aim9b", "count": 4 }
-    ],
-    "countermeasures": { "flares": 0, "chaff": 0 },
-    "model": "models/early_jets/f8.glb",
-    "verify": false
-  },
-  {
     "id": "mig21f13",
     "name": "Mikoyan-Gurevich MiG-21F-13",
     "era": "cold_war",
     "tier": 1,
     "br": 1,
     "years": "1960",
-    "stats": { "topSpeedKmh": 2125, "turnRateDegS": 13, "climbMs": 108, "rollRateDegS": 155, "hp": 110 },
+    "stats": { "topSpeedKmh": 2125, "turnRateDegS": 11, "climbMs": 108, "rollRateDegS": 155, "hp": 75 },
     "guns": [
       { "type": "cannon_30mm_nr30", "count": 1, "ammoPerGun": 30 }
     ],
@@ -686,7 +686,7 @@
     "tier": 2,
     "br": 1.3,
     "years": "1960",
-    "stats": { "topSpeedKmh": 2459, "turnRateDegS": 10, "climbMs": 111, "rollRateDegS": 155, "hp": 120 },
+    "stats": { "topSpeedKmh": 2459, "turnRateDegS": 12, "climbMs": 111, "rollRateDegS": 155, "hp": 180 },
     "guns": [
       { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 725 }
     ],
@@ -704,7 +704,7 @@
     "tier": 3,
     "br": 1.6,
     "years": "1964",
-    "stats": { "topSpeedKmh": 2350, "turnRateDegS": 13, "climbMs": 114, "rollRateDegS": 160, "hp": 120 },
+    "stats": { "topSpeedKmh": 2350, "turnRateDegS": 12, "climbMs": 114, "rollRateDegS": 160, "hp": 102 },
     "guns": [
       { "type": "cannon_30mm_aden_defa", "count": 2, "ammoPerGun": 125 }
     ],
@@ -722,7 +722,7 @@
     "tier": 4,
     "br": 1.9,
     "years": "1972",
-    "stats": { "topSpeedKmh": 1700, "turnRateDegS": 16, "climbMs": 117, "rollRateDegS": 165, "hp": 110 },
+    "stats": { "topSpeedKmh": 1700, "turnRateDegS": 11, "climbMs": 117, "rollRateDegS": 165, "hp": 53 },
     "guns": [
       { "type": "cannon_20mm_m39", "count": 2, "ammoPerGun": 280 }
     ],
@@ -740,7 +740,7 @@
     "tier": 5,
     "br": 2.2,
     "years": "1967",
-    "stats": { "topSpeedKmh": 2370, "turnRateDegS": 12, "climbMs": 120, "rollRateDegS": 170, "hp": 140 },
+    "stats": { "topSpeedKmh": 2370, "turnRateDegS": 14, "climbMs": 120, "rollRateDegS": 170, "hp": 181 },
     "guns": [
       { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 640 }
     ],
@@ -759,7 +759,7 @@
     "tier": 6,
     "br": 2.5,
     "years": "1982",
-    "stats": { "topSpeedKmh": 2500, "turnRateDegS": 13, "climbMs": 123, "rollRateDegS": 175, "hp": 120 },
+    "stats": { "topSpeedKmh": 2500, "turnRateDegS": 15, "climbMs": 123, "rollRateDegS": 175, "hp": 151 },
     "guns": [
       { "type": "cannon_23mm_gsh23", "count": 1, "ammoPerGun": 200 }
     ],
@@ -778,7 +778,7 @@
     "tier": 7,
     "br": 2.8,
     "years": "1973",
-    "stats": { "topSpeedKmh": 2338, "turnRateDegS": 15, "climbMs": 126, "rollRateDegS": 180, "hp": 120 },
+    "stats": { "topSpeedKmh": 2338, "turnRateDegS": 15, "climbMs": 126, "rollRateDegS": 180, "hp": 126 },
     "guns": [
       { "type": "cannon_30mm_aden_defa", "count": 2, "ammoPerGun": 150 }
     ],
@@ -797,7 +797,7 @@
     "tier": 8,
     "br": 3.1,
     "years": "1974",
-    "stats": { "topSpeedKmh": 2485, "turnRateDegS": 15, "climbMs": 129, "rollRateDegS": 185, "hp": 140 },
+    "stats": { "topSpeedKmh": 2485, "turnRateDegS": 16.5, "climbMs": 129, "rollRateDegS": 185, "hp": 173 },
     "guns": [
       { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 675 }
     ],
@@ -816,7 +816,7 @@
     "tier": 9,
     "br": 3.4,
     "years": "1978",
-    "stats": { "topSpeedKmh": 2178, "turnRateDegS": 18, "climbMs": 132, "rollRateDegS": 185, "hp": 120 },
+    "stats": { "topSpeedKmh": 2178, "turnRateDegS": 15.5, "climbMs": 132, "rollRateDegS": 185, "hp": 87 },
     "guns": [
       { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 500 }
     ],
@@ -834,7 +834,7 @@
     "tier": 10,
     "br": 3.7,
     "years": "1976",
-    "stats": { "topSpeedKmh": 2655, "turnRateDegS": 16, "climbMs": 135, "rollRateDegS": 190, "hp": 130 },
+    "stats": { "topSpeedKmh": 2655, "turnRateDegS": 21.5, "climbMs": 135, "rollRateDegS": 190, "hp": 230 },
     "guns": [
       { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 940 }
     ],
@@ -853,7 +853,7 @@
     "tier": 1,
     "br": 1,
     "years": "1983",
-    "stats": { "topSpeedKmh": 2400, "turnRateDegS": 18, "climbMs": 225, "rollRateDegS": 200, "hp": 120 },
+    "stats": { "topSpeedKmh": 2400, "turnRateDegS": 14.5, "climbMs": 225, "rollRateDegS": 200, "hp": 77 },
     "guns": [
       { "type": "cannon_30mm_gsh301", "count": 1, "ammoPerGun": 150 }
     ],
@@ -872,7 +872,7 @@
     "tier": 2,
     "br": 1.3,
     "years": "1997",
-    "stats": { "topSpeedKmh": 2336, "turnRateDegS": 19, "climbMs": 231, "rollRateDegS": 205, "hp": 120 },
+    "stats": { "topSpeedKmh": 2336, "turnRateDegS": 15.5, "climbMs": 231, "rollRateDegS": 205, "hp": 81 },
     "guns": [
       { "type": "cannon_30mm_aden_defa", "count": 2, "ammoPerGun": 125 }
     ],
@@ -891,7 +891,7 @@
     "tier": 3,
     "br": 1.6,
     "years": "1987",
-    "stats": { "topSpeedKmh": 1915, "turnRateDegS": 20, "climbMs": 238, "rollRateDegS": 210, "hp": 120 },
+    "stats": { "topSpeedKmh": 1915, "turnRateDegS": 15, "climbMs": 238, "rollRateDegS": 210, "hp": 63 },
     "guns": [
       { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 578 }
     ],
@@ -910,7 +910,7 @@
     "tier": 4,
     "br": 1.9,
     "years": "1991",
-    "stats": { "topSpeedKmh": 2120, "turnRateDegS": 20, "climbMs": 244, "rollRateDegS": 215, "hp": 120 },
+    "stats": { "topSpeedKmh": 2120, "turnRateDegS": 16.5, "climbMs": 244, "rollRateDegS": 215, "hp": 80 },
     "guns": [
       { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 511 }
     ],
@@ -929,7 +929,7 @@
     "tier": 5,
     "br": 2.2,
     "years": "2002",
-    "stats": { "topSpeedKmh": 2100, "turnRateDegS": 20, "climbMs": 250, "rollRateDegS": 220, "hp": 110 },
+    "stats": { "topSpeedKmh": 2100, "turnRateDegS": 17, "climbMs": 250, "rollRateDegS": 220, "hp": 79 },
     "guns": [
       { "type": "cannon_27mm", "count": 1, "ammoPerGun": 120 }
     ],
@@ -948,7 +948,7 @@
     "tier": 6,
     "br": 2.5,
     "years": "1985",
-    "stats": { "topSpeedKmh": 2500, "turnRateDegS": 22, "climbMs": 256, "rollRateDegS": 225, "hp": 130 },
+    "stats": { "topSpeedKmh": 2500, "turnRateDegS": 23.5, "climbMs": 256, "rollRateDegS": 225, "hp": 148 },
     "guns": [
       { "type": "cannon_30mm_gsh301", "count": 1, "ammoPerGun": 150 }
     ],
@@ -967,7 +967,7 @@
     "tier": 7,
     "br": 2.8,
     "years": "1979",
-    "stats": { "topSpeedKmh": 2655, "turnRateDegS": 21, "climbMs": 263, "rollRateDegS": 230, "hp": 130 },
+    "stats": { "topSpeedKmh": 2655, "turnRateDegS": 25.5, "climbMs": 263, "rollRateDegS": 230, "hp": 198 },
     "guns": [
       { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 940 }
     ],
@@ -980,32 +980,13 @@
     "verify": false
   },
   {
-    "id": "rafale_c",
-    "name": "Dassault Rafale C",
-    "era": "modern",
-    "tier": 8,
-    "br": 3.1,
-    "years": "2001",
-    "stats": { "topSpeedKmh": 1912, "turnRateDegS": 23, "climbMs": 269, "rollRateDegS": 235, "hp": 120 },
-    "guns": [
-      { "type": "cannon_30mm_giat", "count": 1, "ammoPerGun": 125 }
-    ],
-    "missiles": [
-      { "type": "mica_em", "count": 4 },
-      { "type": "mica_ir", "count": 2 }
-    ],
-    "countermeasures": { "flares": 24, "chaff": 24 },
-    "model": "models/modern/rafale_c.glb",
-    "verify": false
-  },
-  {
     "id": "typhoon",
     "name": "Eurofighter Typhoon",
     "era": "modern",
-    "tier": 9,
-    "br": 3.4,
+    "tier": 8,
+    "br": 3.1,
     "years": "2003",
-    "stats": { "topSpeedKmh": 2495, "turnRateDegS": 22, "climbMs": 275, "rollRateDegS": 240, "hp": 120 },
+    "stats": { "topSpeedKmh": 2495, "turnRateDegS": 29, "climbMs": 275, "rollRateDegS": 240, "hp": 213 },
     "guns": [
       { "type": "cannon_27mm", "count": 1, "ammoPerGun": 150 }
     ],
@@ -1018,13 +999,32 @@
     "verify": false
   },
   {
+    "id": "rafale_c",
+    "name": "Dassault Rafale C",
+    "era": "modern",
+    "tier": 9,
+    "br": 3.4,
+    "years": "2001",
+    "stats": { "topSpeedKmh": 1912, "turnRateDegS": 26, "climbMs": 269, "rollRateDegS": 235, "hp": 150 },
+    "guns": [
+      { "type": "cannon_30mm_giat", "count": 1, "ammoPerGun": 125 }
+    ],
+    "missiles": [
+      { "type": "mica_em", "count": 4 },
+      { "type": "mica_ir", "count": 2 }
+    ],
+    "countermeasures": { "flares": 24, "chaff": 24 },
+    "model": "models/modern/rafale_c.glb",
+    "verify": false
+  },
+  {
     "id": "f22a",
     "name": "Lockheed Martin F-22A Raptor",
     "era": "modern",
     "tier": 10,
     "br": 3.7,
     "years": "2005",
-    "stats": { "topSpeedKmh": 2414, "turnRateDegS": 24, "climbMs": 281, "rollRateDegS": 250, "hp": 130 },
+    "stats": { "topSpeedKmh": 2414, "turnRateDegS": 37, "climbMs": 281, "rollRateDegS": 250, "hp": 300 },
     "guns": [
       { "type": "cannon_20mm_m61", "count": 1, "ammoPerGun": 480 }
     ],
