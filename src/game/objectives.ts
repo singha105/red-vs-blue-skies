@@ -11,7 +11,7 @@ import { aimControl, createAimPd, type AimPdState } from './autopilot';
 import { leadPoint, segmentSphere, type Bullet } from './ballistics';
 import { neutralInput, type ControlInput } from './controls';
 import { G, type PlaneState, type Team } from './flight';
-import { groundLayout, unitPose, type GroundLayout, type UnitPose } from './groundLayout';
+import { groundLayout, unitPose, type GroundLayout, type UnitPose, type UnitSlot } from './groundLayout';
 import { add, clamp, cross, FORWARD, normalize, quatFromAxisAngle, quatLookRotation, rotate, scale, UP, type Vec3 } from './math';
 import { PLANE_MODELS } from './planeModels';
 import { SP_CAPTURE } from './unlocks';
@@ -150,6 +150,14 @@ export function unitDef(ctx: WorldContext, kind: UnitKind): UnitDef {
   return ctx.data.objectives.units.find((u) => u.id === kind)!;
 }
 
+/** How fast a unit moves (m/s). A convoy keeps to its slowest vehicle's speed, so it stays in column. */
+export function unitSpeedMs(ctx: WorldContext, slot: UnitSlot): number {
+  if (!slot.road) return unitDef(ctx, slot.kind).speedKmh / 3.6;
+  let kmh = Infinity;
+  for (const u of ctx.data.objectives.units) if (u.id === 'truck' || u.id === 'tank') kmh = Math.min(kmh, u.speedKmh);
+  return kmh / 3.6;
+}
+
 export function bomberFor(ctx: WorldContext, era: EraId): BomberDef {
   return ctx.data.objectives.bombers.find((b) => b.eras.includes(era))!;
 }
@@ -218,7 +226,7 @@ export function initObjectives(
   for (const { slot, target } of unitsFor(mode, layout)) {
     const s = layout.slots[slot]!;
     const ud = unitDef(ctx, s.kind);
-    unitPose(s, ud.speedKmh / 3.6, 0, pose);
+    unitPose(s, unitSpeedMs(ctx, s), 0, pose);
     const hp = Math.max(1, Math.round(ud.hp * scale));
     o.units.push({
       id: o.units.length,
@@ -279,7 +287,7 @@ export function placeUnits(world: WorldState, ctx: WorldContext, time: number): 
     if (!u.alive) continue;
     const slot = layout.slots[u.slot];
     if (!slot) continue;
-    unitPose(slot, unitDef(ctx, u.kind).speedKmh / 3.6, time, scratchPose);
+    unitPose(slot, unitSpeedMs(ctx, slot), time, scratchPose);
     u.pos[0] = scratchPose.x;
     u.pos[2] = scratchPose.z;
     u.pos[1] = unitY(ctx, u.kind, scratchPose.x, scratchPose.z);

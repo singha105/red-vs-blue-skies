@@ -99,13 +99,14 @@ function landLayout(map: GameMap, t: Terrain): GroundLayout {
     const used: Vec2[] = [];
     const free = (p: Vec2, gap: number): boolean => used.every((u) => dist(u, p) >= gap);
 
-    // Two convoy roads: walk across flat ground from a random start, turning as little as possible.
+    // Two convoy roads: walk across flat ground from a random start, turning as little as possible. Small
+    // islands (Island Chain's west) may not fit an 840 m road, so later passes take roads down to 360 m.
     let convoys = 0;
-    for (let attempt = 0; attempt < 60 && convoys < 2 && flat.length > 0; attempt++) {
+    for (let attempt = 0; attempt < 260 && convoys < 2 && flat.length > 0; attempt++) {
       const start = flat[Math.floor(rng() * flat.length)]!;
       if (!free(start, 1200)) continue;
       const road = walkRoad(t, start, rng() * Math.PI * 2, s, half);
-      if (road.length < 7) continue;
+      if (road.length < (attempt < 60 ? 7 : attempt < 160 ? 5 : 4)) continue;
       for (const p of road) used.push(p);
       CONVOY.forEach((kind, i) => slots.push({ kind, team, road, roadOffsetM: i * CONVOY_GAP_M, circle: null, x: road[0]![0], z: road[0]![1], heading: 0 }));
       convoys++;
@@ -207,6 +208,9 @@ function navalLayout(map: GameMap, _t: Terrain): GroundLayout {
   return { slots, depot };
 }
 
+/** Convoys keep this far right of the road's centre, so the column passes itself after turning at an end. */
+const KEEP_RIGHT_M = 8;
+
 /** Where a unit is at match time `time` (seconds), moving at `speedMs`. */
 export function unitPose(slot: UnitSlot, speedMs: number, time: number, out: UnitPose): UnitPose {
   if (slot.road && slot.road.length > 1) {
@@ -216,6 +220,7 @@ export function unitPose(slot: UnitSlot, speedMs: number, time: number, out: Uni
     // Ping-pong along the road; the vehicles behind the lead trail it by their offset.
     let s = (speedMs * time + total * 2 - slot.roadOffsetM) % (total * 2);
     let dir = 1;
+    let done = 0;
     if (s > total) {
       s = total * 2 - s;
       dir = -1;
@@ -226,12 +231,16 @@ export function unitPose(slot: UnitSlot, speedMs: number, time: number, out: Uni
       const seg = dist(a, b);
       if (s <= seg || i === road.length - 1) {
         const k = Math.min(1, s / seg);
-        out.x = a[0] + (b[0] - a[0]) * k;
-        out.z = a[1] + (b[1] - a[1]) * k;
+        // Right of the direction of travel, easing to the centre over the last 30 m before each end (a U-turn).
+        const toEnd = Math.min(done + s, total - done - s);
+        const side = (KEEP_RIGHT_M * dir * Math.min(1, toEnd / 30)) / (seg || 1);
+        out.x = a[0] + (b[0] - a[0]) * k + (b[1] - a[1]) * side;
+        out.z = a[1] + (b[1] - a[1]) * k - (b[0] - a[0]) * side;
         out.heading = Math.atan2((b[0] - a[0]) * dir, (b[1] - a[1]) * dir);
         return out;
       }
       s -= seg;
+      done += seg;
     }
   }
   if (slot.circle) {

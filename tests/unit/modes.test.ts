@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { loadGameData } from '../../src/data';
 import type { EraId, GameData } from '../../src/data/types';
 import { neutralInput } from '../../src/game/controls';
-import { groundLayout } from '../../src/game/groundLayout';
+import { groundLayout, unitPose } from '../../src/game/groundLayout';
 import { createMatch, stepMatch } from '../../src/game/match';
-import { isBomber, moveOrdnance, type ModeId } from '../../src/game/objectives';
+import { isBomber, moveOrdnance, unitSpeedMs, type ModeId } from '../../src/game/objectives';
 import { addPilot, applyDamage, createWorld, createWorldContext, spawnPlane, stepWorld, type GameEvent, type WorldContext } from '../../src/game/world';
 
 const DT = 1 / 60;
@@ -205,3 +205,28 @@ describe('mode rules', () => {
   });
 });
 
+
+describe('convoys (Day 10 bug bash)', () => {
+  it('every land map gives both teams two convoys', () => {
+    for (const m of data.maps.filter((x) => x.terrain !== 'ocean')) {
+      const l = groundLayout(m, ctxOf(m.id).terrain);
+      for (const team of ['red', 'blue'] as const) expect(l.slots.filter((s) => s.team === team && s.kind === 'tank').length, `${m.id} ${team}`).toBe(2);
+    }
+  });
+
+  it("a convoy's vehicles never drive through each other, even turning at the ends of the road", () => {
+    for (const m of data.maps.filter((x) => x.terrain !== 'ocean')) {
+      const l = groundLayout(m, ctxOf(m.id).terrain);
+      const roads = [...new Set(l.slots.filter((s) => s.road).map((s) => s.road))];
+      for (const road of roads) {
+        const cars = l.slots.filter((s) => s.road === road);
+        let closest = Infinity;
+        for (let t = 0; t < 600; t += 0.5) {
+          const pos = cars.map((c) => unitPose(c, unitSpeedMs(ctxOf(m.id), c), t, { x: 0, z: 0, heading: 0 }));
+          for (let i = 0; i < pos.length; i++) for (let j = i + 1; j < pos.length; j++) closest = Math.min(closest, Math.hypot(pos[i]!.x - pos[j]!.x, pos[i]!.z - pos[j]!.z));
+        }
+        expect(closest, m.id).toBeGreaterThan(9);
+      }
+    }
+  });
+});
