@@ -443,6 +443,8 @@ export function stepWorld(world: WorldState, ctx: WorldContext, inputs: Record<s
     env.surfaceAt,
     dt,
     world.objectives.units.length > 0 ? (b, p0, p1) => bulletHitsUnit(world, ctx, b, p0, p1, world.events) : undefined,
+    // Ground units sit below the map's ceiling too, so this only skips the lookup where nothing can be hit.
+    ctx.terrain.maxSurfaceM + 1,
   );
   for (const h of hits) {
     if (!h.victim.alive) continue;

@@ -111,7 +111,11 @@ export type MissileEvent =
   | { t: 'decoy'; kind: 'flare' | 'chaff'; owner: string; pos: Vec3; vel: Vec3 };
 
 const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-const angleBetween = (a: Vec3, b: Vec3): number => Math.acos(clamp(dot(normalize(a), normalize(b)), -1, 1));
+/** Angle between two vectors, without allocating (it runs for every plane pair, every tick). */
+const angleBetween = (a: Vec3, b: Vec3): number => {
+  const l = Math.sqrt((a[0] * a[0] + a[1] * a[1] + a[2] * a[2]) * (b[0] * b[0] + b[1] * b[1] + b[2] * b[2]));
+  return l < 1e-12 ? 0 : Math.acos(clamp((a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / l, -1, 1));
+};
 
 /** Jets light the afterburner at full throttle. */
 export const afterburner = (p: PlaneState, def: Plane | undefined): boolean => Boolean(def && isJet(def) && p.throttle >= 0.95);
@@ -130,8 +134,9 @@ export function irBlocked(from: Vec3, look: Vec3, target: PlaneState, def: Plane
   const los = sub(target.pos, from);
   const d = len(los);
   if (angleBetween(look, los) > coneDeg * DEG) return 'cone';
-  // Range grows with heat; head-on, an all-aspect seeker only sees about 60% as far.
-  const tailAngle = angleBetween(scale(rotate(target.quat, FORWARD), -1), scale(los, -1));
+  // Range grows with heat; head-on, an all-aspect seeker only sees about 60% as far. (The angle between the
+  // target's tail and the way back to the seeker equals the one between its nose and the line of sight.)
+  const tailAngle = angleBetween(rotate(target.quat, FORWARD), los);
   if (cls.aspect === 'rear' && tailAngle > (inFlight ? REAR_ASPECT_FLIGHT_DEG : REAR_ASPECT_DEG) * DEG) return 'aspect';
   const aspectFactor = cls.aspect === 'rear' ? 1 : 0.6 + 0.4 * ((1 + Math.cos(tailAngle)) / 2);
   if (d > m.maxRangeM * Math.min(1.2, heatOf(target, def)) * aspectFactor) return 'range';
@@ -142,8 +147,9 @@ export function irBlocked(from: Vec3, look: Vec3, target: PlaneState, def: Plane
 /** Is the target notching this radar (speed along the line of sight near zero)? `windowScale` < 1 for a
  *  seeker that is hard to fool (an active missile in its terminal phase). */
 export function notching(radarPos: Vec3, target: PlaneState, windowScale = 1): boolean {
-  const los = normalize(sub(target.pos, radarPos));
-  const radial = Math.abs(dot(target.vel, los));
+  const lx = target.pos[0] - radarPos[0], ly = target.pos[1] - radarPos[1], lz = target.pos[2] - radarPos[2];
+  const l = Math.hypot(lx, ly, lz) || 1;
+  const radial = Math.abs((target.vel[0] * lx + target.vel[1] * ly + target.vel[2] * lz) / l);
   const window = (target.pos[1] < CLUTTER_ALT_M ? NOTCH_MS * 1.6 : NOTCH_MS) * windowScale;
   return radial < window;
 }
@@ -193,11 +199,15 @@ function autoTarget(shooter: PlaneState, def: Plane, planes: PlaneState[], mc: M
   const nose = rotate(shooter.quat, FORWARD);
   let best: PlaneState | null = null;
   let bestAngle = Infinity;
-  const reach = Math.max(0, ...def.missiles.map((m) => mc.missileDefs.get(m.type)?.maxRangeM ?? 0));
+  let reach = 0;
+  for (const m of def.missiles) reach = Math.max(reach, mc.missileDefs.get(m.type)?.maxRangeM ?? 0);
+  const to: Vec3 = [0, 0, 0];
   for (const p of planes) {
     if (!p.alive || p.team === shooter.team) continue;
-    const to = sub(p.pos, shooter.pos);
-    if (len(to) > reach) continue;
+    to[0] = p.pos[0] - shooter.pos[0];
+    to[1] = p.pos[1] - shooter.pos[1];
+    to[2] = p.pos[2] - shooter.pos[2];
+    if (to[0] * to[0] + to[1] * to[1] + to[2] * to[2] > reach * reach) continue;
     const a = angleBetween(nose, to);
     if (a < bestAngle && a < 75 * DEG) {
       bestAngle = a;

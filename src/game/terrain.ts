@@ -13,6 +13,8 @@ export interface Terrain {
   heightAt(x: number, z: number): number;
   /** The surface a plane hits: the ground, or the water if the ground is below it. */
   surfaceAt(x: number, z: number): number;
+  /** Nothing on this map is higher than this, so anything above it can skip surfaceAt (bullets, look-aheads). */
+  readonly maxSurfaceM: number;
 }
 
 /** 2D value noise with seeded lattice hashing, smoothed. Returns roughly −1..1. */
@@ -95,6 +97,7 @@ function islandChain(map: GameMap): Terrain {
     half,
     heightAt,
     surfaceAt: (x, z) => Math.max(SEA_LEVEL, heightAt(x, z)),
+    maxSurfaceM: 900,
   };
 }
 
@@ -104,6 +107,7 @@ function openOcean(map: GameMap): Terrain {
     half: map.sizeM / 2,
     heightAt: () => SEA_FLOOR,
     surfaceAt: () => SEA_LEVEL,
+    maxSurfaceM: SEA_LEVEL,
   };
 }
 
@@ -141,7 +145,7 @@ function canyonValley(map: GameMap): Terrain {
     h = h + (-14 - h) * river;
     return clamp(h, SEA_FLOOR, 1400);
   };
-  return { sizeM: map.sizeM, half, heightAt, surfaceAt: (x, z) => Math.max(SEA_LEVEL, heightAt(x, z)) };
+  return { sizeM: map.sizeM, half, heightAt, surfaceAt: (x, z) => Math.max(SEA_LEVEL, heightAt(x, z)), maxSurfaceM: 1400 };
 }
 
 /** Desert Mesas: terraced noise. Each band of the noise becomes a flat step with a cliff up to the next, so
@@ -159,7 +163,8 @@ function desertMesas(map: GameMap): Terrain {
     const dunes = fbm(noise, x / 350 - 9.1, z / 350 + 2.2, 2) * 6;
     return 45 + terrace * STEP_M + dunes;
   };
-  return { sizeM: map.sizeM, half, heightAt, surfaceAt: (x, z) => Math.max(SEA_LEVEL, heightAt(x, z)) };
+  // fbm stays inside ±1, so v < 2.4, level < 8.7 and the top terrace is 9 steps up.
+  return { sizeM: map.sizeM, half, heightAt, surfaceAt: (x, z) => Math.max(SEA_LEVEL, heightAt(x, z)), maxSurfaceM: 45 + 9 * STEP_M + 6 };
 }
 
 /** Builds the heightmap for a map. */

@@ -88,6 +88,8 @@ export interface Hud {
   /** Screen angle (radians, 0 = up, clockwise) toward whoever just hit you. */
   damageFrom(angle: number): void;
   killFeed(html: string, mine: boolean): void;
+  /** A plain-text notice in the middle of the screen for `seconds` (the phone-host warning). */
+  notice(text: string, seconds: number): void;
   setScoreboard(rows: ScoreRow[] | null): void;
   readonly scoreboardOpen: boolean;
   dispose(): void;
@@ -139,6 +141,7 @@ export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onSco
     <div class="hud__warn" role="status" aria-live="assertive"></div>
     <div class="hud__feed" aria-live="polite"></div>
     <div class="hud__hint"></div>
+    <div class="hud__notice" role="status" hidden></div>
     <div class="hud__map" aria-label="Minimap">${'<i class="mo"></i>'.repeat(MAX_MAP_OBJ)}${'<i class="dot"></i>'.repeat(MAX_DOTS)}<div class="hud__map-dot"></div></div>
     <div class="hud__death" hidden><div class="hud__death-title"></div><div class="hud__death-sub"></div></div>
     <div class="hud__board" hidden><table><thead><tr><th>Pilot</th><th>Plane</th><th>K</th><th>D</th><th>A</th><th>Dmg</th></tr></thead><tbody></tbody></table></div>
@@ -153,6 +156,7 @@ export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onSco
   let boardOpen = false;
   scoresBtn.addEventListener('click', () => handlers.onScores(!boardOpen));
 
+  let noticeTimer = 0;
   const reticle = q('.hud__reticle');
   const nose = q('.hud__nose');
   const lead = q('.hud__lead');
@@ -191,6 +195,15 @@ export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onSco
   };
   let arrowNext = 0;
   let hitTimer = 0;
+  // Style and class writes only when the value changes (each write can cost a style recalc on a phone), and the
+  // minimap at 10 Hz: a pixel there is ~130 m.
+  const setClass = (node: HTMLElement, cls: string): void => {
+    if (node.className !== cls) node.className = cls;
+  };
+  const setStyle = (node: HTMLElement, prop: 'left' | 'top' | 'transform', value: string): void => {
+    if (node.style[prop] !== value) node.style[prop] = value;
+  };
+  let mapFrame = 0;
 
   return {
     el,
@@ -235,17 +248,18 @@ export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onSco
         const label = m.kind === 'zone' ? m.label.slice(2) : m.label;
         if (span.textContent !== label) span.textContent = label;
       }
-      for (let i = 0; i < MAX_MAP_OBJ; i++) {
+      const mapNow = mapFrame++ % 6 === 0;
+      for (let i = 0; i < (mapNow ? MAX_MAP_OBJ : 0); i++) {
         const node = mapObjs[i]!;
         const o = f.mapObjects[i];
         if (!o) {
           if (node.style.display !== 'none') node.style.display = 'none';
           continue;
         }
-        node.style.display = '';
-        node.className = `mo mo--${o.kind} mo--${o.team ?? 'none'}`;
-        node.style.left = `${((1 - o.x) * 50).toFixed(1)}%`;
-        node.style.top = `${((1 - o.z) * 50).toFixed(1)}%`;
+        if (node.style.display !== '') node.style.display = '';
+        setClass(node, `mo mo--${o.kind} mo--${o.team ?? 'none'}`);
+        setStyle(node, 'left', `${((1 - o.x) * 50).toFixed(1)}%`);
+        setStyle(node, 'top', `${((1 - o.z) * 50).toFixed(1)}%`);
         if (node.textContent !== o.label) node.textContent = o.label;
       }
       const t = Math.ceil(f.timeLeftS);
@@ -276,30 +290,32 @@ export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onSco
           if (node.style.display !== 'none') node.style.display = 'none';
           continue;
         }
-        node.style.display = '';
-        node.className = `mk ${m.enemy ? 'mk--enemy' : 'mk--friend'} mk--${m.team}`;
+        if (node.style.display !== '') node.style.display = '';
+        setClass(node, `mk ${m.enemy ? 'mk--enemy' : 'mk--friend'} mk--${m.team}`);
         node.style.transform = `translate(${m.x.toFixed(0)}px, ${m.y.toFixed(0)}px)`;
         const label = m.enemy ? (m.distM < 1000 ? `${Math.round(m.distM / 10) * 10} m` : `${(m.distM / 1000).toFixed(1)} km`) : '';
         const span = node.firstElementChild as HTMLElement;
         if (span.textContent !== label) span.textContent = label;
       }
 
-      for (let i = 0; i < MAX_DOTS; i++) {
+      for (let i = 0; i < (mapNow ? MAX_DOTS : 0); i++) {
         const node = dots[i]!;
         const d = f.mapDots[i];
         if (!d) {
-          node.style.display = 'none';
+          if (node.style.display !== 'none') node.style.display = 'none';
           continue;
         }
-        node.style.display = '';
-        node.className = `dot dot--${d.team}`;
-        node.style.left = `${((1 - d.x) * 50).toFixed(1)}%`;
-        node.style.top = `${((1 - d.z) * 50).toFixed(1)}%`;
+        if (node.style.display !== '') node.style.display = '';
+        setClass(node, `dot dot--${d.team}`);
+        setStyle(node, 'left', `${((1 - d.x) * 50).toFixed(1)}%`);
+        setStyle(node, 'top', `${((1 - d.z) * 50).toFixed(1)}%`);
       }
       // Seen from above with +Z up the map, world +X points left.
-      playerDot.style.left = `${((1 - f.map.x) * 50).toFixed(1)}%`;
-      playerDot.style.top = `${((1 - f.map.z) * 50).toFixed(1)}%`;
-      playerDot.style.transform = `translate(-50%, -50%) rotate(${f.map.heading.toFixed(2)}rad)`;
+      if (mapNow) {
+        setStyle(playerDot, 'left', `${((1 - f.map.x) * 50).toFixed(1)}%`);
+        setStyle(playerDot, 'top', `${((1 - f.map.z) * 50).toFixed(1)}%`);
+        setStyle(playerDot, 'transform', `translate(-50%, -50%) rotate(${f.map.heading.toFixed(2)}rad)`);
+      }
 
       let w = '';
       let cls = '';
@@ -357,6 +373,13 @@ export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onSco
       a.classList.remove('is-on');
       void a.offsetWidth;
       a.classList.add('is-on');
+    },
+    notice(text, seconds) {
+      const n = q('.hud__notice');
+      n.textContent = text;
+      n.hidden = false;
+      window.clearTimeout(noticeTimer);
+      noticeTimer = window.setTimeout(() => (n.hidden = true), seconds * 1000);
     },
     killFeed(html, mine) {
       const row = document.createElement('div');

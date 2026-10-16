@@ -63,11 +63,12 @@ export const BOUNDING_RADIUS = 15;
  * Swept so a bullet moving 15 m a tick can't skip through a 2 m sphere.
  */
 export function segmentSphere(p0: Vec3, p1: Vec3, c: Vec3, r: number): number {
-  const d: Vec3 = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
-  const m: Vec3 = [p0[0] - c[0], p0[1] - c[1], p0[2] - c[2]];
-  const a = dot(d, d);
-  const b = dot(m, d);
-  const cc = dot(m, m) - r * r;
+  // Scalars, not vectors: this runs for every bullet near every plane, every tick.
+  const dx = p1[0] - p0[0], dy = p1[1] - p0[1], dz = p1[2] - p0[2];
+  const mx = p0[0] - c[0], my = p0[1] - c[1], mz = p0[2] - c[2];
+  const a = dx * dx + dy * dy + dz * dz;
+  const b = mx * dx + my * dy + mz * dz;
+  const cc = mx * mx + my * my + mz * mz - r * r;
   if (cc <= 0) return 0; // starts inside
   if (a < 1e-12) return -1;
   const disc = b * b - a * cc;
@@ -182,6 +183,9 @@ export interface BulletHit {
   point: Vec3;
 }
 
+const SEG0: Vec3 = [0, 0, 0];
+const SEG1: Vec3 = [0, 0, 0];
+
 /**
  * Moves every bullet one tick (with gravity), removes spent ones, and reports hits.
  * `spheresFor` gives each plane's hit spheres; friendly fire is off.
@@ -192,29 +196,39 @@ export function stepBullets(
   spheresFor: (p: PlaneState) => Record<Part, { c: Vec3; r: number }> & { bound?: number },
   surfaceAt: (x: number, z: number) => number,
   dt: number,
-  /** Ground targets: called for each segment before the ground test; true means the bullet hit one. */
+  /** Ground targets: called for each segment before the ground test; true means the bullet hit one.
+   *  p0 and p1 are scratch vectors: copy them to keep them. */
   hitsGround?: (b: Bullet, p0: Vec3, p1: Vec3) => boolean,
+  /** The map's highest point: bullets above it skip the terrain lookup. */
+  ceilingM = Infinity,
 ): BulletHit[] {
   const hits: BulletHit[] = [];
   let write = 0;
+  // Two scratch vectors for the whole step (bullets are moved in place), so a busy fight doesn't churn garbage.
+  const p0 = SEG0;
+  const p1 = SEG1;
   for (let read = 0; read < bullets.length; read++) {
     const b = bullets[read]!;
-    const p0 = b.pos;
+    p0[0] = b.pos[0];
+    p0[1] = b.pos[1];
+    p0[2] = b.pos[2];
     b.vel[1] -= G * dt;
-    const p1: Vec3 = [p0[0] + b.vel[0] * dt, p0[1] + b.vel[1] * dt, p0[2] + b.vel[2] * dt];
+    p1[0] = p0[0] + b.vel[0] * dt;
+    p1[1] = p0[1] + b.vel[1] * dt;
+    p1[2] = p0[2] + b.vel[2] * dt;
     b.life -= dt;
     let consumed = b.life <= 0;
     if (!consumed && hitsGround && hitsGround(b, p0, p1)) consumed = true;
-    if (!consumed && p1[1] <= surfaceAt(p1[0], p1[2])) consumed = true;
+    if (!consumed && p1[1] <= ceilingM && p1[1] <= surfaceAt(p1[0], p1[2])) consumed = true;
 
     if (!consumed) {
-      const mid: Vec3 = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, (p0[2] + p1[2]) / 2];
-      const half = len([p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]]) / 2;
+      const mx = (p0[0] + p1[0]) / 2, my = (p0[1] + p1[1]) / 2, mz = (p0[2] + p1[2]) / 2;
+      const half = Math.sqrt((p1[0] - p0[0]) ** 2 + (p1[1] - p0[1]) ** 2 + (p1[2] - p0[2]) ** 2) / 2;
       let bestT = 2;
       let best: BulletHit | null = null;
       for (const plane of planes) {
         if (!plane.alive || plane.team === b.team || plane.id === b.owner) continue;
-        const dx = plane.pos[0] - mid[0], dy = plane.pos[1] - mid[1], dz = plane.pos[2] - mid[2];
+        const dx = plane.pos[0] - mx, dy = plane.pos[1] - my, dz = plane.pos[2] - mz;
         const spheres = spheresFor(plane);
         const reach = half + (spheres.bound ?? BOUNDING_RADIUS);
         if (dx * dx + dy * dy + dz * dz > reach * reach) continue;
@@ -235,7 +249,9 @@ export function stepBullets(
     }
 
     if (!consumed) {
-      b.pos = p1;
+      b.pos[0] = p1[0];
+      b.pos[1] = p1[1];
+      b.pos[2] = p1[2];
       bullets[write++] = b;
     }
   }
