@@ -1,15 +1,18 @@
 {
   "a6m2": {
     "file": "models/early_ww2/a6m2.glb",
+    "lodFile": "models/early_ww2/a6m2_lod.glb",
+    "detailFile": "models/early_ww2/a6m2_detail.ktx2",
+    "lodTris": 331,
     "lengthM": 9.06,
     "wingspanM": 12,
-    "heightM": 2.35,
-    "tris": 331,
+    "heightM": 2.39,
+    "tris": 1297,
     "muzzles": [
       {
         "pos": [
           2.7,
-          -0.097,
+          -0.099,
           2.415
         ],
         "mount": 0
@@ -17,7 +20,7 @@
       {
         "pos": [
           -2.7,
-          -0.097,
+          -0.099,
           2.415
         ],
         "mount": 0
@@ -25,7 +28,7 @@
       {
         "pos": [
           0.2,
-          0.205,
+          0.204,
           3.643
         ],
         "mount": 1
@@ -33,7 +36,7 @@
       {
         "pos": [
           -0.2,
-          0.205,
+          0.204,
           3.643
         ],
         "mount": 1
@@ -56,10 +59,13 @@
   },
   "airco_dh2": {
     "file": "models/ww1/airco_dh2.glb",
+    "lodFile": "models/ww1/airco_dh2_lod.glb",
+    "detailFile": "models/ww1/airco_dh2_detail.ktx2",
+    "lodTris": 384,
     "lengthM": 7.68,
     "wingspanM": 8.61,
-    "heightM": 2.72,
-    "tris": 384,
+    "heightM": 2.73,
+    "tris": 1284,
     "muzzles": [
       {
         "pos": [
@@ -87,15 +93,18 @@
   },
   "albatros_d3": {
     "file": "models/ww1/albatros_d3.glb",
+    "lodFile": "models/ww1/albatros_d3_lod.glb",
+    "detailFile": "models/ww1/albatros_d3_detail.ktx2",
+    "lodTris": 378,
     "lengthM": 7.33,
     "wingspanM": 9,
-    "heightM": 2.62,
-    "tris": 378,
+    "heightM": 2.64,
+    "tris": 1318,
     "muzzles": [
       {
         "pos": [
           0.12,
-          0.62,
+          0.619,
           2.765
         ],
         "mount": 0
@@ -103,7 +112,7 @@
       {
         "pos": [
           -0.12,
-          0.62,
+          0.619,
           2.765
         ],
         "mount": 0
@@ -126,15 +135,18 @@
   },
   "bf109e4": {
     "file": "models/early_ww2/bf109e4.glb",
+    "lodFile": "models/early_ww2/bf109e4_lod.glb",
+    "detailFile": "models/early_ww2/bf109e4_detail.ktx2",
+    "lodTris": 299,
     "lengthM": 8.64,
     "wingspanM": 9.87,
-    "heightM": 2.11,
-    "tris": 299,
+    "heightM": 2.12,
+    "tris": 1285,
     "muzzles": [
       {
         "pos": [
           2.073,
-          -0.106,
+          -0.111,
           2.137
         ],
         "mount": 0
@@ -142,7 +154,7 @@
       {
         "pos": [
           -2.073,
-          -0.106,
+          -0.111,
           2.137
         ],
         "mount": 0
@@ -181,10 +193,13 @@
   },
   "bf109f4": {
     "file": "models/early_ww2/bf109f4.glb",
+    "lodFile": "models/early_ww2/bf109f4_lod.glb",
+    "detailFile": "models/early_ww2/bf109f4_detail.ktx2",
+    "lodTris": 299,
     "lengthM": 8.94,
     "wingspanM": 9.92,
-    "heightM": 2.11,
-    "tris": 299,
+    "heightM": 2.12,
+    "tris": 1285,
     "muzzles": [
       {
         "pos": [
@@ -228,15 +243,18 @@
   },
   "bomber_jet": {
     "file": "models/bombers/bomber_jet.glb",
+    "lodFile": "models/bombers/bomber_jet_lod.glb",
+    "detailFile": "models/bombers/bomber_jet_detail.ktx2",
+    "lodTris": 403,
     "lengthM": 33.5,
     "wingspanM": 35.4,
     "heightM": 8.49,
-    "tris": 403,
+    "tris": 1667,
     "muzzles": [
       {
         "pos": [
           0,
-          0.472,
+          0.476,
           -17.015
         ],
         "mount": 2
@@ -278,15 +296,18 @@
   },
   "bomber_ww1": {
     "file": "models/bombers/bomber_ww1.glb",
+    "lodFile": "models/bombers/bomber_ww1_lod.glb",
+    "detailFile": "models/bombers/bomber_ww1_detail.ktx2",
+    "lodTris": 448,
     "lengthM": 12,
     "wingspanM": 23,
-    "heightM": 4.06,
-    "tris": 448,
+    "heightM": 4.07,
+    "tris": 1456,
     "muzzles": [
       {
         "pos": [
           0,
-          0.7,
+          0.699,
           5.52
         ],
         "mount": 0
@@ -294,7 +315,7 @@
       {
         "pos": [
           0,
-          0.853,
+          0.852,
           0.6
         ],
         "mount": 1
@@ -302,7 +323,7 @@
       {
         "pos": [
           0,
-          0.69,
+          0.691,
           -1.2
         ],
         "mount": 2
@@ -321,10 +342,13 @@
   },
   "bomber_ww2": {
     "file": "models/bombers/bomber_ww2.glb",
+    "lodFile": "models/bombers/bomber_ww2_lod.glb",
+    "detailFile": "models/bombers/bomber_ww2_detail.ktx2",
+    "lodTris": 387,
     "lengthM": 22.6,
     "wingspanM": 31.6,
-    "heightM": 7.38,
-    "tris": 387,
+    "heightM": 7.37,
+    "tris": 1477,
     "muzzles": [
       {
         "pos": [
@@ -337,7 +361,7 @@
       {
         "pos": [
           0,
-          1.568,
+          1.561,
           4.52
         ],
         "mount": 1
@@ -364,10 +388,13 @@
   },
   "cr42": {
     "file": "models/early_ww2/cr42.glb",
+    "lodFile": "models/early_ww2/cr42_lod.glb",
+    "detailFile": "models/early_ww2/cr42_detail.ktx2",
+    "lodTris": 390,
     "lengthM": 8.25,
     "wingspanM": 9.7,
-    "heightM": 2.85,
-    "tris": 390,
+    "heightM": 2.86,
+    "tris": 1406,
     "muzzles": [
       {
         "pos": [
@@ -403,15 +430,18 @@
   },
   "f104g": {
     "file": "models/cold_war/f104g.glb",
+    "lodFile": "models/cold_war/f104g_lod.glb",
+    "detailFile": "models/cold_war/f104g_detail.ktx2",
+    "lodTris": 375,
     "lengthM": 16.66,
     "wingspanM": 6.36,
     "heightM": 3.9,
-    "tris": 375,
+    "tris": 1641,
     "muzzles": [
       {
         "pos": [
           0.45,
-          -0.275,
+          -0.274,
           5.531
         ],
         "mount": 0
@@ -419,7 +449,7 @@
       {
         "pos": [
           -0.45,
-          -0.275,
+          -0.274,
           5.531
         ],
         "mount": 0
@@ -428,12 +458,12 @@
     "pylons": [
       [
         3.116,
-        -0.846,
+        -0.845,
         -1.191
       ],
       [
         -3.116,
-        -0.846,
+        -0.845,
         -1.191
       ]
     ],
@@ -449,10 +479,13 @@
   },
   "f14a": {
     "file": "models/cold_war/f14a.glb",
+    "lodFile": "models/cold_war/f14a_lod.glb",
+    "detailFile": "models/cold_war/f14a_detail.ktx2",
+    "lodTris": 455,
     "lengthM": 19.1,
     "wingspanM": 16,
     "heightM": 4.15,
-    "tris": 455,
+    "tris": 1889,
     "muzzles": [
       {
         "pos": [
@@ -474,22 +507,22 @@
     "pylons": [
       [
         0.6,
-        -0.861,
+        -0.865,
         1.91
       ],
       [
         -0.6,
-        -0.861,
+        -0.865,
         1.91
       ],
       [
         0.6,
-        -0.9,
+        -0.904,
         -1.528
       ],
       [
         -0.6,
-        -0.9,
+        -0.904,
         -1.528
       ],
       [
@@ -520,10 +553,13 @@
   },
   "f15a": {
     "file": "models/cold_war/f15a.glb",
+    "lodFile": "models/cold_war/f15a_lod.glb",
+    "detailFile": "models/cold_war/f15a_detail.ktx2",
+    "lodTris": 401,
     "lengthM": 19.43,
     "wingspanM": 13.05,
     "heightM": 4.16,
-    "tris": 401,
+    "tris": 1713,
     "muzzles": [
       {
         "pos": [
@@ -545,32 +581,32 @@
     "pylons": [
       [
         1.5,
-        -0.926,
+        -0.93,
         1.554
       ],
       [
         -1.5,
-        -0.926,
+        -0.93,
         1.554
       ],
       [
         1.5,
-        -0.95,
+        -0.954,
         -1.554
       ],
       [
         -1.5,
-        -0.95,
+        -0.954,
         -1.554
       ],
       [
         2.61,
-        0.085,
+        0.08,
         -4.129
       ],
       [
         -2.61,
-        0.085,
+        0.08,
         -4.129
       ]
     ],
@@ -591,10 +627,13 @@
   },
   "f15c": {
     "file": "models/modern/f15c.glb",
+    "lodFile": "models/modern/f15c_lod.glb",
+    "detailFile": "models/modern/f15c_detail.ktx2",
+    "lodTris": 401,
     "lengthM": 19.43,
     "wingspanM": 13.05,
     "heightM": 4.16,
-    "tris": 401,
+    "tris": 1713,
     "muzzles": [
       {
         "pos": [
@@ -616,32 +655,32 @@
     "pylons": [
       [
         1.5,
-        -0.926,
+        -0.93,
         1.554
       ],
       [
         -1.5,
-        -0.926,
+        -0.93,
         1.554
       ],
       [
         1.5,
-        -0.95,
+        -0.954,
         -1.554
       ],
       [
         -1.5,
-        -0.95,
+        -0.954,
         -1.554
       ],
       [
         2.61,
-        0.085,
+        0.08,
         -4.129
       ],
       [
         -2.61,
-        0.085,
+        0.08,
         -4.129
       ]
     ],
@@ -662,15 +701,18 @@
   },
   "f16a": {
     "file": "models/cold_war/f16a.glb",
+    "lodFile": "models/cold_war/f16a_lod.glb",
+    "detailFile": "models/cold_war/f16a_detail.ktx2",
+    "lodTris": 411,
     "lengthM": 15.03,
     "wingspanM": 9.96,
-    "heightM": 4.34,
-    "tris": 411,
+    "heightM": 4.35,
+    "tris": 1775,
     "muzzles": [
       {
         "pos": [
           0.62,
-          0.394,
+          0.395,
           4.108
         ],
         "mount": 0
@@ -678,7 +720,7 @@
       {
         "pos": [
           -0.62,
-          0.394,
+          0.395,
           4.108
         ],
         "mount": 0
@@ -718,15 +760,18 @@
   },
   "f16c_b50": {
     "file": "models/modern/f16c_b50.glb",
+    "lodFile": "models/modern/f16c_b50_lod.glb",
+    "detailFile": "models/modern/f16c_b50_detail.ktx2",
+    "lodTris": 411,
     "lengthM": 15.03,
     "wingspanM": 9.96,
-    "heightM": 4.34,
-    "tris": 411,
+    "heightM": 4.35,
+    "tris": 1775,
     "muzzles": [
       {
         "pos": [
           0.62,
-          0.394,
+          0.395,
           4.108
         ],
         "mount": 0
@@ -734,7 +779,7 @@
       {
         "pos": [
           -0.62,
-          0.394,
+          0.395,
           4.108
         ],
         "mount": 0
@@ -774,15 +819,18 @@
   },
   "f22a": {
     "file": "models/modern/f22a.glb",
+    "lodFile": "models/modern/f22a_lod.glb",
+    "detailFile": "models/modern/f22a_detail.ktx2",
+    "lodTris": 385,
     "lengthM": 18.92,
     "wingspanM": 13.56,
     "heightM": 3.56,
-    "tris": 385,
+    "tris": 1697,
     "muzzles": [
       {
         "pos": [
           1.1,
-          0.393,
+          0.397,
           3.984
         ],
         "mount": 0
@@ -790,7 +838,7 @@
       {
         "pos": [
           -1.1,
-          0.393,
+          0.397,
           3.984
         ],
         "mount": 0
@@ -799,32 +847,32 @@
     "pylons": [
       [
         0.6,
-        -0.78,
+        -0.783,
         1.514
       ],
       [
         -0.6,
-        -0.78,
+        -0.783,
         1.514
       ],
       [
         0.6,
-        -0.8,
+        -0.805,
         -0.946
       ],
       [
         -0.6,
-        -0.8,
+        -0.805,
         -0.946
       ],
       [
         1.25,
-        -0.54,
+        -0.539,
         2.649
       ],
       [
         -1.25,
-        -0.54,
+        -0.539,
         2.649
       ]
     ],
@@ -845,15 +893,18 @@
   },
   "f4e": {
     "file": "models/cold_war/f4e.glb",
+    "lodFile": "models/cold_war/f4e_lod.glb",
+    "detailFile": "models/cold_war/f4e_detail.ktx2",
+    "lodTris": 461,
     "lengthM": 19.2,
     "wingspanM": 11.7,
-    "heightM": 3.91,
-    "tris": 461,
+    "heightM": 3.9,
+    "tris": 1911,
     "muzzles": [
       {
         "pos": [
           0,
-          -0.497,
+          -0.5,
           8.456
         ],
         "mount": 0
@@ -862,22 +913,22 @@
     "pylons": [
       [
         2.457,
-        -0.819,
+        -0.825,
         -2.123
       ],
       [
         -2.457,
-        -0.819,
+        -0.825,
         -2.123
       ],
       [
         4.095,
-        -0.695,
+        -0.7,
         -3.312
       ],
       [
         -4.095,
-        -0.695,
+        -0.7,
         -3.312
       ],
       [
@@ -892,12 +943,12 @@
       ],
       [
         0.72,
-        -0.54,
+        -0.542,
         -1.92
       ],
       [
         -0.72,
-        -0.54,
+        -0.542,
         -1.92
       ]
     ],
@@ -918,10 +969,13 @@
   },
   "f4u4": {
     "file": "models/late_ww2/f4u4.glb",
+    "lodFile": "models/late_ww2/f4u4_lod.glb",
+    "detailFile": "models/late_ww2/f4u4_detail.ktx2",
+    "lodTris": 423,
     "lengthM": 10.26,
     "wingspanM": 12.5,
-    "heightM": 3.64,
-    "tris": 423,
+    "heightM": 3.65,
+    "tris": 1431,
     "muzzles": [
       {
         "pos": [
@@ -1040,15 +1094,18 @@
   },
   "f5e": {
     "file": "models/cold_war/f5e.glb",
+    "lodFile": "models/cold_war/f5e_lod.glb",
+    "detailFile": "models/cold_war/f5e_detail.ktx2",
+    "lodTris": 391,
     "lengthM": 14.45,
     "wingspanM": 8.13,
     "heightM": 3.43,
-    "tris": 391,
+    "tris": 1675,
     "muzzles": [
       {
         "pos": [
           0.25,
-          0.184,
+          0.18,
           6.413
         ],
         "mount": 0
@@ -1056,7 +1113,7 @@
       {
         "pos": [
           -0.25,
-          0.184,
+          0.18,
           6.413
         ],
         "mount": 0
@@ -1065,12 +1122,12 @@
     "pylons": [
       [
         3.984,
-        -0.701,
+        -0.703,
         -2.541
       ],
       [
         -3.984,
-        -0.701,
+        -0.703,
         -2.541
       ]
     ],
@@ -1091,15 +1148,18 @@
   },
   "f6f5": {
     "file": "models/late_ww2/f6f5.glb",
+    "lodFile": "models/late_ww2/f6f5_lod.glb",
+    "detailFile": "models/late_ww2/f6f5_detail.ktx2",
+    "lodTris": 331,
     "lengthM": 10.24,
     "wingspanM": 13.06,
-    "heightM": 3.15,
-    "tris": 331,
+    "heightM": 3.21,
+    "tris": 1297,
     "muzzles": [
       {
         "pos": [
           2.481,
-          -0.159,
+          -0.161,
           2.198
         ],
         "mount": 0
@@ -1107,7 +1167,7 @@
       {
         "pos": [
           -2.481,
-          -0.159,
+          -0.161,
           2.198
         ],
         "mount": 0
@@ -1115,7 +1175,7 @@
       {
         "pos": [
           2.808,
-          -0.119,
+          -0.121,
           2.198
         ],
         "mount": 0
@@ -1123,7 +1183,7 @@
       {
         "pos": [
           -2.808,
-          -0.119,
+          -0.121,
           2.198
         ],
         "mount": 0
@@ -1131,7 +1191,7 @@
       {
         "pos": [
           3.134,
-          -0.079,
+          -0.081,
           2.198
         ],
         "mount": 0
@@ -1139,7 +1199,7 @@
       {
         "pos": [
           -3.134,
-          -0.079,
+          -0.081,
           2.198
         ],
         "mount": 0
@@ -1162,10 +1222,13 @@
   },
   "f8": {
     "file": "models/early_jets/f8.glb",
+    "lodFile": "models/early_jets/f8_lod.glb",
+    "detailFile": "models/early_jets/f8_detail.ktx2",
+    "lodTris": 343,
     "lengthM": 16.53,
     "wingspanM": 10.87,
-    "heightM": 4.17,
-    "tris": 343,
+    "heightM": 4.18,
+    "tris": 1603,
     "muzzles": [
       {
         "pos": [
@@ -1187,22 +1250,22 @@
     "pylons": [
       [
         0.85,
-        -0.141,
+        -0.138,
         3.306
       ],
       [
         -0.85,
-        -0.141,
+        -0.138,
         3.306
       ],
       [
         0.85,
-        -0.134,
+        -0.133,
         1.984
       ],
       [
         -0.85,
-        -0.134,
+        -0.133,
         1.984
       ]
     ],
@@ -1218,15 +1281,18 @@
   },
   "f84g": {
     "file": "models/early_jets/f84g.glb",
+    "lodFile": "models/early_jets/f84g_lod.glb",
+    "detailFile": "models/early_jets/f84g_detail.ktx2",
+    "lodTris": 367,
     "lengthM": 11.6,
     "wingspanM": 11.1,
-    "heightM": 3.6,
-    "tris": 367,
+    "heightM": 3.59,
+    "tris": 1511,
     "muzzles": [
       {
         "pos": [
           0.5,
-          0.307,
+          0.306,
           5.072
         ],
         "mount": 0
@@ -1234,7 +1300,7 @@
       {
         "pos": [
           -0.5,
-          0.307,
+          0.306,
           5.072
         ],
         "mount": 0
@@ -1253,15 +1319,18 @@
   },
   "f86f": {
     "file": "models/early_jets/f86f.glb",
+    "lodFile": "models/early_jets/f86f_lod.glb",
+    "detailFile": "models/early_jets/f86f_detail.ktx2",
+    "lodTris": 311,
     "lengthM": 11.44,
     "wingspanM": 11.31,
-    "heightM": 3.43,
-    "tris": 311,
+    "heightM": 3.42,
+    "tris": 1391,
     "muzzles": [
       {
         "pos": [
           0.55,
-          0.007,
+          0.006,
           5.005
         ],
         "mount": 0
@@ -1269,7 +1338,7 @@
       {
         "pos": [
           -0.55,
-          0.007,
+          0.006,
           5.005
         ],
         "mount": 0
@@ -1288,10 +1357,13 @@
   },
   "fa18c": {
     "file": "models/modern/fa18c.glb",
+    "lodFile": "models/modern/fa18c_lod.glb",
+    "detailFile": "models/modern/fa18c_detail.ktx2",
+    "lodTris": 437,
     "lengthM": 17.1,
     "wingspanM": 12.3,
     "heightM": 4.31,
-    "tris": 437,
+    "tris": 1853,
     "muzzles": [
       {
         "pos": [
@@ -1315,12 +1387,12 @@
       ],
       [
         0.9,
-        -0.786,
+        -0.785,
         0.855
       ],
       [
         -0.9,
-        -0.786,
+        -0.785,
         0.855
       ]
     ],
@@ -1341,15 +1413,18 @@
   },
   "fokker_d7": {
     "file": "models/ww1/fokker_d7.glb",
+    "lodFile": "models/ww1/fokker_d7_lod.glb",
+    "detailFile": "models/ww1/fokker_d7_detail.ktx2",
+    "lodTris": 386,
     "lengthM": 6.95,
     "wingspanM": 8.9,
     "heightM": 2.73,
-    "tris": 386,
+    "tris": 1398,
     "muzzles": [
       {
         "pos": [
           0.12,
-          0.602,
+          0.601,
           2.702
         ],
         "mount": 0
@@ -1357,7 +1432,7 @@
       {
         "pos": [
           -0.12,
-          0.602,
+          0.601,
           2.702
         ],
         "mount": 0
@@ -1380,15 +1455,18 @@
   },
   "fokker_dr1": {
     "file": "models/ww1/fokker_dr1.glb",
+    "lodFile": "models/ww1/fokker_dr1_lod.glb",
+    "detailFile": "models/ww1/fokker_dr1_detail.ktx2",
+    "lodTris": 432,
     "lengthM": 5.77,
     "wingspanM": 7.19,
     "heightM": 2.59,
-    "tris": 432,
+    "tris": 1288,
     "muzzles": [
       {
         "pos": [
           0.12,
-          0.605,
+          0.604,
           2.162
         ],
         "mount": 0
@@ -1396,7 +1474,7 @@
       {
         "pos": [
           -0.12,
-          0.605,
+          0.604,
           2.162
         ],
         "mount": 0
@@ -1419,10 +1497,13 @@
   },
   "fokker_e3": {
     "file": "models/ww1/fokker_e3.glb",
+    "lodFile": "models/ww1/fokker_e3_lod.glb",
+    "detailFile": "models/ww1/fokker_e3_detail.ktx2",
+    "lodTris": 370,
     "lengthM": 7.2,
     "wingspanM": 9.52,
-    "heightM": 2.66,
-    "tris": 370,
+    "heightM": 2.67,
+    "tris": 1258,
     "muzzles": [
       {
         "pos": [
@@ -1450,10 +1531,13 @@
   },
   "fw190a8": {
     "file": "models/late_ww2/fw190a8.glb",
+    "lodFile": "models/late_ww2/fw190a8_lod.glb",
+    "detailFile": "models/late_ww2/fw190a8_detail.ktx2",
+    "lodTris": 341,
     "lengthM": 9,
     "wingspanM": 10.51,
-    "heightM": 2.31,
-    "tris": 341,
+    "heightM": 2.32,
+    "tris": 1301,
     "muzzles": [
       {
         "pos": [
@@ -1490,7 +1574,7 @@
       {
         "pos": [
           0.22,
-          0.05,
+          0.047,
           3.98
         ],
         "mount": 1
@@ -1498,7 +1582,7 @@
       {
         "pos": [
           -0.22,
-          0.05,
+          0.047,
           3.98
         ],
         "mount": 1
@@ -1507,17 +1591,17 @@
     "pylons": [
       [
         0,
-        -0.775,
+        -0.774,
         1.08
       ],
       [
         2.522,
-        -0.477,
+        -0.478,
         1.249
       ],
       [
         -2.522,
-        -0.477,
+        -0.478,
         1.249
       ]
     ],
@@ -1537,15 +1621,18 @@
   },
   "gladiator": {
     "file": "models/early_ww2/gladiator.glb",
+    "lodFile": "models/early_ww2/gladiator_lod.glb",
+    "detailFile": "models/early_ww2/gladiator_detail.ktx2",
+    "lodTris": 493,
     "lengthM": 8.36,
     "wingspanM": 9.83,
-    "heightM": 3.3,
-    "tris": 493,
+    "heightM": 3.31,
+    "tris": 1619,
     "muzzles": [
       {
         "pos": [
           0.4,
-          -0.19,
+          -0.192,
           3.21
         ],
         "mount": 0
@@ -1553,7 +1640,7 @@
       {
         "pos": [
           -0.4,
-          -0.19,
+          -0.192,
           3.21
         ],
         "mount": 0
@@ -1592,15 +1679,18 @@
   },
   "hunter_f6": {
     "file": "models/early_jets/hunter_f6.glb",
+    "lodFile": "models/early_jets/hunter_f6_lod.glb",
+    "detailFile": "models/early_jets/hunter_f6_detail.ktx2",
+    "lodTris": 369,
     "lengthM": 13.98,
     "wingspanM": 10.26,
-    "heightM": 3.49,
-    "tris": 369,
+    "heightM": 3.5,
+    "tris": 1629,
     "muzzles": [
       {
         "pos": [
           0.25,
-          -0.58,
+          -0.579,
           4.953
         ],
         "mount": 0
@@ -1608,7 +1698,7 @@
       {
         "pos": [
           -0.25,
-          -0.58,
+          -0.579,
           4.953
         ],
         "mount": 0
@@ -1617,12 +1707,12 @@
     "pylons": [
       [
         2.565,
-        -0.327,
+        -0.326,
         -1.32
       ],
       [
         -2.565,
-        -0.327,
+        -0.326,
         -1.32
       ]
     ],
@@ -1638,15 +1728,18 @@
   },
   "hurricane_mk1": {
     "file": "models/early_ww2/hurricane_mk1.glb",
+    "lodFile": "models/early_ww2/hurricane_mk1_lod.glb",
+    "detailFile": "models/early_ww2/hurricane_mk1_detail.ktx2",
+    "lodTris": 291,
     "lengthM": 9.84,
     "wingspanM": 12.19,
-    "heightM": 2.8,
-    "tris": 291,
+    "heightM": 2.81,
+    "tris": 1271,
     "muzzles": [
       {
         "pos": [
           1.95,
-          -0.262,
+          -0.267,
           2.512
         ],
         "mount": 0
@@ -1654,7 +1747,7 @@
       {
         "pos": [
           -1.95,
-          -0.262,
+          -0.267,
           2.512
         ],
         "mount": 0
@@ -1662,7 +1755,7 @@
       {
         "pos": [
           2.194,
-          -0.244,
+          -0.25,
           2.512
         ],
         "mount": 0
@@ -1670,7 +1763,7 @@
       {
         "pos": [
           -2.194,
-          -0.244,
+          -0.25,
           2.512
         ],
         "mount": 0
@@ -1678,7 +1771,7 @@
       {
         "pos": [
           2.56,
-          -0.219,
+          -0.224,
           2.512
         ],
         "mount": 0
@@ -1686,7 +1779,7 @@
       {
         "pos": [
           -2.56,
-          -0.219,
+          -0.224,
           2.512
         ],
         "mount": 0
@@ -1694,7 +1787,7 @@
       {
         "pos": [
           2.804,
-          -0.202,
+          -0.207,
           2.512
         ],
         "mount": 0
@@ -1702,7 +1795,7 @@
       {
         "pos": [
           -2.804,
-          -0.202,
+          -0.207,
           2.512
         ],
         "mount": 0
@@ -1725,15 +1818,18 @@
   },
   "i16": {
     "file": "models/early_ww2/i16.glb",
+    "lodFile": "models/early_ww2/i16_lod.glb",
+    "detailFile": "models/early_ww2/i16_detail.ktx2",
+    "lodTris": 307,
     "lengthM": 6.13,
     "wingspanM": 9,
     "heightM": 2.26,
-    "tris": 307,
+    "tris": 1187,
     "muzzles": [
       {
         "pos": [
           0.32,
-          0.3,
+          0.297,
           2.652
         ],
         "mount": 0
@@ -1741,7 +1837,7 @@
       {
         "pos": [
           -0.32,
-          0.3,
+          0.297,
           2.652
         ],
         "mount": 0
@@ -1749,7 +1845,7 @@
       {
         "pos": [
           1.62,
-          -0.261,
+          -0.268,
           1.621
         ],
         "mount": 0
@@ -1757,7 +1853,7 @@
       {
         "pos": [
           -1.62,
-          -0.261,
+          -0.268,
           1.621
         ],
         "mount": 0
@@ -1780,15 +1876,18 @@
   },
   "jas39c": {
     "file": "models/modern/jas39c.glb",
+    "lodFile": "models/modern/jas39c_lod.glb",
+    "detailFile": "models/modern/jas39c_detail.ktx2",
+    "lodTris": 401,
     "lengthM": 14.1,
     "wingspanM": 8.4,
-    "heightM": 3.74,
-    "tris": 401,
+    "heightM": 3.73,
+    "tris": 1709,
     "muzzles": [
       {
         "pos": [
           0.55,
-          -0.44,
+          -0.439,
           1.61
         ],
         "mount": 0
@@ -1796,7 +1895,7 @@
       {
         "pos": [
           -0.55,
-          -0.44,
+          -0.439,
           1.61
         ],
         "mount": 0
@@ -1815,12 +1914,12 @@
       ],
       [
         2.52,
-        -0.334,
+        -0.333,
         -3.486
       ],
       [
         -2.52,
-        -0.334,
+        -0.333,
         -3.486
       ]
     ],
@@ -1836,15 +1935,18 @@
   },
   "me262": {
     "file": "models/late_ww2/me262.glb",
+    "lodFile": "models/late_ww2/me262_lod.glb",
+    "detailFile": "models/late_ww2/me262_detail.ktx2",
+    "lodTris": 311,
     "lengthM": 10.6,
     "wingspanM": 12.6,
     "heightM": 3.43,
-    "tris": 311,
+    "tris": 1331,
     "muzzles": [
       {
         "pos": [
           0.18,
-          0.225,
+          0.222,
           4.864
         ],
         "mount": 0
@@ -1852,7 +1954,7 @@
       {
         "pos": [
           -0.18,
-          0.225,
+          0.222,
           4.864
         ],
         "mount": 0
@@ -1860,7 +1962,7 @@
       {
         "pos": [
           0.18,
-          -0.075,
+          -0.078,
           4.864
         ],
         "mount": 1
@@ -1868,7 +1970,7 @@
       {
         "pos": [
           -0.18,
-          -0.075,
+          -0.078,
           4.864
         ],
         "mount": 1
@@ -1892,10 +1994,13 @@
   },
   "meteor_f8": {
     "file": "models/early_jets/meteor_f8.glb",
+    "lodFile": "models/early_jets/meteor_f8_lod.glb",
+    "detailFile": "models/early_jets/meteor_f8_detail.ktx2",
+    "lodTris": 367,
     "lengthM": 13.59,
     "wingspanM": 11.32,
     "heightM": 3.64,
-    "tris": 367,
+    "tris": 1667,
     "muzzles": [
       {
         "pos": [
@@ -1932,15 +2037,18 @@
   },
   "mig15bis": {
     "file": "models/early_jets/mig15bis.glb",
+    "lodFile": "models/early_jets/mig15bis_lod.glb",
+    "detailFile": "models/early_jets/mig15bis_detail.ktx2",
+    "lodTris": 307,
     "lengthM": 10.1,
     "wingspanM": 10.08,
-    "heightM": 3.31,
-    "tris": 307,
+    "heightM": 3.3,
+    "tris": 1287,
     "muzzles": [
       {
         "pos": [
           0,
-          -0.584,
+          -0.586,
           4.24
         ],
         "mount": 0
@@ -1948,7 +2056,7 @@
       {
         "pos": [
           0.42,
-          -0.498,
+          -0.5,
           4.038
         ],
         "mount": 1
@@ -1956,7 +2064,7 @@
       {
         "pos": [
           -0.42,
-          -0.498,
+          -0.5,
           4.038
         ],
         "mount": 1
@@ -1965,12 +2073,12 @@
     "pylons": [
       [
         2.268,
-        -0.369,
+        -0.366,
         -0.946
       ],
       [
         -2.268,
-        -0.369,
+        -0.366,
         -0.946
       ]
     ],
@@ -1986,15 +2094,18 @@
   },
   "mig17f": {
     "file": "models/early_jets/mig17f.glb",
+    "lodFile": "models/early_jets/mig17f_lod.glb",
+    "detailFile": "models/early_jets/mig17f_detail.ktx2",
+    "lodTris": 327,
     "lengthM": 11.26,
     "wingspanM": 9.63,
-    "heightM": 3.49,
-    "tris": 327,
+    "heightM": 3.48,
+    "tris": 1407,
     "muzzles": [
       {
         "pos": [
           0,
-          -0.587,
+          -0.588,
           4.704
         ],
         "mount": 0
@@ -2002,7 +2113,7 @@
       {
         "pos": [
           0.42,
-          -0.5,
+          -0.502,
           4.479
         ],
         "mount": 1
@@ -2010,7 +2121,7 @@
       {
         "pos": [
           -0.42,
-          -0.5,
+          -0.502,
           4.479
         ],
         "mount": 1
@@ -2019,12 +2130,12 @@
     "pylons": [
       [
         2.167,
-        -0.4,
+        -0.396,
         -1.326
       ],
       [
         -2.167,
-        -0.4,
+        -0.396,
         -1.326
       ]
     ],
@@ -2040,15 +2151,18 @@
   },
   "mig19s": {
     "file": "models/early_jets/mig19s.glb",
+    "lodFile": "models/early_jets/mig19s_lod.glb",
+    "detailFile": "models/early_jets/mig19s_detail.ktx2",
+    "lodTris": 349,
     "lengthM": 12.54,
     "wingspanM": 9,
-    "heightM": 3.78,
-    "tris": 349,
+    "heightM": 3.77,
+    "tris": 1453,
     "muzzles": [
       {
         "pos": [
           0.675,
-          0.021,
+          0.024,
           0.942
         ],
         "mount": 0
@@ -2056,7 +2170,7 @@
       {
         "pos": [
           -0.675,
-          0.021,
+          0.024,
           0.942
         ],
         "mount": 0
@@ -2064,7 +2178,7 @@
       {
         "pos": [
           0.45,
-          -0.471,
+          -0.473,
           4.714
         ],
         "mount": 1
@@ -2072,7 +2186,7 @@
       {
         "pos": [
           -0.45,
-          -0.471,
+          -0.473,
           4.714
         ],
         "mount": 1
@@ -2081,12 +2195,12 @@
     "pylons": [
       [
         2.7,
-        -0.471,
+        -0.468,
         -3.072
       ],
       [
         -2.7,
-        -0.471,
+        -0.468,
         -3.072
       ]
     ],
@@ -2107,15 +2221,18 @@
   },
   "mig21f13": {
     "file": "models/cold_war/mig21f13.glb",
+    "lodFile": "models/cold_war/mig21f13_lod.glb",
+    "detailFile": "models/cold_war/mig21f13_detail.ktx2",
+    "lodTris": 327,
     "lengthM": 13.46,
     "wingspanM": 7.15,
-    "heightM": 3.46,
-    "tris": 327,
+    "heightM": 3.45,
+    "tris": 1407,
     "muzzles": [
       {
         "pos": [
           0.35,
-          -0.592,
+          -0.588,
           2.488
         ],
         "mount": 0
@@ -2123,7 +2240,7 @@
       {
         "pos": [
           -0.35,
-          -0.592,
+          -0.588,
           2.488
         ],
         "mount": 0
@@ -2132,12 +2249,12 @@
     "pylons": [
       [
         1.788,
-        -0.354,
+        -0.352,
         -2.33
       ],
       [
         -1.788,
-        -0.354,
+        -0.352,
         -2.33
       ]
     ],
@@ -2153,15 +2270,18 @@
   },
   "mig23mld": {
     "file": "models/cold_war/mig23mld.glb",
+    "lodFile": "models/cold_war/mig23mld_lod.glb",
+    "detailFile": "models/cold_war/mig23mld_detail.ktx2",
+    "lodTris": 411,
     "lengthM": 16.7,
     "wingspanM": 11,
-    "heightM": 4.34,
-    "tris": 411,
+    "heightM": 4.33,
+    "tris": 1781,
     "muzzles": [
       {
         "pos": [
           0,
-          -0.786,
+          -0.785,
           1.035
         ],
         "mount": 0
@@ -2170,22 +2290,22 @@
     "pylons": [
       [
         1.25,
-        -0.736,
+        -0.735,
         0.835
       ],
       [
         -1.25,
-        -0.736,
+        -0.735,
         0.835
       ],
       [
         2.43,
-        -0.286,
+        -0.285,
         -3.674
       ],
       [
         -2.43,
-        -0.286,
+        -0.285,
         -3.674
       ]
     ],
@@ -2201,15 +2321,18 @@
   },
   "mig29a": {
     "file": "models/modern/mig29a.glb",
+    "lodFile": "models/modern/mig29a_lod.glb",
+    "detailFile": "models/modern/mig29a_detail.ktx2",
+    "lodTris": 469,
     "lengthM": 17.32,
     "wingspanM": 11.36,
     "heightM": 3.96,
-    "tris": 469,
+    "tris": 1885,
     "muzzles": [
       {
         "pos": [
           0.9,
-          0.243,
+          0.247,
           3.664
         ],
         "mount": 0
@@ -2217,7 +2340,7 @@
       {
         "pos": [
           -0.9,
-          0.243,
+          0.247,
           3.664
         ],
         "mount": 0
@@ -2226,32 +2349,32 @@
     "pylons": [
       [
         1.988,
-        -0.419,
+        -0.425,
         -3.545
       ],
       [
         -1.988,
-        -0.419,
+        -0.425,
         -3.545
       ],
       [
         3.124,
-        -0.459,
+        -0.464,
         -4.208
       ],
       [
         -3.124,
-        -0.459,
+        -0.464,
         -4.208
       ],
       [
         4.26,
-        -0.499,
+        -0.504,
         -4.871
       ],
       [
         -4.26,
-        -0.499,
+        -0.504,
         -4.871
       ]
     ],
@@ -2272,15 +2395,18 @@
   },
   "mirage2000_5": {
     "file": "models/modern/mirage2000_5.glb",
+    "lodFile": "models/modern/mirage2000_5_lod.glb",
+    "detailFile": "models/modern/mirage2000_5_detail.ktx2",
+    "lodTris": 345,
     "lengthM": 14.36,
     "wingspanM": 9.13,
-    "heightM": 4.22,
-    "tris": 345,
+    "heightM": 4.21,
+    "tris": 1449,
     "muzzles": [
       {
         "pos": [
           0.5,
-          -0.528,
+          -0.523,
           2.21
         ],
         "mount": 0
@@ -2288,7 +2414,7 @@
       {
         "pos": [
           -0.5,
-          -0.528,
+          -0.523,
           2.21
         ],
         "mount": 0
@@ -2338,15 +2464,18 @@
   },
   "mirage3e": {
     "file": "models/cold_war/mirage3e.glb",
+    "lodFile": "models/cold_war/mirage3e_lod.glb",
+    "detailFile": "models/cold_war/mirage3e_detail.ktx2",
+    "lodTris": 335,
     "lengthM": 15.03,
     "wingspanM": 8.22,
     "heightM": 4.07,
-    "tris": 335,
+    "tris": 1445,
     "muzzles": [
       {
         "pos": [
           0.55,
-          -0.477,
+          -0.472,
           2.755
         ],
         "mount": 0
@@ -2354,7 +2483,7 @@
       {
         "pos": [
           -0.55,
-          -0.477,
+          -0.472,
           2.755
         ],
         "mount": 0
@@ -2384,15 +2513,18 @@
   },
   "mirage_f1c": {
     "file": "models/cold_war/mirage_f1c.glb",
+    "lodFile": "models/cold_war/mirage_f1c_lod.glb",
+    "detailFile": "models/cold_war/mirage_f1c_detail.ktx2",
+    "lodTris": 375,
     "lengthM": 15.3,
     "wingspanM": 8.4,
     "heightM": 3.92,
-    "tris": 375,
+    "tris": 1641,
     "muzzles": [
       {
         "pos": [
           0.5,
-          -0.545,
+          -0.542,
           3.566
         ],
         "mount": 0
@@ -2400,7 +2532,7 @@
       {
         "pos": [
           -0.5,
-          -0.545,
+          -0.542,
           3.566
         ],
         "mount": 0
@@ -2409,12 +2541,12 @@
     "pylons": [
       [
         4.116,
-        -0.07,
+        -0.064,
         -4.013
       ],
       [
         -4.116,
-        -0.07,
+        -0.064,
         -4.013
       ],
       [
@@ -2440,15 +2572,18 @@
   },
   "nieuport_11": {
     "file": "models/ww1/nieuport_11.glb",
+    "lodFile": "models/ww1/nieuport_11_lod.glb",
+    "detailFile": "models/ww1/nieuport_11_detail.ktx2",
+    "lodTris": 428,
     "lengthM": 5.8,
     "wingspanM": 7.55,
     "heightM": 2.4,
-    "tris": 428,
+    "tris": 1420,
     "muzzles": [
       {
         "pos": [
           0,
-          1.007,
+          1.005,
           2.024
         ],
         "mount": 0
@@ -2471,15 +2606,18 @@
   },
   "p26": {
     "file": "models/early_ww2/p26.glb",
+    "lodFile": "models/early_ww2/p26_lod.glb",
+    "detailFile": "models/early_ww2/p26_detail.ktx2",
+    "lodTris": 312,
     "lengthM": 7.18,
     "wingspanM": 8.5,
-    "heightM": 2.48,
-    "tris": 312,
+    "heightM": 2.49,
+    "tris": 1216,
     "muzzles": [
       {
         "pos": [
           0.25,
-          0.255,
+          0.254,
           2.928
         ],
         "mount": 0
@@ -2487,7 +2625,7 @@
       {
         "pos": [
           -0.25,
-          0.255,
+          0.254,
           2.928
         ],
         "mount": 0
@@ -2495,7 +2633,7 @@
       {
         "pos": [
           0.25,
-          0.255,
+          0.254,
           2.928
         ],
         "mount": 1
@@ -2503,7 +2641,7 @@
       {
         "pos": [
           -0.25,
-          0.255,
+          0.254,
           2.928
         ],
         "mount": 1
@@ -2526,15 +2664,18 @@
   },
   "p36": {
     "file": "models/early_ww2/p36.glb",
+    "lodFile": "models/early_ww2/p36_lod.glb",
+    "detailFile": "models/early_ww2/p36_detail.ktx2",
+    "lodTris": 331,
     "lengthM": 8.7,
     "wingspanM": 11.38,
-    "heightM": 2.49,
-    "tris": 331,
+    "heightM": 2.53,
+    "tris": 1297,
     "muzzles": [
       {
         "pos": [
           0.2,
-          -0.045,
+          -0.046,
           3.506
         ],
         "mount": 0
@@ -2542,7 +2683,7 @@
       {
         "pos": [
           -0.2,
-          -0.045,
+          -0.046,
           3.506
         ],
         "mount": 0
@@ -2550,7 +2691,7 @@
       {
         "pos": [
           0,
-          -0.039,
+          -0.042,
           3.332
         ],
         "mount": 1
@@ -2573,10 +2714,13 @@
   },
   "p39q": {
     "file": "models/late_ww2/p39q.glb",
+    "lodFile": "models/late_ww2/p39q_lod.glb",
+    "detailFile": "models/late_ww2/p39q_detail.ktx2",
+    "lodTris": 299,
     "lengthM": 9.19,
     "wingspanM": 10.36,
-    "heightM": 2.51,
-    "tris": 299,
+    "heightM": 2.52,
+    "tris": 1285,
     "muzzles": [
       {
         "pos": [
@@ -2589,7 +2733,7 @@
       {
         "pos": [
           0.2,
-          0.3,
+          0.299,
           4.06
         ],
         "mount": 1
@@ -2597,7 +2741,7 @@
       {
         "pos": [
           -0.2,
-          0.3,
+          0.299,
           4.06
         ],
         "mount": 1
@@ -2605,7 +2749,7 @@
       {
         "pos": [
           2.176,
-          -0.222,
+          -0.23,
           1.988
         ],
         "mount": 1
@@ -2613,7 +2757,7 @@
       {
         "pos": [
           -2.176,
-          -0.222,
+          -0.23,
           1.988
         ],
         "mount": 1
@@ -2636,15 +2780,18 @@
   },
   "p40e": {
     "file": "models/late_ww2/p40e.glb",
+    "lodFile": "models/late_ww2/p40e_lod.glb",
+    "detailFile": "models/late_ww2/p40e_detail.ktx2",
+    "lodTris": 299,
     "lengthM": 9.66,
     "wingspanM": 11.38,
     "heightM": 2.43,
-    "tris": 299,
+    "tris": 1285,
     "muzzles": [
       {
         "pos": [
           2.048,
-          -0.158,
+          -0.165,
           2.275
         ],
         "mount": 0
@@ -2652,7 +2799,7 @@
       {
         "pos": [
           -2.048,
-          -0.158,
+          -0.165,
           2.275
         ],
         "mount": 0
@@ -2660,7 +2807,7 @@
       {
         "pos": [
           2.333,
-          -0.128,
+          -0.135,
           2.275
         ],
         "mount": 0
@@ -2668,7 +2815,7 @@
       {
         "pos": [
           -2.333,
-          -0.128,
+          -0.135,
           2.275
         ],
         "mount": 0
@@ -2676,7 +2823,7 @@
       {
         "pos": [
           2.617,
-          -0.098,
+          -0.105,
           2.275
         ],
         "mount": 0
@@ -2684,7 +2831,7 @@
       {
         "pos": [
           -2.617,
-          -0.098,
+          -0.105,
           2.275
         ],
         "mount": 0
@@ -2707,15 +2854,18 @@
   },
   "p47d": {
     "file": "models/late_ww2/p47d.glb",
+    "lodFile": "models/late_ww2/p47d_lod.glb",
+    "detailFile": "models/late_ww2/p47d_detail.ktx2",
+    "lodTris": 481,
     "lengthM": 11,
     "wingspanM": 12.42,
-    "heightM": 3.22,
-    "tris": 481,
+    "heightM": 3.24,
+    "tris": 1633,
     "muzzles": [
       {
         "pos": [
           2.484,
-          -0.286,
+          -0.288,
           2.28
         ],
         "mount": 0
@@ -2723,7 +2873,7 @@
       {
         "pos": [
           -2.484,
-          -0.286,
+          -0.288,
           2.28
         ],
         "mount": 0
@@ -2731,7 +2881,7 @@
       {
         "pos": [
           2.732,
-          -0.265,
+          -0.267,
           2.266
         ],
         "mount": 0
@@ -2739,7 +2889,7 @@
       {
         "pos": [
           -2.732,
-          -0.265,
+          -0.267,
           2.266
         ],
         "mount": 0
@@ -2747,7 +2897,7 @@
       {
         "pos": [
           2.981,
-          -0.243,
+          -0.245,
           2.251
         ],
         "mount": 0
@@ -2755,7 +2905,7 @@
       {
         "pos": [
           -2.981,
-          -0.243,
+          -0.245,
           2.251
         ],
         "mount": 0
@@ -2763,7 +2913,7 @@
       {
         "pos": [
           3.229,
-          -0.221,
+          -0.223,
           2.237
         ],
         "mount": 0
@@ -2771,7 +2921,7 @@
       {
         "pos": [
           -3.229,
-          -0.221,
+          -0.223,
           2.237
         ],
         "mount": 0
@@ -2780,52 +2930,52 @@
     "pylons": [
       [
         1.49,
-        -0.723,
+        -0.725,
         0.872
       ],
       [
         -1.49,
-        -0.723,
+        -0.725,
         0.872
       ],
       [
         3.726,
-        -0.528,
+        -0.53,
         0.975
       ],
       [
         -3.726,
-        -0.528,
+        -0.53,
         0.975
       ],
       [
         4.161,
-        -0.49,
+        -0.492,
         1.011
       ],
       [
         -4.161,
-        -0.49,
+        -0.492,
         1.011
       ],
       [
         4.595,
-        -0.452,
+        -0.454,
         1.048
       ],
       [
         -4.595,
-        -0.452,
+        -0.454,
         1.048
       ],
       [
         5.03,
-        -0.414,
+        -0.416,
         1.103
       ],
       [
         -5.03,
-        -0.414,
+        -0.416,
         1.103
       ]
     ],
@@ -2845,15 +2995,18 @@
   },
   "p51d": {
     "file": "models/late_ww2/p51d.glb",
+    "lodFile": "models/late_ww2/p51d_lod.glb",
+    "detailFile": "models/late_ww2/p51d_detail.ktx2",
+    "lodTris": 295,
     "lengthM": 9.83,
     "wingspanM": 11.28,
-    "heightM": 2.63,
-    "tris": 295,
+    "heightM": 2.64,
+    "tris": 1275,
     "muzzles": [
       {
         "pos": [
           2.143,
-          -0.174,
+          -0.181,
           2.214
         ],
         "mount": 0
@@ -2861,7 +3014,7 @@
       {
         "pos": [
           -2.143,
-          -0.174,
+          -0.181,
           2.214
         ],
         "mount": 0
@@ -2869,7 +3022,7 @@
       {
         "pos": [
           2.425,
-          -0.149,
+          -0.157,
           2.214
         ],
         "mount": 1
@@ -2877,7 +3030,7 @@
       {
         "pos": [
           -2.425,
-          -0.149,
+          -0.157,
           2.214
         ],
         "mount": 1
@@ -2885,7 +3038,7 @@
       {
         "pos": [
           2.651,
-          -0.129,
+          -0.137,
           2.214
         ],
         "mount": 1
@@ -2893,7 +3046,7 @@
       {
         "pos": [
           -2.651,
-          -0.129,
+          -0.137,
           2.214
         ],
         "mount": 1
@@ -2916,10 +3069,13 @@
   },
   "p80": {
     "file": "models/early_jets/p80.glb",
+    "lodFile": "models/early_jets/p80_lod.glb",
+    "detailFile": "models/early_jets/p80_detail.ktx2",
+    "lodTris": 409,
     "lengthM": 10.49,
     "wingspanM": 11.81,
     "heightM": 3.21,
-    "tris": 409,
+    "tris": 1733,
     "muzzles": [
       {
         "pos": [
@@ -2951,15 +3107,18 @@
   },
   "rafale_c": {
     "file": "models/modern/rafale_c.glb",
+    "lodFile": "models/modern/rafale_c_lod.glb",
+    "detailFile": "models/modern/rafale_c_detail.ktx2",
+    "lodTris": 423,
     "lengthM": 15.27,
     "wingspanM": 10.8,
     "heightM": 4.17,
-    "tris": 423,
+    "tris": 1755,
     "muzzles": [
       {
         "pos": [
           0.75,
-          -0.238,
+          -0.237,
           1.727
         ],
         "mount": 0
@@ -2967,7 +3126,7 @@
       {
         "pos": [
           -0.75,
-          -0.238,
+          -0.237,
           1.727
         ],
         "mount": 0
@@ -2976,22 +3135,22 @@
     "pylons": [
       [
         2.7,
-        -0.768,
+        -0.772,
         -4.035
       ],
       [
         -2.7,
-        -0.768,
+        -0.772,
         -4.035
       ],
       [
         5.4,
-        -0.768,
+        -0.772,
         -5.684
       ],
       [
         -5.4,
-        -0.768,
+        -0.772,
         -5.684
       ],
       [
@@ -3022,15 +3181,18 @@
   },
   "se5a": {
     "file": "models/ww1/se5a.glb",
+    "lodFile": "models/ww1/se5a_lod.glb",
+    "detailFile": "models/ww1/se5a_detail.ktx2",
+    "lodTris": 386,
     "lengthM": 6.38,
     "wingspanM": 8.11,
     "heightM": 2.94,
-    "tris": 386,
+    "tris": 1318,
     "muzzles": [
       {
         "pos": [
           0.15,
-          0.582,
+          0.581,
           2.497
         ],
         "mount": 0
@@ -3038,7 +3200,7 @@
       {
         "pos": [
           -0.15,
-          0.582,
+          0.581,
           2.497
         ],
         "mount": 0
@@ -3069,15 +3231,18 @@
   },
   "sopwith_camel": {
     "file": "models/ww1/sopwith_camel.glb",
+    "lodFile": "models/ww1/sopwith_camel_lod.glb",
+    "detailFile": "models/ww1/sopwith_camel_detail.ktx2",
+    "lodTris": 438,
     "lengthM": 5.72,
     "wingspanM": 8.53,
     "heightM": 2.52,
-    "tris": 438,
+    "tris": 1430,
     "muzzles": [
       {
         "pos": [
           0.14,
-          0.682,
+          0.681,
           2.202
         ],
         "mount": 0
@@ -3085,7 +3250,7 @@
       {
         "pos": [
           -0.14,
-          0.682,
+          0.681,
           2.202
         ],
         "mount": 0
@@ -3108,15 +3273,18 @@
   },
   "sopwith_pup": {
     "file": "models/ww1/sopwith_pup.glb",
+    "lodFile": "models/ww1/sopwith_pup_lod.glb",
+    "detailFile": "models/ww1/sopwith_pup_detail.ktx2",
+    "lodTris": 428,
     "lengthM": 5.89,
     "wingspanM": 8.08,
     "heightM": 2.51,
-    "tris": 428,
+    "tris": 1420,
     "muzzles": [
       {
         "pos": [
           0,
-          0.622,
+          0.621,
           2.261
         ],
         "mount": 0
@@ -3139,15 +3307,18 @@
   },
   "spad_s13": {
     "file": "models/ww1/spad_s13.glb",
+    "lodFile": "models/ww1/spad_s13_lod.glb",
+    "detailFile": "models/ww1/spad_s13_detail.ktx2",
+    "lodTris": 402,
     "lengthM": 6.25,
     "wingspanM": 8.25,
     "heightM": 2.62,
-    "tris": 402,
+    "tris": 1414,
     "muzzles": [
       {
         "pos": [
           0.13,
-          0.602,
+          0.601,
           2.45
         ],
         "mount": 0
@@ -3155,7 +3326,7 @@
       {
         "pos": [
           -0.13,
-          0.602,
+          0.601,
           2.45
         ],
         "mount": 0
@@ -3178,15 +3349,18 @@
   },
   "spitfire_mk14": {
     "file": "models/late_ww2/spitfire_mk14.glb",
+    "lodFile": "models/late_ww2/spitfire_mk14_lod.glb",
+    "detailFile": "models/late_ww2/spitfire_mk14_detail.ktx2",
+    "lodTris": 361,
     "lengthM": 9.96,
     "wingspanM": 11.23,
-    "heightM": 2.47,
-    "tris": 361,
+    "heightM": 2.49,
+    "tris": 1533,
     "muzzles": [
       {
         "pos": [
           2.021,
-          -0.136,
+          -0.143,
           2.295
         ],
         "mount": 0
@@ -3194,7 +3368,7 @@
       {
         "pos": [
           -2.021,
-          -0.136,
+          -0.143,
           2.295
         ],
         "mount": 0
@@ -3202,7 +3376,7 @@
       {
         "pos": [
           2.583,
-          -0.077,
+          -0.084,
           2.265
         ],
         "mount": 1
@@ -3210,7 +3384,7 @@
       {
         "pos": [
           -2.583,
-          -0.077,
+          -0.084,
           2.265
         ],
         "mount": 1
@@ -3233,15 +3407,18 @@
   },
   "spitfire_mk5": {
     "file": "models/early_ww2/spitfire_mk5.glb",
+    "lodFile": "models/early_ww2/spitfire_mk5_lod.glb",
+    "detailFile": "models/early_ww2/spitfire_mk5_detail.ktx2",
+    "lodTris": 347,
     "lengthM": 9.12,
     "wingspanM": 11.23,
-    "heightM": 2.06,
-    "tris": 347,
+    "heightM": 2.11,
+    "tris": 1519,
     "muzzles": [
       {
         "pos": [
           2.021,
-          -0.128,
+          -0.132,
           2.383
         ],
         "mount": 0
@@ -3249,7 +3426,7 @@
       {
         "pos": [
           -2.021,
-          -0.128,
+          -0.132,
           2.383
         ],
         "mount": 0
@@ -3257,7 +3434,7 @@
       {
         "pos": [
           2.639,
-          -0.063,
+          -0.067,
           2.351
         ],
         "mount": 1
@@ -3265,7 +3442,7 @@
       {
         "pos": [
           -2.639,
-          -0.063,
+          -0.067,
           2.351
         ],
         "mount": 1
@@ -3273,7 +3450,7 @@
       {
         "pos": [
           3.144,
-          -0.01,
+          -0.014,
           2.322
         ],
         "mount": 1
@@ -3281,7 +3458,7 @@
       {
         "pos": [
           -3.144,
-          -0.01,
+          -0.014,
           2.322
         ],
         "mount": 1
@@ -3304,15 +3481,18 @@
   },
   "su27s": {
     "file": "models/modern/su27s.glb",
+    "lodFile": "models/modern/su27s_lod.glb",
+    "detailFile": "models/modern/su27s_detail.ktx2",
+    "lodTris": 469,
     "lengthM": 21.94,
     "wingspanM": 14.7,
     "heightM": 4.6,
-    "tris": 469,
+    "tris": 1885,
     "muzzles": [
       {
         "pos": [
           1,
-          0.299,
+          0.304,
           4.588
         ],
         "mount": 0
@@ -3320,7 +3500,7 @@
       {
         "pos": [
           -1,
-          0.299,
+          0.304,
           4.588
         ],
         "mount": 0
@@ -3329,32 +3509,32 @@
     "pylons": [
       [
         2.572,
-        -0.44,
+        -0.446,
         -4.276
       ],
       [
         -2.572,
-        -0.44,
+        -0.446,
         -4.276
       ],
       [
         4.41,
-        -0.504,
+        -0.51,
         -5.402
       ],
       [
         -4.41,
-        -0.504,
+        -0.51,
         -5.402
       ],
       [
         7.203,
-        -0.602,
+        -0.607,
         -7.113
       ],
       [
         -7.203,
-        -0.602,
+        -0.607,
         -7.113
       ],
       [
@@ -3385,15 +3565,18 @@
   },
   "typhoon": {
     "file": "models/modern/typhoon.glb",
+    "lodFile": "models/modern/typhoon_lod.glb",
+    "detailFile": "models/modern/typhoon_detail.ktx2",
+    "lodTris": 397,
     "lengthM": 15.96,
     "wingspanM": 10.95,
-    "heightM": 4.83,
-    "tris": 397,
+    "heightM": 4.84,
+    "tris": 1729,
     "muzzles": [
       {
         "pos": [
           0.7,
-          -0.236,
+          -0.235,
           1.796
         ],
         "mount": 0
@@ -3401,7 +3584,7 @@
       {
         "pos": [
           -0.7,
-          -0.236,
+          -0.235,
           1.796
         ],
         "mount": 0
@@ -3410,12 +3593,12 @@
     "pylons": [
       [
         0.65,
-        -0.786,
+        -0.785,
         0.798
       ],
       [
         -0.65,
-        -0.786,
+        -0.785,
         0.798
       ],
       [
@@ -3430,12 +3613,12 @@
       ],
       [
         4.106,
-        -0.782,
+        -0.784,
         -6.199
       ],
       [
         -4.106,
-        -0.782,
+        -0.784,
         -6.199
       ]
     ],
@@ -3456,15 +3639,18 @@
   },
   "vampire": {
     "file": "models/early_jets/vampire.glb",
+    "lodFile": "models/early_jets/vampire_lod.glb",
+    "detailFile": "models/early_jets/vampire_detail.ktx2",
+    "lodTris": 303,
     "lengthM": 9.37,
     "wingspanM": 11.58,
-    "heightM": 2.45,
-    "tris": 303,
+    "heightM": 2.44,
+    "tris": 1139,
     "muzzles": [
       {
         "pos": [
           0.25,
-          -0.515,
+          -0.513,
           3.761
         ],
         "mount": 0
@@ -3472,7 +3658,7 @@
       {
         "pos": [
           -0.25,
-          -0.515,
+          -0.513,
           3.761
         ],
         "mount": 0
@@ -3491,10 +3677,13 @@
   },
   "yak3": {
     "file": "models/late_ww2/yak3.glb",
+    "lodFile": "models/late_ww2/yak3_lod.glb",
+    "detailFile": "models/late_ww2/yak3_detail.ktx2",
+    "lodTris": 293,
     "lengthM": 8.5,
     "wingspanM": 9.2,
-    "heightM": 2.1,
-    "tris": 293,
+    "heightM": 2.11,
+    "tris": 1273,
     "muzzles": [
       {
         "pos": [
@@ -3507,7 +3696,7 @@
       {
         "pos": [
           0.16,
-          0.05,
+          0.049,
           3.77
         ],
         "mount": 1
@@ -3515,7 +3704,7 @@
       {
         "pos": [
           -0.16,
-          0.05,
+          0.049,
           3.77
         ],
         "mount": 1

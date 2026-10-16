@@ -9,7 +9,12 @@ A spec (tools/blender/specs/<id>.json) describes a plane in real metres. The kit
     BODY (paint / camo / underside), TEAM (white, tinted red or blue in game), GLASS, DARK
   * one mesh "prop" (blades + spinner) whose origin is the hub, so the game can spin it
   * empties "muzzle_N", "pylon_N", "exhaust_N" at the points the game uses
-Colours are per-face vertex colours (flat shading, no textures).
+Colours are per-face vertex colours.
+
+Detail (Day 11): set_detail("high" | "mid" | "low") before build(). "low" is the original low-poly model (the
+LOD for phones and distance, flat shaded); "high" doubles every ring's sides, adds loft rings and span stations,
+rounds the airfoils (8 points) and shades smooth with sharp edges kept above SHARP_DEG; "mid" is in between for
+planes that would go over budget. build_all.py picks the finest level under the budget.
 """
 
 from __future__ import annotations
@@ -17,9 +22,29 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
+import bmesh
 import bpy
 
 MATERIALS = ["BODY", "TEAM", "GLASS", "DARK"]
+
+LEVELS = {
+    "low": {"sides": 1.0, "loft": 0, "airfoil": 4, "span": 0, "smooth": False},
+    "mid": {"sides": 1.5, "loft": 1, "airfoil": 8, "span": 0, "smooth": True},
+    "high": {"sides": 2.0, "loft": 2, "airfoil": 8, "span": 1, "smooth": True},
+}
+DETAIL = dict(LEVELS["low"])
+SHARP_DEG = 38
+
+
+def set_detail(level: str) -> None:
+    DETAIL.clear()
+    DETAIL.update(LEVELS[level])
+
+
+def ring_sides(k: int) -> int:
+    """Ring sides at the current detail (even, so mirrored shapes stay symmetric)."""
+    n = int(round(k * DETAIL["sides"]))
+    return n + (n % 2)
 DARK = "#2a2f36"
 GLASS = "#9fc9e8"
 
@@ -88,7 +113,7 @@ class MeshBuilder:
         attr = mesh.color_attributes.new(name="Col", type="FLOAT_COLOR", domain="CORNER")
         for poly, (_, mat, col) in zip(mesh.polygons, self.faces):
             poly.material_index = mat
-            poly.use_smooth = False
+            poly.use_smooth = DETAIL["smooth"]
             for li in poly.loop_indices:
                 attr.data[li].color = col
         try:
@@ -96,6 +121,19 @@ class MeshBuilder:
             mesh.color_attributes.render_color_index = 0
         except (AttributeError, TypeError):
             pass
+        # The kit's loops wind inward in places: point every face outward (smooth shading and the AO bake need it).
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        bm.to_mesh(mesh)
+        bm.free()
+        mesh.update()
+        if DETAIL["smooth"]:
+            # Smooth curved skins, but keep wing trailing edges, canopy frames and intake lips crisp.
+            try:
+                mesh.set_sharpness_by_angle(angle=math.radians(SHARP_DEG))
+            except (AttributeError, TypeError):
+                pass
         obj = bpy.data.objects.new(name, mesh)
         obj.location = to_blender(origin)
         bpy.context.scene.collection.objects.link(obj)
@@ -184,7 +222,7 @@ class Plane:
 
     # --- fuselage: loft through elliptical cross-sections
     def fuselage(self):
-        K = self.s["fuselage"].get("sides", 8)
+        K = ring_sides(self.s["fuselage"].get("sides", 8))
         band = self.s["fuselage"].get("teamBand", [0.66, 0.74])
         nose_team = self.s["fuselage"].get("teamNose", [0.0, 0.08])
         # Add loft rings at the paint-band edges so the band has crisp ends wherever the spec's sections are.
@@ -195,6 +233,8 @@ class Plane:
             extra += nose_team
         ts = sorted(set([s[0] for s in self.sections] + [t for t in extra if self.sections[0][0] < t < self.sections[-1][0]]))
         self.sections = [next((s for s in self.sections if s[0] == t), None) or (t, *self.section_at(t)) for t in ts]
+        if DETAIL["loft"]:
+            self.sections = self.smooth_sections(self.sections, DETAIL["loft"])
         rings = []
         for t, w, h, y in self.sections:
             z = self.z_at(t)
@@ -233,16 +273,52 @@ class Plane:
         if len(rings[-1]) > 1:
             self.mb.f(rings[-1], "DARK", self.col_dark)
 
+    @staticmethod
+    def smooth_sections(secs, n):
+        """Insert n rings between each pair, on a Catmull-Rom curve through the spec's sections (so the loft
+        rounds off instead of kinking at every section). Zero-size end points stay points."""
+        out = []
+        for i in range(len(secs) - 1):
+            p0, p1, p2, p3 = secs[max(0, i - 1)], secs[i], secs[i + 1], secs[min(len(secs) - 1, i + 2)]
+            out.append(p1)
+            for j in range(1, n + 1):
+                u = j / (n + 1)
+                def cr(a, b, c, d):
+                    return 0.5 * ((2 * b) + (-a + c) * u + (2 * a - 5 * b + 4 * c - d) * u * u + (-a + 3 * b - 3 * c + d) * u * u * u)
+                t = lerp(p1[0], p2[0], u)
+                w = max(0.0, cr(p0[1], p1[1], p2[1], p3[1]))
+                h = max(0.0, cr(p0[2], p1[2], p2[2], p3[2]))
+                # Next to a pointed end, follow the straight line so the tip stays a cone.
+                if p1[1] < 1e-3 or p2[1] < 1e-3:
+                    w, h = lerp(p1[1], p2[1], u), lerp(p1[2], p2[2], u)
+                out.append((t, w, h, cr(p0[3], p1[3], p2[3], p3[3])))
+        out.append(secs[-1])
+        return out
+
     # --- lifting surfaces (wings, stabilisers, fins share this)
     def surface(self, stations, thickness, vertical=False, mirror=True, x0=0.0, team_tip=False, kind="wing", cant_deg=0.0):
         """stations: list of (span_m, chord, le_z, offset) from root to tip.
         Horizontal: span along +X, offset = y. Vertical: span along +Y, offset = x."""
-        sides = [1, -1] if mirror else [1]
-        for side in sides:
+        sides_ = [1, -1] if mirror else [1]
+        if DETAIL["span"]:
+            fine = []
+            for a, b in zip(stations, stations[1:]):
+                fine.append(a)
+                fine.append(tuple(lerp(x, y, 0.5) for x, y in zip(a, b)))
+            fine.append(stations[-1])
+            stations = fine
+        # Airfoil ring from the leading edge over the top to the trailing edge and back underneath.
+        if DETAIL["airfoil"] == 8:
+            foil = [(0.0, 0.0), (0.05, 0.3), (0.15, 0.46), (0.32, 0.5), (0.62, 0.34), (1.0, 0.0), (0.55, -0.26), (0.18, -0.34)]
+        else:
+            foil = [(0.0, 0.0), (0.3, 0.5), (1.0, 0.0), (0.3, -0.5)]
+        te = next(i for i, (dz, _) in enumerate(foil) if dz == 1.0)
+        NF = len(foil)
+        for side in sides_:
             rings = []
             for span, chord, le_z, off in stations:
                 th = chord * thickness
-                pts = [(0.0, 0.0), (0.3 * chord, th / 2), (chord, 0.0), (0.3 * chord, -th / 2)]
+                pts = [(fz * chord, fn * th) for fz, fn in foil]
                 ring = []
                 for dz, dn in pts:
                     z = le_z - dz
@@ -257,12 +333,12 @@ class Plane:
             half = stations[-1][0] or 1
             for i in range(len(rings) - 1):
                 tip_zone = team_tip and stations[i][0] >= 0.84 * half
-                for k in range(4):
-                    k2 = (k + 1) % 4
+                for k in range(NF):
+                    k2 = (k + 1) % NF
                     idx = [rings[i][k], rings[i][k2], rings[i + 1][k2], rings[i + 1][k]]
                     if side < 0:
                         idx.reverse()
-                    up = k in (0, 1)  # LE->upper, upper->TE faces point up
+                    up = k < te  # LE->upper->TE faces point up
                     if vertical:
                         normal = (side if up else -side, 0, 0)
                     else:
@@ -276,7 +352,7 @@ class Plane:
                         mat, col = "TEAM", self.col_team
                     self.mb.f(idx, mat, col)
             tip = rings[-1]
-            idx = [tip[0], tip[1], tip[2], tip[3]] if side > 0 else [tip[3], tip[2], tip[1], tip[0]]
+            idx = list(tip) if side > 0 else list(reversed(tip))
             tip_team = team_tip or (kind == "fin" and "fin" in self.team)
             self.mb.f(idx, "TEAM" if tip_team else "BODY", self.col_team if tip_team else self.col_body)
 
@@ -435,7 +511,7 @@ class Plane:
         if kind == "radial_cowl":
             r = e.get("cowlDiameterM", max(w0, h0)) / 2
             ln = e.get("cowlLengthM", 0.8)
-            K = 12
+            K = ring_sides(12)
             front = [self.mb.v((r * math.cos(2 * math.pi * k / K), y0 + r * math.sin(2 * math.pi * k / K), nose_z)) for k in range(K)]
             back = [self.mb.v((r * 0.97 * math.cos(2 * math.pi * k / K), y0 + r * 0.97 * math.sin(2 * math.pi * k / K), nose_z - ln)) for k in range(K)]
             cowl_col = "TEAM" if "cowl" in self.team else "BODY"
@@ -541,7 +617,7 @@ class Plane:
             self.box((0, ys - hs / 2 + 0.02, zt + 0.25), (0, ys - hs / 2 - 0.25, zt - 0.1), 0.05)
 
     def wheel(self, c, r, width):
-        K = 8
+        K = ring_sides(8)
         cx, cy, cz = c
         rings = []
         for dx in (width / 2, -width / 2):
@@ -561,7 +637,7 @@ class Plane:
         y = ex.get("yM", self.section_at(t)[2])
         z1 = self.z_at(t) + 0.2
         z2 = z1 - ln
-        K = 8
+        K = ring_sides(8)
         sides = [1, -1] if x else [1]
         for side in sides:
             cx = x * side
@@ -596,7 +672,7 @@ class Plane:
             # One-sided quad: glTF materials are double-sided, so the back still renders.
             self.prop.f([i[0], i[1], i[3], i[2]], "DARK", self.col_dark)
         if e.get("spinner", True):
-            K = 8
+            K = ring_sides(8)
             r = e.get("spinnerDiameterM", 0.5) / 2
             ring = [self.prop.v((hub[0] + r * math.cos(2 * math.pi * k / K), hub[1] + r * math.sin(2 * math.pi * k / K), hub[2] - 0.1)) for k in range(K)]
             tipv = self.prop.v((hub[0], hub[1], hub[2] + e.get("spinnerLengthM", 0.6)))
@@ -625,7 +701,7 @@ class Plane:
             return
         # Bubble: rings along the length, half-ellipse cross-sections.
         prof = c.get("profile", [0.0, 0.8, 1.0, 0.85, 0.35] if kind == "teardrop" else [0.2, 0.9, 1.0, 1.0, 0.6])
-        K = 6
+        K = ring_sides(6)
         rings = []
         n = len(prof)
         for i, p in enumerate(prof):
@@ -660,7 +736,7 @@ class Plane:
             ya = pd.get("yM", 0.0)
             yb = pd.get("yEndM", ya)
             rb = pd.get("endRadiusM", r * 0.7)
-            K = pd.get("sides", 8)
+            K = ring_sides(pd.get("sides", 8))
             for side in (1, -1):
                 cx = x * side
                 front = [self.mb.v((cx + r * math.cos(2 * math.pi * k / K), ya + r * math.sin(2 * math.pi * k / K), za)) for k in range(K)]

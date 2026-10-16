@@ -1,6 +1,7 @@
 // npm run models: rebuild every plane spec and weapon from scratch with headless Blender, compress with
-// gltf-transform (meshopt), write public/models/<era>/<id>.glb, public/models/manifest.json and
-// src/data/planeModels.json (dimensions, muzzles, pylons for the simulation), then print the sizes.
+// gltf-transform (meshopt), write public/models/<era>/<id>.glb (detailed, Medium/High), <id>_lod.glb (low-poly:
+// Low and distance) and <id>_detail.ktx2 (baked AO + panel lines, team mask in alpha; ETC1S via ktx2-encoder,
+// decoded with Python + Pillow), public/models/manifest.json and src/data/planeModels.json, then print sizes.
 //
 //   npm run models                 # everything
 //   npm run models -- f4e camel    # only some planes (ids), plus "weapons"
@@ -8,6 +9,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { encodeToKTX2 } from 'ktx2-encoder';
 
 const root = new URL('..', import.meta.url).pathname;
 const BLENDER = process.env.BLENDER ?? '/Applications/Blender.app/Contents/MacOS/Blender';
@@ -56,15 +58,35 @@ const dataPath = join(root, 'src/data/planeModels.json');
 const manifest = existsSync(manifestPath) && !full ? JSON.parse(readFileSync(manifestPath, 'utf8')) : { planes: {}, weapons: {} };
 const planeData = existsSync(dataPath) && !full ? JSON.parse(readFileSync(dataPath, 'utf8')) : {};
 
+/** PNG → KTX2 (ETC1S, mipmapped, RGBA: the alpha slice keeps the team mask clean). */
+async function encodeDetail(src, dst) {
+  const decode = async () => {
+    const out = join(raw, '_detail.rgba');
+    execFileSync('python3', ['-I', '-c', `from PIL import Image\nim=Image.open(${JSON.stringify(src)}).convert('RGBA')\nopen(${JSON.stringify(out)},'wb').write(im.tobytes())\nprint(im.size[0])`]);
+    const size = 512;
+    return { data: new Uint8Array(readFileSync(out)), width: size, height: size };
+  };
+  const ktx = await encodeToKTX2(new Uint8Array(readFileSync(src)), { isUASTC: false, generateMipmap: true, qualityLevel: 200, compressionLevel: 2, isSetKTX2SRGBTransferFunc: false, imageDecoder: decode });
+  writeFileSync(dst, ktx);
+  return ktx.length;
+}
+
 const rows = [];
-for (const f of readdirSync(raw).filter((x) => x.endsWith('.glb')).sort()) {
+for (const f of readdirSync(raw).filter((x) => x.endsWith('.glb') && !x.endsWith('_lod.glb')).sort()) {
   const id = f.replace(/\.glb$/, '');
   const info = JSON.parse(readFileSync(join(raw, `${id}.json`), 'utf8'));
   const file = `models/${info.era}/${id}.glb`;
+  const lodFile = `models/${info.era}/${id}_lod.glb`;
+  const detailFile = `models/${info.era}/${id}_detail.ktx2`;
   const bytes = compress(join(raw, f), join(root, 'public', file));
-  manifest.planes[id] = { file, era: info.era, bytes, tris: info.tris };
+  const lodBytes = compress(join(raw, `${id}_lod.glb`), join(root, 'public', lodFile));
+  const detailBytes = await encodeDetail(join(raw, `${id}_detail.png`), join(root, 'public', detailFile));
+  manifest.planes[id] = { file, lodFile, detailFile, era: info.era, bytes: bytes + lodBytes + detailBytes, tris: info.tris, lodTris: info.lodTris };
   planeData[id] = {
     file,
+    lodFile,
+    detailFile,
+    lodTris: info.lodTris,
     lengthM: info.lengthM,
     wingspanM: info.wingspanM,
     heightM: info.heightM,
@@ -75,7 +97,7 @@ for (const f of readdirSync(raw).filter((x) => x.endsWith('.glb')).sort()) {
     prop: info.prop,
     engine: info.engine,
   };
-  rows.push([id, info.era, info.tris, bytes]);
+  rows.push([id, info.era, `${info.tris}/${info.lodTris}`, bytes + lodBytes + detailBytes]);
 }
 const weaponDir = join(raw, 'weapons');
 for (const f of existsSync(weaponDir) ? readdirSync(weaponDir).filter((x) => x.endsWith('.glb')).sort() : []) {
@@ -95,6 +117,6 @@ writeFileSync(dataPath, JSON.stringify(sorted(planeData), null, 2) + '\n');
 
 console.log('\nmodel                    era          tris    size');
 for (const [id, era, tris, bytes] of rows) {
-  console.log(`${id.padEnd(24)} ${era.padEnd(12)} ${String(tris).padStart(5)} ${(bytes / 1024).toFixed(1).padStart(7)} KB`);
+  console.log(`${id.padEnd(24)} ${era.padEnd(12)} ${String(tris).padStart(9)} ${(bytes / 1024).toFixed(1).padStart(7)} KB`);
 }
 console.log(`\nTotal model size: ${(total / 1024).toFixed(1)} KB (${Object.keys(manifest.planes).length} planes, ${Object.keys(manifest.weapons).length} weapons)`);

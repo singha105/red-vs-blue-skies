@@ -2,8 +2,12 @@
 
   Blender --background --factory-startup --python tools/blender/build_all.py -- <raw_out_dir> <previews_dir> [ids...]
 
-Writes <raw_out_dir>/<id>.glb + <id>.json (dimensions, empties, triangle count) for planes,
-<raw_out_dir>/weapons/<id>.glb + .json for weapons, and a preview PNG per model."""
+Writes, per plane: <raw_out_dir>/<id>.glb (the detailed model, smooth, UV-mapped), <id>_detail.png (baked AO,
+panel lines and team mask, see bake_kit.py), <id>_lod.glb (the low-poly model: phones and distance) and <id>.json
+(dimensions, empties, triangle counts); <raw_out_dir>/weapons/<id>.glb + .json for weapons; a preview PNG each.
+
+Day 11 budgets: detailed models up to 3,000 triangles (props), 4,000 (jets), 6,000 (AI bombers); each plane
+gets the finest kit detail level that fits. The LOD keeps the old budgets."""
 
 from __future__ import annotations
 
@@ -16,13 +20,15 @@ import bpy
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
+import bake_kit  # noqa: E402
 import plane_kit  # noqa: E402
 import render_preview  # noqa: E402
 import weapons_kit  # noqa: E402
 
-PROP_BUDGET = 1200
-JET_BUDGET = 1500
-BOMBER_BUDGET = 2000  # the AI bombers (Bomber Escort) are three or four times a fighter's size
+PROP_BUDGET = 3000
+JET_BUDGET = 4000
+BOMBER_BUDGET = 6000  # the AI bombers (Bomber Escort) are three or four times a fighter's size
+LOD_BUDGETS = {"prop": 1200, "jet": 1500, "bomber": 2000}
 
 
 def reset():
@@ -62,21 +68,39 @@ def main():
         spec = json.load(open(os.path.join(spec_dir, fname)))
         if only and spec["id"] not in only:
             continue
-        reset()
-        objs, info = plane_kit.build(spec)
         jet = spec["era"] in ("early_jets", "cold_war", "modern")
-        budget = BOMBER_BUDGET if spec["era"] == "bombers" else JET_BUDGET if jet else PROP_BUDGET
+        kind = "bomber" if spec["era"] == "bombers" else "jet" if jet else "prop"
+        budget = BOMBER_BUDGET if kind == "bomber" else JET_BUDGET if jet else PROP_BUDGET
+        # The low-poly LOD first (its numbers are the reference for the empties).
+        reset()
+        plane_kit.set_detail("low")
+        lod_objs, lod_info = plane_kit.build(spec)
+        if lod_info["tris"] > LOD_BUDGETS[kind]:
+            failures.append(f"{spec['id']} LOD: {lod_info['tris']} triangles > {LOD_BUDGETS[kind]}")
+        export(lod_objs, os.path.join(raw_dir, f"{spec['id']}_lod.glb"))
+        # Then the finest detail level that fits the budget.
+        for level in ("high", "mid", "low"):
+            reset()
+            plane_kit.set_detail(level)
+            objs, info = plane_kit.build(spec)
+            if info["tris"] <= budget:
+                break
         info["budget"] = budget
+        info["detail"] = level
+        info["lodTris"] = lod_info["tris"]
         if info["tris"] > budget:
             failures.append(f"{spec['id']}: {info['tris']} triangles > {budget}")
+        body = next(o for o in objs if o.name == "body")
+        bake_kit.bake(body, os.path.join(raw_dir, f"{spec['id']}_detail.png"), spec["lengthM"])
         export(objs, os.path.join(raw_dir, f"{spec['id']}.glb"))
         json.dump(info, open(os.path.join(raw_dir, f"{spec['id']}.json"), "w"), indent=2)
         render_preview.render(objs, os.path.join(prev_dir, f"{spec['id']}.png"))
-        print(f"BUILT {spec['id']} tris={info['tris']}/{budget} muzzles={len(info['muzzles'])} pylons={len(info['pylons'])}")
+        print(f"BUILT {spec['id']} tris={info['tris']}/{budget} ({level}) lod={lod_info['tris']} muzzles={len(info['muzzles'])} pylons={len(info['pylons'])}")
 
     if not only or "weapons" in only:
         for wid in weapons_kit.WEAPONS:
             reset()
+            plane_kit.set_detail("low")
             objs, info = weapons_kit.build_weapon(wid)
             export(objs, os.path.join(raw_dir, "weapons", f"{wid}.glb"))
             json.dump(info, open(os.path.join(raw_dir, "weapons", f"{wid}.json"), "w"), indent=2)

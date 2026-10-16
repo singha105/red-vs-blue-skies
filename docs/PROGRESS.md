@@ -3,6 +3,22 @@
 Live: https://singha105.github.io/red-vs-blue-skies/ (`?debug=1` shows the FPS counter)
 Repo: https://github.com/singha105/red-vs-blue-skies
 
+## Day 11: Post-launch update (2026-10-16) — IN PROGRESS, read this first
+
+**Handoff (usage limit reached mid-Part C).** Commits: Part A `fe0774c` (controls, HUD, radar; pushed, all tests green), Part B `8bc16bc` (baked eroded terrain, terrain shader, geomorph LOD, forests, sky, clouds, water, IBL, tone mapping, plus effects/bloom/ribbons/WebGPU probe; pushed). Part C models are committed locally in the next commit but **not pushed and not yet e2e-tested**.
+
+Done in Part C so far: plane kit detail levels + Blender bake (AO, panel lines, team mask → KTX2) for all 63 planes (`npm run models`: 1,139–1,911 triangles detailed, 291–493 LOD, 6.4 MB total); model unit tests pass. Game loader (`render/models.ts`) uses LODs on Low, detailed + texture on Medium/High.
+
+Measured: perf project 60 fps on every profile (draw calls 59–130 incl. bloom passes); High low over Mountain Valley's forest: 404,516 trees, 15,357 in 3D, 60 fps. **WebGPU probe**: GPU Chromium WebGPURenderer 53.5 / 59.9 fps vs WebGL 58.0 / 60.0 (two runs, vsync-capped), Playwright iPhone WebKit 51.7 vs 57.7 → not faster, and the game's GLSL ShaderMaterials / onBeforeCompile shaders don't run on WebGPURenderer, so **WebGL is kept**. Not tried on a real iPhone.
+
+Still to do (in order):
+1. Look at the new models in game (hangar + flight on Medium/High) and the previews in `tools/blender/previews/`; fix anything odd in the kit.
+2. Run all tests (`npm test`, `npx playwright test` ~21 min; tests are slower now in software rendering), fix, commit.
+3. `npx vite preview --port 4187` + `node tools/perf/profile.mjs island_chain` (it now prints "first match playable" on Slow 4G; target < 8 s); check `du -sh dist` < 25 MB (was 10 MB before models).
+4. Re-run `npx playwright test terrain-shots --project desktop-chrome` for the final after shots (before shots are in tests/screenshots/mountain-valley-before-*.png).
+5. Write the full Day 11 section here, push, confirm the deploy (`gh run list`), run the suite against the live site with `BASE_URL`.
+Owed by the user from earlier days: the 6-player game night, sound on a real iPhone. TURN key still pending.
+
 ## Day 10: Performance, mobile QA, balance, launch (2026-10-15)
 
 ### Done

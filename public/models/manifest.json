@@ -2,381 +2,570 @@
   "planes": {
     "a6m2": {
       "file": "models/early_ww2/a6m2.glb",
+      "lodFile": "models/early_ww2/a6m2_lod.glb",
+      "detailFile": "models/early_ww2/a6m2_detail.ktx2",
       "era": "early_ww2",
-      "bytes": 14280,
-      "tris": 331
+      "bytes": 97765,
+      "tris": 1297,
+      "lodTris": 331
     },
     "airco_dh2": {
       "file": "models/ww1/airco_dh2.glb",
+      "lodFile": "models/ww1/airco_dh2_lod.glb",
+      "detailFile": "models/ww1/airco_dh2_detail.ktx2",
       "era": "ww1",
-      "bytes": 13384,
-      "tris": 384
+      "bytes": 111337,
+      "tris": 1284,
+      "lodTris": 384
     },
     "albatros_d3": {
       "file": "models/ww1/albatros_d3.glb",
+      "lodFile": "models/ww1/albatros_d3_lod.glb",
+      "detailFile": "models/ww1/albatros_d3_detail.ktx2",
       "era": "ww1",
-      "bytes": 14472,
-      "tris": 378
+      "bytes": 113049,
+      "tris": 1318,
+      "lodTris": 378
     },
     "bf109e4": {
       "file": "models/early_ww2/bf109e4.glb",
+      "lodFile": "models/early_ww2/bf109e4_lod.glb",
+      "detailFile": "models/early_ww2/bf109e4_detail.ktx2",
       "era": "early_ww2",
-      "bytes": 13724,
-      "tris": 299
+      "bytes": 94571,
+      "tris": 1285,
+      "lodTris": 299
     },
     "bf109f4": {
       "file": "models/early_ww2/bf109f4.glb",
+      "lodFile": "models/early_ww2/bf109f4_lod.glb",
+      "detailFile": "models/early_ww2/bf109f4_detail.ktx2",
       "era": "early_ww2",
-      "bytes": 13592,
-      "tris": 299
+      "bytes": 93845,
+      "tris": 1285,
+      "lodTris": 299
     },
     "bomber_jet": {
       "file": "models/bombers/bomber_jet.glb",
+      "lodFile": "models/bombers/bomber_jet_lod.glb",
+      "detailFile": "models/bombers/bomber_jet_detail.ktx2",
       "era": "bombers",
-      "bytes": 12432,
-      "tris": 403
+      "bytes": 107994,
+      "tris": 1667,
+      "lodTris": 403
     },
     "bomber_ww1": {
       "file": "models/bombers/bomber_ww1.glb",
+      "lodFile": "models/bombers/bomber_ww1_lod.glb",
+      "detailFile": "models/bombers/bomber_ww1_detail.ktx2",
       "era": "bombers",
-      "bytes": 12304,
-      "tris": 448
+      "bytes": 109228,
+      "tris": 1456,
+      "lodTris": 448
     },
     "bomber_ww2": {
       "file": "models/bombers/bomber_ww2.glb",
+      "lodFile": "models/bombers/bomber_ww2_lod.glb",
+      "detailFile": "models/bombers/bomber_ww2_detail.ktx2",
       "era": "bombers",
-      "bytes": 11776,
-      "tris": 387
+      "bytes": 105096,
+      "tris": 1477,
+      "lodTris": 387
     },
     "cr42": {
       "file": "models/early_ww2/cr42.glb",
+      "lodFile": "models/early_ww2/cr42_lod.glb",
+      "detailFile": "models/early_ww2/cr42_detail.ktx2",
       "era": "early_ww2",
-      "bytes": 14964,
-      "tris": 390
+      "bytes": 115020,
+      "tris": 1406,
+      "lodTris": 390
     },
     "f104g": {
       "file": "models/cold_war/f104g.glb",
+      "lodFile": "models/cold_war/f104g_lod.glb",
+      "detailFile": "models/cold_war/f104g_detail.ktx2",
       "era": "cold_war",
-      "bytes": 12112,
-      "tris": 375
+      "bytes": 99867,
+      "tris": 1641,
+      "lodTris": 375
     },
     "f14a": {
       "file": "models/cold_war/f14a.glb",
+      "lodFile": "models/cold_war/f14a_lod.glb",
+      "detailFile": "models/cold_war/f14a_detail.ktx2",
       "era": "cold_war",
-      "bytes": 13504,
-      "tris": 455
+      "bytes": 113238,
+      "tris": 1889,
+      "lodTris": 455
     },
     "f15a": {
       "file": "models/cold_war/f15a.glb",
+      "lodFile": "models/cold_war/f15a_lod.glb",
+      "detailFile": "models/cold_war/f15a_detail.ktx2",
       "era": "cold_war",
-      "bytes": 12992,
-      "tris": 401
+      "bytes": 109739,
+      "tris": 1713,
+      "lodTris": 401
     },
     "f15c": {
       "file": "models/modern/f15c.glb",
+      "lodFile": "models/modern/f15c_lod.glb",
+      "detailFile": "models/modern/f15c_detail.ktx2",
       "era": "modern",
-      "bytes": 12992,
-      "tris": 401
+      "bytes": 109739,
+      "tris": 1713,
+      "lodTris": 401
     },
     "f16a": {
       "file": "models/cold_war/f16a.glb",
+      "lodFile": "models/cold_war/f16a_lod.glb",
+      "detailFile": "models/cold_war/f16a_detail.ktx2",
       "era": "cold_war",
-      "bytes": 12852,
-      "tris": 411
+      "bytes": 103657,
+      "tris": 1775,
+      "lodTris": 411
     },
     "f16c_b50": {
       "file": "models/modern/f16c_b50.glb",
+      "lodFile": "models/modern/f16c_b50_lod.glb",
+      "detailFile": "models/modern/f16c_b50_detail.ktx2",
       "era": "modern",
-      "bytes": 12852,
-      "tris": 411
+      "bytes": 103657,
+      "tris": 1775,
+      "lodTris": 411
     },
     "f22a": {
       "file": "models/modern/f22a.glb",
+      "lodFile": "models/modern/f22a_lod.glb",
+      "detailFile": "models/modern/f22a_detail.ktx2",
       "era": "modern",
-      "bytes": 12840,
-      "tris": 385
+      "bytes": 105427,
+      "tris": 1697,
+      "lodTris": 385
     },
     "f4e": {
       "file": "models/cold_war/f4e.glb",
+      "lodFile": "models/cold_war/f4e_lod.glb",
+      "detailFile": "models/cold_war/f4e_detail.ktx2",
       "era": "cold_war",
-      "bytes": 13800,
-      "tris": 461
+      "bytes": 106461,
+      "tris": 1911,
+      "lodTris": 461
     },
     "f4u4": {
       "file": "models/late_ww2/f4u4.glb",
+      "lodFile": "models/late_ww2/f4u4_lod.glb",
+      "detailFile": "models/late_ww2/f4u4_detail.ktx2",
       "era": "late_ww2",
-      "bytes": 16132,
-      "tris": 423
+      "bytes": 110304,
+      "tris": 1431,
+      "lodTris": 423
     },
     "f5e": {
       "file": "models/cold_war/f5e.glb",
+      "lodFile": "models/cold_war/f5e_lod.glb",
+      "detailFile": "models/cold_war/f5e_detail.ktx2",
       "era": "cold_war",
-      "bytes": 12460,
-      "tris": 391
+      "bytes": 107819,
+      "tris": 1675,
+      "lodTris": 391
     },
     "f6f5": {
       "file": "models/late_ww2/f6f5.glb",
+      "lodFile": "models/late_ww2/f6f5_lod.glb",
+      "detailFile": "models/late_ww2/f6f5_detail.ktx2",
       "era": "late_ww2",
-      "bytes": 14416,
-      "tris": 331
+      "bytes": 96263,
+      "tris": 1297,
+      "lodTris": 331
     },
     "f8": {
       "file": "models/early_jets/f8.glb",
+      "lodFile": "models/early_jets/f8_lod.glb",
+      "detailFile": "models/early_jets/f8_detail.ktx2",
       "era": "early_jets",
-      "bytes": 11996,
-      "tris": 343
+      "bytes": 104062,
+      "tris": 1603,
+      "lodTris": 343
     },
     "f84g": {
       "file": "models/early_jets/f84g.glb",
+      "lodFile": "models/early_jets/f84g_lod.glb",
+      "detailFile": "models/early_jets/f84g_detail.ktx2",
       "era": "early_jets",
-      "bytes": 11852,
-      "tris": 367
+      "bytes": 104948,
+      "tris": 1511,
+      "lodTris": 367
     },
     "f86f": {
       "file": "models/early_jets/f86f.glb",
+      "lodFile": "models/early_jets/f86f_lod.glb",
+      "detailFile": "models/early_jets/f86f_detail.ktx2",
       "era": "early_jets",
-      "bytes": 11200,
-      "tris": 311
+      "bytes": 94541,
+      "tris": 1391,
+      "lodTris": 311
     },
     "fa18c": {
       "file": "models/modern/fa18c.glb",
+      "lodFile": "models/modern/fa18c_lod.glb",
+      "detailFile": "models/modern/fa18c_detail.ktx2",
       "era": "modern",
-      "bytes": 13164,
-      "tris": 437
+      "bytes": 113465,
+      "tris": 1853,
+      "lodTris": 437
     },
     "fokker_d7": {
       "file": "models/ww1/fokker_d7.glb",
+      "lodFile": "models/ww1/fokker_d7_lod.glb",
+      "detailFile": "models/ww1/fokker_d7_detail.ktx2",
       "era": "ww1",
-      "bytes": 13408,
-      "tris": 386
+      "bytes": 113914,
+      "tris": 1398,
+      "lodTris": 386
     },
     "fokker_dr1": {
       "file": "models/ww1/fokker_dr1.glb",
+      "lodFile": "models/ww1/fokker_dr1_lod.glb",
+      "detailFile": "models/ww1/fokker_dr1_detail.ktx2",
       "era": "ww1",
-      "bytes": 14076,
-      "tris": 432
+      "bytes": 116175,
+      "tris": 1288,
+      "lodTris": 432
     },
     "fokker_e3": {
       "file": "models/ww1/fokker_e3.glb",
+      "lodFile": "models/ww1/fokker_e3_lod.glb",
+      "detailFile": "models/ww1/fokker_e3_detail.ktx2",
       "era": "ww1",
-      "bytes": 13024,
-      "tris": 370
+      "bytes": 103137,
+      "tris": 1258,
+      "lodTris": 370
     },
     "fw190a8": {
       "file": "models/late_ww2/fw190a8.glb",
+      "lodFile": "models/late_ww2/fw190a8_lod.glb",
+      "detailFile": "models/late_ww2/fw190a8_detail.ktx2",
       "era": "late_ww2",
-      "bytes": 15008,
-      "tris": 341
+      "bytes": 99916,
+      "tris": 1301,
+      "lodTris": 341
     },
     "gladiator": {
       "file": "models/early_ww2/gladiator.glb",
+      "lodFile": "models/early_ww2/gladiator_lod.glb",
+      "detailFile": "models/early_ww2/gladiator_detail.ktx2",
       "era": "early_ww2",
-      "bytes": 14880,
-      "tris": 493
+      "bytes": 116664,
+      "tris": 1619,
+      "lodTris": 493
     },
     "hunter_f6": {
       "file": "models/early_jets/hunter_f6.glb",
+      "lodFile": "models/early_jets/hunter_f6_lod.glb",
+      "detailFile": "models/early_jets/hunter_f6_detail.ktx2",
       "era": "early_jets",
-      "bytes": 12204,
-      "tris": 369
+      "bytes": 99250,
+      "tris": 1629,
+      "lodTris": 369
     },
     "hurricane_mk1": {
       "file": "models/early_ww2/hurricane_mk1.glb",
+      "lodFile": "models/early_ww2/hurricane_mk1_lod.glb",
+      "detailFile": "models/early_ww2/hurricane_mk1_detail.ktx2",
       "era": "early_ww2",
-      "bytes": 14336,
-      "tris": 291
+      "bytes": 93851,
+      "tris": 1271,
+      "lodTris": 291
     },
     "i16": {
       "file": "models/early_ww2/i16.glb",
+      "lodFile": "models/early_ww2/i16_lod.glb",
+      "detailFile": "models/early_ww2/i16_detail.ktx2",
       "era": "early_ww2",
-      "bytes": 14124,
-      "tris": 307
+      "bytes": 105573,
+      "tris": 1187,
+      "lodTris": 307
     },
     "jas39c": {
       "file": "models/modern/jas39c.glb",
+      "lodFile": "models/modern/jas39c_lod.glb",
+      "detailFile": "models/modern/jas39c_detail.ktx2",
       "era": "modern",
-      "bytes": 12720,
-      "tris": 401
+      "bytes": 106500,
+      "tris": 1709,
+      "lodTris": 401
     },
     "me262": {
       "file": "models/late_ww2/me262.glb",
+      "lodFile": "models/late_ww2/me262_lod.glb",
+      "detailFile": "models/late_ww2/me262_detail.ktx2",
       "era": "late_ww2",
-      "bytes": 11516,
-      "tris": 311
+      "bytes": 95113,
+      "tris": 1331,
+      "lodTris": 311
     },
     "meteor_f8": {
       "file": "models/early_jets/meteor_f8.glb",
+      "lodFile": "models/early_jets/meteor_f8_lod.glb",
+      "detailFile": "models/early_jets/meteor_f8_detail.ktx2",
       "era": "early_jets",
-      "bytes": 12120,
-      "tris": 367
+      "bytes": 104929,
+      "tris": 1667,
+      "lodTris": 367
     },
     "mig15bis": {
       "file": "models/early_jets/mig15bis.glb",
+      "lodFile": "models/early_jets/mig15bis_lod.glb",
+      "detailFile": "models/early_jets/mig15bis_detail.ktx2",
       "era": "early_jets",
-      "bytes": 11332,
-      "tris": 307
+      "bytes": 95556,
+      "tris": 1287,
+      "lodTris": 307
     },
     "mig17f": {
       "file": "models/early_jets/mig17f.glb",
+      "lodFile": "models/early_jets/mig17f_lod.glb",
+      "detailFile": "models/early_jets/mig17f_detail.ktx2",
       "era": "early_jets",
-      "bytes": 11652,
-      "tris": 327
+      "bytes": 101206,
+      "tris": 1407,
+      "lodTris": 327
     },
     "mig19s": {
       "file": "models/early_jets/mig19s.glb",
+      "lodFile": "models/early_jets/mig19s_lod.glb",
+      "detailFile": "models/early_jets/mig19s_detail.ktx2",
       "era": "early_jets",
-      "bytes": 12104,
-      "tris": 349
+      "bytes": 101243,
+      "tris": 1453,
+      "lodTris": 349
     },
     "mig21f13": {
       "file": "models/cold_war/mig21f13.glb",
+      "lodFile": "models/cold_war/mig21f13_lod.glb",
+      "detailFile": "models/cold_war/mig21f13_detail.ktx2",
       "era": "cold_war",
-      "bytes": 11424,
-      "tris": 327
+      "bytes": 91336,
+      "tris": 1407,
+      "lodTris": 327
     },
     "mig23mld": {
       "file": "models/cold_war/mig23mld.glb",
+      "lodFile": "models/cold_war/mig23mld_lod.glb",
+      "detailFile": "models/cold_war/mig23mld_detail.ktx2",
       "era": "cold_war",
-      "bytes": 12620,
-      "tris": 411
+      "bytes": 109505,
+      "tris": 1781,
+      "lodTris": 411
     },
     "mig29a": {
       "file": "models/modern/mig29a.glb",
+      "lodFile": "models/modern/mig29a_lod.glb",
+      "detailFile": "models/modern/mig29a_detail.ktx2",
       "era": "modern",
-      "bytes": 13800,
-      "tris": 469
+      "bytes": 113791,
+      "tris": 1885,
+      "lodTris": 469
     },
     "mirage2000_5": {
       "file": "models/modern/mirage2000_5.glb",
+      "lodFile": "models/modern/mirage2000_5_lod.glb",
+      "detailFile": "models/modern/mirage2000_5_detail.ktx2",
       "era": "modern",
-      "bytes": 12116,
-      "tris": 345
+      "bytes": 90203,
+      "tris": 1449,
+      "lodTris": 345
     },
     "mirage3e": {
       "file": "models/cold_war/mirage3e.glb",
+      "lodFile": "models/cold_war/mirage3e_lod.glb",
+      "detailFile": "models/cold_war/mirage3e_detail.ktx2",
       "era": "cold_war",
-      "bytes": 11524,
-      "tris": 335
+      "bytes": 99006,
+      "tris": 1445,
+      "lodTris": 335
     },
     "mirage_f1c": {
       "file": "models/cold_war/mirage_f1c.glb",
+      "lodFile": "models/cold_war/mirage_f1c_lod.glb",
+      "detailFile": "models/cold_war/mirage_f1c_detail.ktx2",
       "era": "cold_war",
-      "bytes": 12260,
-      "tris": 375
+      "bytes": 106614,
+      "tris": 1641,
+      "lodTris": 375
     },
     "nieuport_11": {
       "file": "models/ww1/nieuport_11.glb",
+      "lodFile": "models/ww1/nieuport_11_lod.glb",
+      "detailFile": "models/ww1/nieuport_11_detail.ktx2",
       "era": "ww1",
-      "bytes": 13880,
-      "tris": 428
+      "bytes": 117708,
+      "tris": 1420,
+      "lodTris": 428
     },
     "p26": {
       "file": "models/early_ww2/p26.glb",
+      "lodFile": "models/early_ww2/p26_lod.glb",
+      "detailFile": "models/early_ww2/p26_detail.ktx2",
       "era": "early_ww2",
-      "bytes": 12308,
-      "tris": 312
+      "bytes": 92785,
+      "tris": 1216,
+      "lodTris": 312
     },
     "p36": {
       "file": "models/early_ww2/p36.glb",
+      "lodFile": "models/early_ww2/p36_lod.glb",
+      "detailFile": "models/early_ww2/p36_detail.ktx2",
       "era": "early_ww2",
-      "bytes": 14256,
-      "tris": 331
+      "bytes": 99161,
+      "tris": 1297,
+      "lodTris": 331
     },
     "p39q": {
       "file": "models/late_ww2/p39q.glb",
+      "lodFile": "models/late_ww2/p39q_lod.glb",
+      "detailFile": "models/late_ww2/p39q_detail.ktx2",
       "era": "late_ww2",
-      "bytes": 13680,
-      "tris": 299
+      "bytes": 90133,
+      "tris": 1285,
+      "lodTris": 299
     },
     "p40e": {
       "file": "models/late_ww2/p40e.glb",
+      "lodFile": "models/late_ww2/p40e_lod.glb",
+      "detailFile": "models/late_ww2/p40e_detail.ktx2",
       "era": "late_ww2",
-      "bytes": 13764,
-      "tris": 299
+      "bytes": 91376,
+      "tris": 1285,
+      "lodTris": 299
     },
     "p47d": {
       "file": "models/late_ww2/p47d.glb",
+      "lodFile": "models/late_ww2/p47d_lod.glb",
+      "detailFile": "models/late_ww2/p47d_detail.ktx2",
       "era": "late_ww2",
-      "bytes": 17596,
-      "tris": 481
+      "bytes": 116475,
+      "tris": 1633,
+      "lodTris": 481
     },
     "p51d": {
       "file": "models/late_ww2/p51d.glb",
+      "lodFile": "models/late_ww2/p51d_lod.glb",
+      "detailFile": "models/late_ww2/p51d_detail.ktx2",
       "era": "late_ww2",
-      "bytes": 14236,
-      "tris": 295
+      "bytes": 94495,
+      "tris": 1275,
+      "lodTris": 295
     },
     "p80": {
       "file": "models/early_jets/p80.glb",
+      "lodFile": "models/early_jets/p80_lod.glb",
+      "detailFile": "models/early_jets/p80_detail.ktx2",
       "era": "early_jets",
-      "bytes": 12608,
-      "tris": 409
+      "bytes": 103730,
+      "tris": 1733,
+      "lodTris": 409
     },
     "rafale_c": {
       "file": "models/modern/rafale_c.glb",
+      "lodFile": "models/modern/rafale_c_lod.glb",
+      "detailFile": "models/modern/rafale_c_detail.ktx2",
       "era": "modern",
-      "bytes": 13212,
-      "tris": 423
+      "bytes": 109519,
+      "tris": 1755,
+      "lodTris": 423
     },
     "se5a": {
       "file": "models/ww1/se5a.glb",
+      "lodFile": "models/ww1/se5a_lod.glb",
+      "detailFile": "models/ww1/se5a_detail.ktx2",
       "era": "ww1",
-      "bytes": 13496,
-      "tris": 386
+      "bytes": 109940,
+      "tris": 1318,
+      "lodTris": 386
     },
     "sopwith_camel": {
       "file": "models/ww1/sopwith_camel.glb",
+      "lodFile": "models/ww1/sopwith_camel_lod.glb",
+      "detailFile": "models/ww1/sopwith_camel_detail.ktx2",
       "era": "ww1",
-      "bytes": 13872,
-      "tris": 438
+      "bytes": 96852,
+      "tris": 1430,
+      "lodTris": 438
     },
     "sopwith_pup": {
       "file": "models/ww1/sopwith_pup.glb",
+      "lodFile": "models/ww1/sopwith_pup_lod.glb",
+      "detailFile": "models/ww1/sopwith_pup_detail.ktx2",
       "era": "ww1",
-      "bytes": 13724,
-      "tris": 428
+      "bytes": 113789,
+      "tris": 1420,
+      "lodTris": 428
     },
     "spad_s13": {
       "file": "models/ww1/spad_s13.glb",
+      "lodFile": "models/ww1/spad_s13_lod.glb",
+      "detailFile": "models/ww1/spad_s13_detail.ktx2",
       "era": "ww1",
-      "bytes": 13636,
-      "tris": 402
+      "bytes": 115563,
+      "tris": 1414,
+      "lodTris": 402
     },
     "spitfire_mk14": {
       "file": "models/late_ww2/spitfire_mk14.glb",
+      "lodFile": "models/late_ww2/spitfire_mk14_lod.glb",
+      "detailFile": "models/late_ww2/spitfire_mk14_detail.ktx2",
       "era": "late_ww2",
-      "bytes": 14984,
-      "tris": 361
+      "bytes": 96289,
+      "tris": 1533,
+      "lodTris": 361
     },
     "spitfire_mk5": {
       "file": "models/early_ww2/spitfire_mk5.glb",
+      "lodFile": "models/early_ww2/spitfire_mk5_lod.glb",
+      "detailFile": "models/early_ww2/spitfire_mk5_detail.ktx2",
       "era": "early_ww2",
-      "bytes": 15052,
-      "tris": 347
+      "bytes": 94525,
+      "tris": 1519,
+      "lodTris": 347
     },
     "su27s": {
       "file": "models/modern/su27s.glb",
+      "lodFile": "models/modern/su27s_lod.glb",
+      "detailFile": "models/modern/su27s_detail.ktx2",
       "era": "modern",
-      "bytes": 13896,
-      "tris": 469
+      "bytes": 113805,
+      "tris": 1885,
+      "lodTris": 469
     },
     "typhoon": {
       "file": "models/modern/typhoon.glb",
+      "lodFile": "models/modern/typhoon_lod.glb",
+      "detailFile": "models/modern/typhoon_detail.ktx2",
       "era": "modern",
-      "bytes": 12924,
-      "tris": 397
+      "bytes": 98356,
+      "tris": 1729,
+      "lodTris": 397
     },
     "vampire": {
       "file": "models/early_jets/vampire.glb",
+      "lodFile": "models/early_jets/vampire_lod.glb",
+      "detailFile": "models/early_jets/vampire_detail.ktx2",
       "era": "early_jets",
-      "bytes": 11052,
-      "tris": 303
+      "bytes": 102889,
+      "tris": 1139,
+      "lodTris": 303
     },
     "yak3": {
       "file": "models/late_ww2/yak3.glb",
+      "lodFile": "models/late_ww2/yak3_lod.glb",
+      "detailFile": "models/late_ww2/yak3_detail.ktx2",
       "era": "late_ww2",
-      "bytes": 13604,
-      "tris": 293
+      "bytes": 93320,
+      "tris": 1273,
+      "lodTris": 293
     }
   },
   "weapons": {
@@ -416,5 +605,5 @@
       "tris": 54
     }
   },
-  "totalBytes": 864776
+  "totalBytes": 6575940
 }

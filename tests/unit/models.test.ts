@@ -22,8 +22,13 @@ describe('plane models', () => {
       expect(existsSync(new URL(`../../public/${m!.file}`, import.meta.url)), id).toBe(true);
       const plane = data.planes.find((p) => p.id === id)!;
       expect(m!.file).toBe(plane.model);
-      const budget = ['ww1', 'early_ww2', 'late_ww2'].includes(plane.era) ? 1200 : 1500;
-      expect(m!.tris, id).toBeLessThanOrEqual(budget);
+      // Day 11: the detailed model up to 3,000 / 4,000 triangles, the LOD under the old 1,200 / 1,500, and the
+      // baked detail texture next to them.
+      const prop = ['ww1', 'early_ww2', 'late_ww2'].includes(plane.era);
+      expect(m!.tris, id).toBeLessThanOrEqual(prop ? 3000 : 4000);
+      expect(m!.tris, `${id} is more detailed than its LOD`).toBeGreaterThan(m!.lodTris! * 2);
+      expect(m!.lodTris!, id).toBeLessThanOrEqual(prop ? 1200 : 1500);
+      for (const f of [m!.lodFile!, m!.detailFile!]) expect(existsSync(new URL(`../../public/${f}`, import.meta.url)), f).toBe(true);
       // Every gun mount in planes.json has at least one muzzle on the model.
       plane.guns.forEach((_g, i) => expect(m!.muzzles.some((x) => x.mount === i), `${id} mount ${i}`).toBe(true));
     }
@@ -35,14 +40,15 @@ describe('plane models', () => {
     expect(Object.keys(manifest.weapons).sort()).toEqual(
       ['bomb_250', 'drop_tank', 'missile_ir_large', 'missile_ir_small', 'missile_radar_long', 'missile_radar_medium', 'rocket'],
     );
-    expect(manifest.totalBytes).toBeLessThan(10 * 1024 * 1024);
+    expect(manifest.totalBytes).toBeLessThan(14 * 1024 * 1024);
   });
 
   it('the AI bombers have gunner muzzles and stay inside their budget', () => {
     for (const id of BOMBERS) {
       const m = PLANE_MODELS[id]!;
       expect(m.file).toBe(`models/bombers/${id}.glb`);
-      expect(m.tris).toBeLessThanOrEqual(2000);
+      expect(m.tris).toBeLessThanOrEqual(6000);
+      expect(m.lodTris!).toBeLessThanOrEqual(2000);
       expect(m.muzzles.length, id).toBeGreaterThanOrEqual(2);
     }
   });
