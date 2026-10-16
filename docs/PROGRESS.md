@@ -49,7 +49,8 @@ Sizes: main bundle 993 KB (278 KB gzip), PeerJS 24 KB gzip and Firebase 63 KB gz
 
 ### Deploy
 
-- Pushed; deploy and live-site test run below.
+- Pushed and deployed (GitHub Actions green; the live bundle reports `1.0.0+fab773a`, service worker cache `rvbs-v2`). Tagged **v1.0**.
+- The Playwright suite against the live site with `BASE_URL`: **45 passed**, 23 skipped, none failed: both multiplayer specs over public PeerJS signaling (including the locked phone rejoining), every mode on every map with tier-1 planes, the tutorial, crash card and settings on desktop and iPhone, the five phone layouts, perf 60 fps on all four profiles (98 / 45 / 113 / 40 draw calls).
 
 ### Known issues
 
