@@ -92,6 +92,8 @@ export interface ClientSession extends Session {
   request(m: ClientMsg): void;
   /** Feed real time to the session while not in a match (lobby pings, stats). */
   idle(dt: number): void;
+  /** Tests (?debug=1): act as if the host went silent, as a phone sees it after being locked. */
+  dropForTest(): void;
 }
 
 export function createClientSession(
@@ -707,6 +709,11 @@ export function createClientSession(
     },
     dispose() {
       transport.close();
+    },
+    dropForTest() {
+      // What a locked phone sees when it wakes up: the host went silent, so the connection is gone.
+      lastHeard = -Infinity;
+      updateStats();
     },
   };
   return api;

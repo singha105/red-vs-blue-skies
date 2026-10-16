@@ -206,8 +206,12 @@ export function createSound(settings: () => Readonly<Settings> = getSettings): S
   window.addEventListener('touchend', onGesture, { passive: true });
   window.addEventListener('keydown', onGesture);
   // Safari suspends ("interrupted") the context when the phone locks or another app takes audio.
+  // Hidden: suspend, so a background tab (a host keeps simulating) doesn't drone on with the last engine notes.
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && ctx && ctx.state !== 'running') void ctx.resume().catch(() => undefined);
+    if (!ctx) return;
+    if (document.hidden) {
+      if (ctx.state === 'running') void ctx.suspend().catch(() => undefined);
+    } else if (ctx.state !== 'running') void ctx.resume().catch(() => undefined);
   });
 
   let lastVolumes = '';

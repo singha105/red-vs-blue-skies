@@ -57,6 +57,16 @@ test('1 host + 2 clients: everyone sees each other move', async ({ browser }, in
   await alpha.screenshot({ path: `${SHOTS}/multiplayer-client.png` });
   await bravo.screenshot({ path: `${SHOTS}/multiplayer-phone.png` });
 
+  // Bravo's phone is locked and loses the connection: when it comes back it rejoins the running match by itself.
+  const bravoBefore = (await netInfo(bravo))!.playerId;
+  await bravo.evaluate(() => (window as unknown as { __rvbs: { lockAndDrop(): void } }).__rvbs.lockAndDrop());
+  await expect(bravo.locator('.hud')).toBeVisible({ timeout: 20_000 });
+  await expect.poll(async () => (await netInfo(bravo))?.phase, { timeout: 15_000 }).toBe('playing');
+  const bravoAfter = (await netInfo(bravo))!.playerId;
+  expect(bravoAfter).not.toBe(bravoBefore);
+  // The host flies with the new Bravo (the old seat goes to a bot).
+  await expect.poll(async () => (await humans(host)).map((h) => h.id), { timeout: 15_000 }).toContain(bravoAfter);
+
   // The host leaves: both clients get the "Host left" results with the scores so far.
   await host.context().close();
   for (const page of [alpha, bravo]) await expect(page.locator('.results__title')).toHaveText('Host left', { timeout: 15_000 });

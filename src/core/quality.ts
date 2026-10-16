@@ -36,8 +36,16 @@ export function levelForFps(fps: number): QualityLevel {
 const WARMUP_S = 0.75;
 const MEASURE_S = 5;
 
+/**
+ * Level for a frame rate measured under the 30 fps cap: holding the cap only proves medium is affordable
+ * (high could still drop below it), so never pick high.
+ */
+export function levelForCappedFps(fps: number): QualityLevel {
+  return fps >= 28 ? 'medium' : 'low';
+}
+
 /** Feeds frame times for 5 seconds (after a short warm-up) and then reports a level once. */
-export function createAutoQuality(onPick: (level: QualityLevel, fps: number) => void): { frame(dt: number): void } {
+export function createAutoQuality(onPick: (level: QualityLevel, fps: number) => void, capped: () => boolean = () => false): { frame(dt: number): void } {
   let warm = 0;
   let elapsed = 0;
   let frames = 0;
@@ -54,7 +62,7 @@ export function createAutoQuality(onPick: (level: QualityLevel, fps: number) => 
       if (elapsed >= MEASURE_S) {
         done = true;
         const fps = frames / elapsed;
-        onPick(levelForFps(fps), fps);
+        onPick(capped() ? levelForCappedFps(fps) : levelForFps(fps), fps);
       }
     },
   };

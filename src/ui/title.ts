@@ -1,4 +1,5 @@
-// Title screen: Play Solo, Host / Join, Research, Leaderboard, Settings, and your callsign and RP.
+// Title screen: Play Solo, Host / Join, Research, Leaderboard, How to play, Settings, your callsign and RP, and the
+// version number.
 
 export interface TitleHandlers {
   onSolo(): void;
@@ -6,6 +7,7 @@ export interface TitleHandlers {
   onSettings(): void;
   onResearch(): void;
   onLeaderboard(): void;
+  onHelp(): void;
 }
 
 export interface TitleScreen {
@@ -38,6 +40,7 @@ export function createTitleScreen(parent: HTMLElement, version: string, handlers
       <div class="title__buttons title__buttons--small">
         <button type="button" class="btn btn--secondary btn--small" data-action="research">Research</button>
         <button type="button" class="btn btn--secondary btn--small" data-action="leaderboard">Leaderboard</button>
+        <button type="button" class="btn btn--secondary btn--small" data-action="help">How to play</button>
         <button type="button" class="btn btn--secondary btn--small" data-action="settings">Settings</button>
       </div>
       <p class="title__profile" data-testid="title-profile"></p>
@@ -56,6 +59,7 @@ export function createTitleScreen(parent: HTMLElement, version: string, handlers
     else if (action === 'settings') handlers.onSettings();
     else if (action === 'research') handlers.onResearch();
     else if (action === 'leaderboard') handlers.onLeaderboard();
+    else if (action === 'help') handlers.onHelp();
     else handlers.onHostJoin();
   };
   el.addEventListener('click', onClick);

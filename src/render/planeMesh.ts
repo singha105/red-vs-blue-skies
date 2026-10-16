@@ -6,6 +6,28 @@ import type { Team } from '../game/flight';
 
 export const TEAM_COLOURS: Record<Team, number> = { red: 0xe0443a, blue: 0x2f7de1 };
 
+/** Team paint palettes. "colourblind" draws the red team orange (blue/orange is safe for the common kinds). */
+export const TEAM_PALETTES = {
+  classic: { red: 0xe0443a, blue: 0x2f7de1 },
+  colourblind: { red: 0xe8890c, blue: 0x2f7de1 },
+} as const;
+const paletteListeners = new Set<() => void>();
+
+/** Switch the team paint everywhere (materials listen through onTeamPalette); also sets the CSS palette. */
+export function setTeamPalette(name: keyof typeof TEAM_PALETTES): void {
+  const next = TEAM_PALETTES[name];
+  if (typeof document !== 'undefined') document.documentElement.dataset['teams'] = name;
+  if (next.red === TEAM_COLOURS.red && next.blue === TEAM_COLOURS.blue) return;
+  TEAM_COLOURS.red = next.red;
+  TEAM_COLOURS.blue = next.blue;
+  geometries.clear();
+  for (const fn of paletteListeners) fn();
+}
+
+export function onTeamPalette(fn: () => void): void {
+  paletteListeners.add(fn);
+}
+
 type Part = [size: [number, number, number], kind: 'body' | 'team' | 'dark', at: [number, number, number]];
 const PARTS: Part[] = [
   [[1.1, 1.1, 7.5], 'body', [0, 0, 0]],

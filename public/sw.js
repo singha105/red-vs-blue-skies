@@ -1,6 +1,6 @@
 // Minimal service worker: makes the game installable and lets it start offline after one visit.
 // Network-first, so a normal reload always picks up a new deploy. Bump CACHE to force-drop old files.
-const CACHE = 'rvbs-v1';
+const CACHE = 'rvbs-v2';
 
 self.addEventListener('install', () => {
   self.skipWaiting();

@@ -1,9 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, getSettings, sanitizeSettings, updateSettings } from '../../src/core/settings';
+import { levelForCappedFps, levelForFps } from '../../src/core/quality';
 import { createRng } from '../../src/game/rng';
 import { circlePose } from '../../src/game/testFlight';
 
 describe('settings', () => {
+  it('Day 10 options: 30 fps cap, team colours, HUD size, invert pitch', () => {
+    expect(sanitizeSettings({ cap30: true, teamColours: 'colourblind', hudScale: 9, invertPitch: true })).toMatchObject({ cap30: true, teamColours: 'colourblind', hudScale: 1.6, invertPitch: true });
+    expect(sanitizeSettings({ cap30: 'yes', teamColours: 'pink', hudScale: 0.2, invertPitch: 1 })).toMatchObject({ cap30: false, teamColours: 'classic', hudScale: 1, invertPitch: false });
+  });
+
+  it('auto quality under the 30 fps cap never picks high', () => {
+    expect(levelForCappedFps(30)).toBe('medium');
+    expect(levelForCappedFps(24)).toBe('low');
+    expect(levelForFps(60)).toBe('high');
+  });
+
   it('falls back to defaults for missing or broken values', () => {
     expect(sanitizeSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(sanitizeSettings({ graphics: 'ultra', sensitivity: 'fast', volume: Number.NaN })).toEqual(DEFAULT_SETTINGS);
@@ -11,7 +23,7 @@ describe('settings', () => {
 
   it('clamps numbers into range', () => {
     const s = sanitizeSettings({ graphics: 'low', sensitivity: 9, aimAssist: -1, volume: 0.5, engineVolume: 4, effectsVolume: -2 });
-    expect(s).toEqual({ graphics: 'low', sensitivity: 3, aimAssist: 0, volume: 0.5, engineVolume: 1, effectsVolume: 0, cockpitVolume: DEFAULT_SETTINGS.cockpitVolume });
+    expect(s).toEqual({ graphics: 'low', sensitivity: 3, aimAssist: 0, volume: 0.5, engineVolume: 1, effectsVolume: 0, cockpitVolume: DEFAULT_SETTINGS.cockpitVolume, cap30: false, teamColours: 'classic', hudScale: 1, invertPitch: false });
   });
 
   it('updates without localStorage (private browsing / Node)', () => {

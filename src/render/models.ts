@@ -6,7 +6,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import type { EraId } from '../data/types';
 import type { Team } from '../game/flight';
 import { PLANE_MODELS } from '../game/planeModels';
-import { createPlaceholderPlane, TEAM_COLOURS } from './planeMesh';
+import { createPlaceholderPlane, onTeamPalette, TEAM_COLOURS } from './planeMesh';
 
 export interface PlaneVisual {
   root: Object3D;
@@ -25,6 +25,13 @@ const pending = new Map<string, Promise<void>>();
 const failed = new Set<string>();
 // One Lambert material per original material per team, shared by every plane using that model.
 const materialCache = new Map<string, Material>();
+// Settings → Team colours repaints every cached TEAM material in place.
+onTeamPalette(() => {
+  for (const [key, m] of materialCache) {
+    const team = key.split('|')[2] as Team;
+    if (m.name === 'TEAM' && m instanceof MeshLambertMaterial) m.color.setHex(TEAM_COLOURS[team]);
+  }
+});
 
 function lambertFor(planeId: string, src: Material, team: Team): Material {
   const name = src.name || 'BODY';

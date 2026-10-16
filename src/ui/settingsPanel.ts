@@ -1,5 +1,6 @@
-// Settings: graphics, sensitivity, touch aim assist, volume per sound bus (saved immediately), and your account: progress
-// lives on an anonymous Firebase account until you link Google, which carries it to other devices.
+// Settings: graphics and the 30 fps cap, controls (sensitivity, invert pitch, touch aim assist), display (HUD size,
+// colour-blind team colours), volume per sound bus (all saved immediately), the tutorial again, and your account:
+// progress lives on an anonymous Firebase account until you link Google, which carries it to other devices.
 import { getSettings, updateSettings, type GraphicsLevel } from '../core/settings';
 
 export interface AccountControls {
@@ -10,7 +11,7 @@ export interface AccountControls {
   onChange(fn: () => void): () => void;
 }
 
-export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; account?: AccountControls }): void {
+export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; account?: AccountControls; onTutorial?: () => void }): void {
   const s = getSettings();
   const el = document.createElement('div');
   el.className = 'modal';
@@ -24,12 +25,33 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
       <label class="field"><span>Graphics</span>
         <select data-k="graphics">${levels.map(([v, l]) => `<option value="${v}" ${v === s.graphics ? 'selected' : ''}>${l}</option>`).join('')}</select>
       </label>
+      <label class="field"><span>Frame rate</span>
+        <select data-k="cap30">
+          <option value="0" ${s.cap30 ? '' : 'selected'}>As fast as the screen allows</option>
+          <option value="1" ${s.cap30 ? 'selected' : ''}>30 fps (saves battery)</option>
+        </select>
+      </label>
       <label class="field"><span>Aim sensitivity <output data-o="sensitivity">${s.sensitivity.toFixed(1)}×</output></span>
         <input type="range" data-k="sensitivity" min="0.2" max="3" step="0.1" value="${s.sensitivity}" />
+      </label>
+      <label class="field"><span>Pitch</span>
+        <select data-k="invertPitch">
+          <option value="0" ${s.invertPitch ? '' : 'selected'}>Normal: up moves the nose up</option>
+          <option value="1" ${s.invertPitch ? 'selected' : ''}>Inverted: up moves the nose down</option>
+        </select>
       </label>
       <label class="field"><span>Touch aim assist <output data-o="aimAssist">${Math.round(s.aimAssist * 100)}%</output></span>
         <input type="range" data-k="aimAssist" min="0" max="1" step="0.05" value="${s.aimAssist}" />
         <small>${opts.isTouch ? 'Bends your bullets slightly toward enemies within 2° of your aim. 0% turns it off.' : 'Only applies when playing on a touch screen.'}</small>
+      </label>
+      <label class="field"><span>HUD size <output data-o="hudScale">${Math.round(s.hudScale * 100)}%</output></span>
+        <input type="range" data-k="hudScale" min="1" max="1.6" step="0.05" value="${s.hudScale}" />
+      </label>
+      <label class="field"><span>Team colours</span>
+        <select data-k="teamColours">
+          <option value="classic" ${s.teamColours === 'classic' ? 'selected' : ''}>Blue and red</option>
+          <option value="colourblind" ${s.teamColours === 'colourblind' ? 'selected' : ''}>Blue and orange (colour-blind safe)</option>
+        </select>
       </label>
       <label class="field"><span>Volume <output data-o="volume">${Math.round(s.volume * 100)}%</output></span>
         <input type="range" data-k="volume" min="0" max="1" step="0.05" value="${s.volume}" />
@@ -48,7 +70,8 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
           )
           .join('')}
       </div>
-      <small class="field__note">Sound starts on your first tap or key press. On iPhone it plays even with the silent switch on; use these sliders instead.</small>
+      <small class="field__note">Sound starts on your first tap or key press. On iPhone it plays even with the silent switch on; use these sliders instead. Every warning sound also shows on screen.</small>
+      ${opts.onTutorial ? '<button type="button" class="btn btn--secondary btn--small" data-act="tutorial">Play the tutorial again</button>' : ''}
       ${
         opts.account
           ? `<div class="field account"><span>Account</span>
@@ -70,12 +93,15 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
     engineVolume: (v) => `${Math.round(v * 100)}%`,
     effectsVolume: (v) => `${Math.round(v * 100)}%`,
     cockpitVolume: (v) => `${Math.round(v * 100)}%`,
+    hudScale: (v) => `${Math.round(v * 100)}%`,
   };
   el.addEventListener('input', (e) => {
     const t = e.target as HTMLInputElement | HTMLSelectElement;
     const k = t.dataset['k'];
     if (!k) return;
     if (k === 'graphics') updateSettings({ graphics: t.value as GraphicsLevel });
+    else if (k === 'cap30' || k === 'invertPitch') updateSettings({ [k]: t.value === '1' });
+    else if (k === 'teamColours') updateSettings({ teamColours: t.value === 'colourblind' ? 'colourblind' : 'classic' });
     else {
       const v = Number(t.value);
       updateSettings({ [k]: v });
@@ -110,6 +136,10 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
     el.remove();
   };
   el.querySelector('[data-act="close"]')!.addEventListener('click', close);
+  el.querySelector('[data-act="tutorial"]')?.addEventListener('click', () => {
+    close();
+    opts.onTutorial?.();
+  });
   el.addEventListener('click', (e) => {
     if (e.target === el) close();
   });

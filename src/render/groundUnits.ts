@@ -24,7 +24,7 @@ import type { Team } from '../game/flight';
 import type { GroundUnit, ZoneState } from '../game/objectives';
 import type { Terrain } from '../game/terrain';
 import type { Effects } from './effects';
-import { TEAM_COLOURS } from './planeMesh';
+import { onTeamPalette, TEAM_COLOURS } from './planeMesh';
 
 type Part = { size: [number, number, number]; at: [number, number, number]; colour: string; rotY?: number; rotX?: number; cyl?: boolean };
 
@@ -155,6 +155,10 @@ export function createGroundRenderer(effects: Effects): GroundRenderer {
   }
   const neutral = new Color('#f4f7fb');
   const teamColour: Record<Team, Color> = { red: new Color(TEAM_COLOURS.red), blue: new Color(TEAM_COLOURS.blue) };
+  onTeamPalette(() => {
+    teamColour.red.setHex(TEAM_COLOURS.red);
+    teamColour.blue.setHex(TEAM_COLOURS.blue);
+  });
   const live = new Color(1, 1, 1);
   const wrecked = new Color(0.22, 0.2, 0.19);
   const m4 = new Matrix4();

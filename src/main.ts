@@ -7,6 +7,7 @@ import { Matrix4, Vector3, type Object3D } from 'three';
 import { env } from './core/env';
 import { createDesktopInput } from './core/input';
 import { createLoop } from './core/loop';
+import { createWakeLock } from './core/wakeLock';
 import { createPlayerControls } from './core/playerControls';
 import { createAutoQuality, initialLevel, QUALITY, type QualityLevel } from './core/quality';
 import { getSettings, onSettingsChange } from './core/settings';
@@ -39,6 +40,7 @@ import { createSound, gunClass, type EngineInput, type GunClass } from './core/s
 import { cockpitState, cycleTarget, targetAt } from './app/weapons';
 import { afterburner, launch as launchMissile } from './game/missiles';
 import { createMapScene } from './render/mapScene';
+import { setTeamPalette } from './render/planeMesh';
 import { createGroundRenderer } from './render/groundUnits';
 import { bomberFor, isBomber, unitDef } from './game/objectives';
 import type { ObjectiveFrame, ObjectiveMarker } from './ui/hud';
@@ -47,7 +49,7 @@ import { isProp, PLANE_MODELS, planeSize } from './game/planeModels';
 import { createView } from './render/renderer';
 import { createTitleShot } from './render/titleShot';
 import { createTracers } from './render/tracers';
-import { showDataErrors } from './ui/errorOverlay';
+import { installErrorOverlay, reportError, showDataErrors } from './ui/errorOverlay';
 import { createFpsCounter } from './ui/fps';
 import { createHud, escapeHtml as esc, type Hud, type Marker, type ScoreRow } from './ui/hud';
 import { showResults } from './ui/results';
@@ -59,6 +61,11 @@ import { createTouchControls, type TouchControls } from './ui/touchControls';
 import { createProfileStore } from './profile/store';
 import { openResearch } from './ui/research';
 import { openLeaderboard } from './ui/leaderboard';
+import { openHowToPlay } from './ui/howToPlay';
+import { createTutorialSession, TUTORIAL_MAP, type TutorialSession } from './app/tutorial';
+import { createTutorialProps } from './render/tutorialProps';
+import { createTutorialPanel, type TutorialPanel } from './ui/tutorialPanel';
+import { readStorage, writeStorage } from './core/storage';
 import type { AccountControls } from './ui/settingsPanel';
 import type { EraId } from './data/types';
 import type { MatchResults } from './game/results';
@@ -98,6 +105,7 @@ function boot(): void {
   const missileClass = new Map(data.missiles.missiles.map((m) => [m.id, m.class]));
   const pylonMissiles = createPylonMissiles((type) => missileClass.get(type));
   const ground = createGroundRenderer(effects);
+  const tutorialProps = createTutorialProps();
   const sound = createSound();
   const audio = createCockpitAudio(sound);
   const silhouettes = createSilhouettes(view.renderer);
@@ -124,7 +132,7 @@ function boot(): void {
   let ctx: WorldContext = current.ctx;
   let mapScene = current.scene;
   let titleShot = current.titleShot;
-  mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root, pylonMissiles.root, ground.root);
+  mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root, pylonMissiles.root, ground.root, tutorialProps.root);
 
   let quality: QualityLevel = forced ?? initialLevel(settings.graphics, env.isTouch);
   const applyQuality = (level: QualityLevel): void => {
@@ -135,10 +143,13 @@ function boot(): void {
     effects.heavy = level !== 'low';
   };
   applyQuality(quality);
-  let auto = !forced && settings.graphics === 'auto' ? createAutoQuality((level) => applyQuality(level)) : null;
+  const capped = (): boolean => getSettings().cap30;
+  let auto = !forced && settings.graphics === 'auto' ? createAutoQuality((level) => applyQuality(level), capped) : null;
+  let lastGraphics = settings.graphics;
   onSettingsChange((s) => {
-    if (forced) return;
-    if (s.graphics === 'auto') auto = createAutoQuality((level) => applyQuality(level));
+    if (forced || s.graphics === lastGraphics) return;
+    lastGraphics = s.graphics;
+    if (s.graphics === 'auto') auto = createAutoQuality((level) => applyQuality(level), capped);
     else {
       auto = null;
       applyQuality(s.graphics);
@@ -155,11 +166,19 @@ function boot(): void {
     mapScene = current.scene;
     titleShot = current.titleShot;
     titleShot.setVisible(visible);
-    mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root, pylonMissiles.root, ground.root);
+    mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root, pylonMissiles.root, ground.root, tutorialProps.root);
     applyQuality(quality);
   };
 
   const controls = createPlayerControls();
+  // Display and control settings that apply at once: invert pitch, HUD size, team colours.
+  const applyDisplay = (st: ReturnType<typeof getSettings>): void => {
+    controls.invertPitch = st.invertPitch;
+    document.documentElement.style.setProperty('--hud-scale', String(st.hudScale));
+    setTeamPalette(st.teamColours);
+  };
+  applyDisplay(settings);
+  onSettingsChange(applyDisplay);
   const sensitivity = (): number => getSettings().sensitivity;
   const desktop = createDesktopInput(canvas, controls, sensitivity);
   const chase = createChaseCamera(view.camera);
@@ -193,6 +212,13 @@ function boot(): void {
     close(): void;
   }
   let net: NetState | null = null;
+  // Tutorial (first launch, or Settings → Play the tutorial again).
+  const TUTORIAL_KEY = 'rvbs.tutorial.v1';
+  let tutorialPanel: TutorialPanel | null = null;
+  const tutorialOf = (s: Session | null): TutorialSession | null => (s && 'tutorial' in s ? (s as TutorialSession) : null);
+  const finishTutorial = (): void => {
+    writeStorage(TUTORIAL_KEY, 'done');
+  };
   let roomView: RoomView | null = null;
   let respawn: RespawnPicker | null = null;
   let callsign = savedCallsign();
@@ -262,9 +288,18 @@ function boot(): void {
   const lastNetMatch: { id: string | null } = { id: null };
   // When this tab was last hidden: a phone that was locked loses the connection itself, so "Host left" would be wrong.
   let hiddenAt = -Infinity;
+  /** Lost the connection because this tab was hidden (a locked phone), rather than the host leaving. */
+  const droppedByUs = (): boolean => document.hidden || performance.now() - hiddenAt < 20_000;
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) hiddenAt = performance.now();
+    if (!document.hidden) return;
+    hiddenAt = performance.now();
+    // Backgrounded: let go of every key and button, since their release events won't arrive.
+    desktop.releaseAll();
+    touch?.releaseAll();
+    controls.fire = controls.missile = controls.flare = false;
   });
+  // Screen kept on while in a room or a match (a phone that locks itself drops out).
+  const wakeLock = createWakeLock();
   // Bumped whenever the player navigates away, so a slow connect that finishes later is thrown away.
   let netAttempt = 0;
 
@@ -296,6 +331,10 @@ function boot(): void {
     netOverlay = null;
     respawn?.dispose();
     respawn = null;
+    tutorialPanel?.dispose();
+    tutorialPanel = null;
+    tutorialProps.update(null, 0);
+    document.body.classList.remove('is-tutorial');
     for (const v of visuals.values()) mapScene.scene.remove(v.root);
     visuals.clear();
     visualPlane.clear();
@@ -320,7 +359,48 @@ function boot(): void {
     n.close();
   };
 
-  function showTitle(): void {
+  function showTutorialOffer(): void {
+    closeOverlay();
+    const el = document.createElement('div');
+    el.className = 'modal tut-offer';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', 'Tutorial');
+    el.innerHTML = `
+      <div class="modal__card">
+        <h2>New pilot?</h2>
+        <p>A one-minute flying lesson: steer through rings, shoot balloons, fire a missile at a drone and beat one with flares.</p>
+        <div class="tut-offer__actions">
+          <button type="button" class="btn btn--primary btn--small" data-act="start" data-testid="tutorial-start">Start the lesson</button>
+          <button type="button" class="btn btn--secondary btn--small" data-act="skip">Not now</button>
+        </div>
+        <small>You can play it any time from Settings.</small>
+      </div>`;
+    ui.appendChild(el);
+    el.querySelector('[data-act="start"]')!.addEventListener('click', () => {
+      closeOverlay();
+      startTutorial();
+    });
+    el.querySelector('[data-act="skip"]')!.addEventListener('click', () => {
+      finishTutorial();
+      closeOverlay();
+    });
+    overlay = { dispose: () => el.remove() };
+  }
+
+  function startTutorial(): void {
+    closeNet();
+    useMap(TUTORIAL_MAP);
+    lastChoice = null;
+    const s = createTutorialSession(ctx);
+    enterMatch(s);
+    document.body.classList.add('is-tutorial');
+    tutorialPanel = createTutorialPanel(ui, () => {
+      finishTutorial();
+      showTitle('Tutorial skipped. Settings → Play the tutorial again any time.');
+    });
+  }
+
+  function showTitle(note?: string): void {
     leaveMatch();
     closeNet();
     clearScreen();
@@ -329,7 +409,11 @@ function boot(): void {
     const title = createTitleScreen(ui, env.version, {
       onSolo: showSetup,
       onHostJoin: () => showCallsign(null),
-      onSettings: () => openSettings(ui, { isTouch: env.isTouch, account: accountControls }),
+      onSettings: () => openSettings(ui, { isTouch: env.isTouch, account: accountControls, onTutorial: startTutorial }),
+      onHelp: () => {
+        closeOverlay();
+        overlay = openHowToPlay(ui, { start: env.isTouch ? 'touch' : desktop.gamepadConnected ? 'gamepad' : 'desktop', version: env.version, onClose: () => (overlay = null) });
+      },
       onResearch: () => showResearch(),
       onLeaderboard: () => {
         closeOverlay();
@@ -337,6 +421,11 @@ function boot(): void {
       },
     });
     title.setProfile(profileLine());
+    if (typeof note === 'string') title.setNote(note);
+    // First launch: offer the one-minute tutorial (not to automated browsers unless ?tutorial=1, and not to
+    // someone opening a friend's room link: they go straight to the room).
+    const offer = params.get('tutorial') === '1' || (!navigator.webdriver && !env.room);
+    if (offer && readStorage(TUTORIAL_KEY) === null) showTutorialOffer();
     const off = profile.onChange(() => title.setProfile(profileLine()));
     screen = {
       dispose: () => {
@@ -372,6 +461,8 @@ function boot(): void {
 
   const clientEvents = (): Parameters<typeof createClientSession>[3] => ({
     onWelcome: () => {
+      // Connected (or reconnected after a lock): a later drop is the host's, not ours.
+      hiddenAt = -Infinity;
       if (mode === 'connecting') showRoom();
     },
     onRoom: (room) => {
@@ -399,7 +490,10 @@ function boot(): void {
     onReject: (reason) => showNetMenu(net?.isHost ? null : (net?.code ?? null), reason),
     onClosed: () => {
       // During a match the session reports "host left" itself, and the loop shows the results.
-      if (mode === 'room' || mode === 'connecting') showNetMenu(net?.isHost ? null : (net?.code ?? null), 'The host closed the room.');
+      if (mode !== 'room' && mode !== 'connecting') return;
+      // Our own phone dropped the connection while locked: rejoin the same room.
+      if (net && !net.isHost && droppedByUs()) void joinRoom(net.code, true);
+      else showNetMenu(net?.isHost ? null : (net?.code ?? null), 'The host closed the room.');
     },
   });
 
@@ -500,8 +594,8 @@ function boot(): void {
     }
   }
 
-  async function joinRoom(code: string): Promise<void> {
-    const status = showConnecting(`Connecting to room ${code}…`, code);
+  async function joinRoom(code: string, rejoin = false): Promise<void> {
+    const status = showConnecting(rejoin ? `Reconnecting to room ${code}…` : `Connecting to room ${code}…`, code);
     const attempt = netAttempt;
     let notFound: (new (...a: never[]) => Error) | null = null;
     try {
@@ -685,7 +779,7 @@ function boot(): void {
     wasAlive = true;
     killerId = null;
     hud = createHud(ui, {
-      onMenu: showTitle,
+      onMenu: () => showTitle(),
       onScores: (open) => hud?.setScoreboard(open ? scoreRows() : null),
     });
     controls.target = null;
@@ -698,7 +792,9 @@ function boot(): void {
       if (me) touch.setPlane(me);
     }
     if (env.debug && s.net) netOverlay = createNetOverlay(ui);
-    if (era) {
+    // A phone host can't keep the match running in the background: say so where it can't be missed.
+    if (net?.isHost && env.isTouch) hud.notice("You're hosting on a phone: keep this screen on. Locking it or switching apps ends the match for everyone.", 9);
+    if (era && !tutorialOf(s)) {
       const unlocks = s.kind === 'net' && net?.client.room?.allUnlocked ? 'all' : profile.unlocks();
       respawn = createRespawnPicker(ui, { planes: data.planes.filter((p) => p.era === era), unlocks, silhouettes }, (id) => session?.chooseRespawn(id));
     }
@@ -709,6 +805,11 @@ function boot(): void {
   function endMatch(): void {
     const s = session;
     if (!s) return;
+    if (tutorialOf(s)) {
+      finishTutorial();
+      showTitle('Tutorial done. Play Solo against bots, or Host / Join to fly with friends.');
+      return;
+    }
     const hostLeft = s.ended === 'hostLeft';
     // Multiplayer: back to the room, which shows the host's results and then the lobby, still connected.
     if (s.kind === 'net' && !hostLeft && net) {
@@ -716,14 +817,20 @@ function boot(): void {
       showRoom();
       return;
     }
-    const weLeft = hostLeft && (document.hidden || performance.now() - hiddenAt < 20_000);
+    const weLeft = hostLeft && droppedByUs();
     const results = computeResults(s.world);
     const me = s.playerId;
     const wasNet = s.kind === 'net';
     // The host left: everyone keeps the points earned so far (counted here, still capped by the rules).
     const saved = wasNet ? (recordNetMatch(results, me), lastNetMatch.id) : profile.recordSolo(results.rows.find((x) => x.id === me), results.winner);
+    // A client whose phone was locked comes back to the same room (join in progress takes a bot's seat).
+    const rejoin = wasNet && weLeft && net && !net.isHost ? net.code : null;
     leaveMatch();
     closeNet();
+    if (rejoin) {
+      void joinRoom(rejoin, true);
+      return;
+    }
     mode = 'results';
     const resultsScreen = showResults(
       ui,
@@ -1042,6 +1149,11 @@ function boot(): void {
   const loop = createLoop({
     update(dt) {
       clock += dt;
+      // The screen's name goes into error reports.
+      if (document.body.dataset['screen'] !== mode) {
+        document.body.dataset['screen'] = mode;
+        wakeLock.want(mode === 'room' || mode === 'match' || mode === 'connecting');
+      }
       if (net && mode !== 'match') {
         tickHost(dt);
         net?.client.idle(dt);
@@ -1099,7 +1211,7 @@ function boot(): void {
       fps?.frame(frameDt);
       auto?.frame(frameDt);
     },
-  });
+  }, () => (getSettings().cap30 ? 30 : 0));
 
   /** Mode objectives for the HUD: the score label, a role line, zone chips, markers and minimap symbols. */
   function objectiveHud(s: Session, me: PlaneState): { objective: ObjectiveFrame; objMarkers: ObjectiveMarker[]; mapObjects: { x: number; z: number; kind: 'zone' | 'unit'; team: PlaneState['team'] | null; label: string }[] } {
@@ -1281,6 +1393,11 @@ function boot(): void {
       w.objectives.ordnance,
     );
     ground.update(w.objectives.units, w.objectives.zones, w.objectives.rules.zoneRadiusM, w.objectives.rules.captureAltitudeM, ctx.terrain, frameDt);
+    const tut = tutorialOf(s);
+    if (tut) {
+      tutorialProps.update(tut.tutorial, clock);
+      tutorialPanel?.update(tut.tutorial, env.isTouch ? 'touch' : desktop.gamepadConnected ? 'gamepad' : 'mouse');
+    }
     burners.length = 0;
     if (!me) return;
 
@@ -1346,6 +1463,19 @@ function boot(): void {
       const tm = ensureMesh(leadTarget);
       leadScreen = toScreen(vc.set(lp[0] - leadTarget.pos[0], lp[1] - leadTarget.pos[1], lp[2] - leadTarget.pos[2]).add(tm.position));
     }
+    // Tutorial balloons get the lead diamond too (where to put the nose).
+    const tutBalloons = tutorialOf(s)?.tutorial;
+    if (!leadScreen && me.alive && tutBalloons?.step === 'balloons') {
+      let best = 1600;
+      for (const b of tutBalloons.balloons) {
+        if (b.popped) continue;
+        const d = Math.hypot(b.pos[0] - me.pos[0], b.pos[1] - me.pos[1], b.pos[2] - me.pos[2]);
+        if (d >= best || (b.pos[0] - me.pos[0]) * nose[0] + (b.pos[1] - me.pos[1]) * nose[1] + (b.pos[2] - me.pos[2]) * nose[2] < 0) continue;
+        best = d;
+        const lp = leadPoint(me.pos, me.vel, b.pos, [0, 0, 0], mv);
+        leadScreen = toScreen(vc.set(lp[0] - me.pos[0], lp[1] - me.pos[1], lp[2] - me.pos[2]).add(meMesh.position));
+      }
+    }
     const aimScreen = me.alive ? toScreen(va.copy(meMesh.position).addScaledVector(aimVec.fromArray(aimDir), 1500)) : null;
     const noseScreen = me.alive ? toScreen(vb.copy(meMesh.position).add(vc.set(nose[0], nose[1], nose[2]).multiplyScalar(1500))) : null;
     const hint = env.isTouch || desktop.pointerLocked || desktop.gamepadConnected
@@ -1402,6 +1532,8 @@ function boot(): void {
     if (code) showCallsign(code);
     else showNetMenu(null, `"${env.room.slice(0, 8)}" isn't a room code. Codes are 4 letters, like XQZK.`);
   }
+  // A host's tab keeps simulating when hidden (timers instead of animation frames), so the match goes on.
+  loop.keepRunningHidden(() => Boolean(net?.server));
   loop.start();
   // The title plane becomes a real Spitfire as soon as its model arrives.
   void loadPlane('spitfire_mk5').then(() => {
@@ -1542,6 +1674,18 @@ function boot(): void {
         };
       },
       fps: () => fpsAvg,
+      /** A phone being locked mid-match: hidden, then the connection found dead when it comes back. */
+      lockAndDrop: () => {
+        hiddenAt = performance.now();
+        net?.client.dropForTest();
+      },
+      /** Tutorial: start it, read its state, skip to the next step. */
+      startTutorial: () => startTutorial(),
+      tutorial: () => {
+        const t = tutorialOf(session)?.tutorial;
+        return t ? { step: t.step, ring: t.ring, ringsHit: t.ringsHit, popped: t.balloons.filter((b) => b.popped).length, shots: t.shots, rings: t.rings.map((r) => [...r.pos]), balloons: t.balloons.map((b) => [...b.pos]) } : null;
+      },
+      tutorialNext: () => tutorialOf(session)?.advance(),
       /** Sound engine state (the iPhone test checks the first tap unlocks it). */
       sound: () => ({ state: sound.ctx?.state ?? 'none', unlocked: sound.unlocked, level: sound.level() }),
       drawCalls: () => view.renderer.info.render.calls,
@@ -1562,5 +1706,13 @@ function registerServiceWorker(): void {
   });
 }
 
-boot();
+// Uncaught errors show a friendly card with "Copy error" (the screen name goes into the report).
+const uiRoot = document.querySelector<HTMLElement>('#ui');
+if (uiRoot) installErrorOverlay(uiRoot, env.version, () => document.body.dataset['screen'] ?? 'boot');
+try {
+  boot();
+} catch (err) {
+  console.error(err);
+  reportError(err);
+}
 registerServiceWorker();

@@ -15,6 +15,14 @@ export interface Settings {
   engineVolume: number;
   effectsVolume: number;
   cockpitVolume: number;
+  /** Draw at most 30 frames a second (saves battery on phones; the simulation still runs at 60 Hz). */
+  cap30: boolean;
+  /** Team colours: red/blue, or blue/orange for colour-blind players. */
+  teamColours: 'classic' | 'colourblind';
+  /** HUD size multiplier, 1–1.6 (never smaller: HUD text stays at least 14 px on a phone). */
+  hudScale: number;
+  /** Mouse, drag, stick and arrow keys move the nose the other way vertically (flight-sim style). */
+  invertPitch: boolean;
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
@@ -25,6 +33,10 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   engineVolume: 0.7,
   effectsVolume: 0.8,
   cockpitVolume: 0.8,
+  cap30: false,
+  teamColours: 'classic',
+  hudScale: 1,
+  invertPitch: false,
 };
 
 const KEY = 'rvbs.settings.v1';
@@ -45,6 +57,10 @@ export function sanitizeSettings(raw: unknown): Settings {
     engineVolume: clamp(o['engineVolume'], 0, 1, DEFAULT_SETTINGS.engineVolume),
     effectsVolume: clamp(o['effectsVolume'], 0, 1, DEFAULT_SETTINGS.effectsVolume),
     cockpitVolume: clamp(o['cockpitVolume'], 0, 1, DEFAULT_SETTINGS.cockpitVolume),
+    cap30: o['cap30'] === true,
+    teamColours: o['teamColours'] === 'colourblind' ? 'colourblind' : 'classic',
+    hudScale: clamp(o['hudScale'], 1, 1.6, DEFAULT_SETTINGS.hudScale),
+    invertPitch: o['invertPitch'] === true,
   };
 }
 

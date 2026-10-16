@@ -28,6 +28,8 @@ export interface TouchControls {
   takeMissilePress(): boolean;
   /** Missile button: lock progress 0–1 (ring), locked, and counts (null hides them, e.g. guns-only planes). */
   setWeapons(w: null | { progress: number; locked: boolean; missiles: number; flares: number; chaff: number }): void;
+  /** Let go of every held button (the app went to the background mid-press; no pointerup will come). */
+  releaseAll(): void;
   dispose(): void;
 }
 
@@ -188,6 +190,11 @@ export function createTouchControls(
     },
     setPlane(next) {
       plane = next;
+    },
+    releaseAll() {
+      for (const k of Object.keys(buttons) as (keyof typeof buttons)[]) buttons[k] = false;
+      missileTapped = false;
+      for (const b of el.querySelectorAll('.is-down')) b.classList.remove('is-down');
     },
     dispose() {
       el.remove();

@@ -30,6 +30,7 @@ export interface RoomInfo {
 export interface NetInfo {
   isHost: boolean;
   code: string;
+  playerId: string;
   phase: string;
   mode: string;
   lobby: string[];

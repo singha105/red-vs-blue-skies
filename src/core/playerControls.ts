@@ -15,6 +15,8 @@ export interface PlayerControls {
   /** Free-look camera angles relative to the aim, used while freeLook is on. */
   readonly look: { yaw: number; pitch: number };
   freeLook: boolean;
+  /** Settings → Invert pitch: vertical aim input moves the nose the other way (not the free-look camera). */
+  invertPitch: boolean;
   throttle: number;
   fire: boolean;
   missile: boolean;
@@ -49,6 +51,7 @@ export function createPlayerControls(): PlayerControls {
     aim,
     look,
     freeLook: false,
+    invertPitch: false,
     throttle: 0.8,
     fire: false,
     missile: false,
@@ -62,7 +65,7 @@ export function createPlayerControls(): PlayerControls {
         return;
       }
       aim.yaw += dx;
-      aim.pitch = clamp(aim.pitch + dy, -MAX_AIM_PITCH, MAX_AIM_PITCH);
+      aim.pitch = clamp(aim.pitch + (c.invertPitch ? -dy : dy), -MAX_AIM_PITCH, MAX_AIM_PITCH);
     },
     setThrottle(value) {
       c.throttle = clamp(value, 0, 1);

@@ -28,6 +28,8 @@ export interface DesktopInput {
   /** Missile presses since the last call, so a key tapped between two simulation ticks still fires. */
   takeMissilePress(): boolean;
   setEnabled(enabled: boolean): void;
+  /** Drop held keys and mouse buttons (the tab went to the background; no keyup will come). */
+  releaseAll(): void;
   dispose(): void;
 }
 
@@ -157,6 +159,12 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
       targetQueued = false;
       return q;
     },
+    releaseAll() {
+      onBlur();
+      missileQueued = false;
+      targetQueued = false;
+      autoLevelQueued = false;
+    },
     setEnabled(next) {
       enabled = next;
       if (!next) {
@@ -177,7 +185,7 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
       // Arrow keys fly the plane directly; A/D override roll on top of mouse aim.
       const pitch = (down('ArrowUp') ? 1 : 0) - (down('ArrowDown') ? 1 : 0);
       const roll = (down('ArrowRight') || down('KeyD') ? 1 : 0) - (down('ArrowLeft') || down('KeyA') ? 1 : 0);
-      controls.override.pitch = pitch;
+      controls.override.pitch = controls.invertPitch ? -pitch : pitch;
       controls.override.roll = roll;
       controls.override.yaw = 0;
 

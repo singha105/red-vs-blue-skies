@@ -1,6 +1,12 @@
 :root {
   --red: #e0443a;
   --blue: #2f7de1;
+  /* Lighter team colours for text and markers over the sky. */
+  --red-hi: #ff6b5e;
+  --blue-hi: #6aa8ff;
+  /* The logo keeps its colours whatever the team colour setting. */
+  --logo-red: #e0443a;
+  --logo-blue: #2f7de1;
   --paper: #f4f7fb;
   --ink: #16314f;
   --scrim: rgba(14, 33, 56, 0.72);
@@ -11,6 +17,14 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --touch: 56px;
+  /* Settings → HUD size. */
+  --hud-scale: 1;
+}
+
+/* Settings → Team colours → Blue / orange (colour-blind safe: the red team is drawn orange). */
+:root[data-teams='colourblind'] {
+  --red: #e8890c;
+  --red-hi: #ffad42;
 }
 
 *,
@@ -86,11 +100,11 @@ body {
 }
 
 .title__red {
-  color: var(--red);
+  color: var(--logo-red);
 }
 
 .title__blue {
-  color: var(--blue);
+  color: var(--logo-blue);
 }
 
 .title__vs {
@@ -182,7 +196,7 @@ body {
   position: absolute;
   right: calc(12px + var(--safe-right));
   bottom: calc(8px + var(--safe-bottom));
-  font-size: 13px;
+  font-size: 14px;
   color: rgba(244, 247, 251, 0.75);
   pointer-events: none;
 }
@@ -386,12 +400,12 @@ body {
 
 .hud__unit {
   margin-left: 4px;
-  font-size: 0.85em;
+  font-size: max(14px, 0.85em);
   opacity: 0.85;
 }
 
 .hud__small {
-  font-size: 0.9em;
+  font-size: max(14px, 0.9em);
   opacity: 0.9;
 }
 
@@ -426,7 +440,7 @@ body {
   bottom: calc(14px + var(--safe-bottom));
   left: 50%;
   transform: translateX(-50%);
-  font-size: 0.95em;
+  font-size: max(14px, 0.95em);
   opacity: 0.9;
   white-space: nowrap;
 }
@@ -619,7 +633,7 @@ body.is-flying {
   cursor: pointer;
 }
 .chip small {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   opacity: 0.75;
 }
@@ -659,7 +673,7 @@ body.is-flying {
   cursor: not-allowed;
 }
 .pcard__tier {
-  font-size: 13px;
+  font-size: 14px;
   opacity: 0.8;
 }
 .pcard__name {
@@ -668,14 +682,14 @@ body.is-flying {
   line-height: 1.15;
 }
 .pcard__stats {
-  font-size: 13px;
+  font-size: 14px;
   opacity: 0.85;
 }
 .pcard__lock {
   position: absolute;
   top: 8px;
   right: 10px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .setup__foot {
   display: flex;
@@ -798,10 +812,10 @@ body.is-flying {
   font-weight: 700;
 }
 .t-blue {
-  color: #6aa8ff;
+  color: var(--blue-hi);
 }
 .t-red {
-  color: #ff7b72;
+  color: var(--red-hi);
 }
 .results__tables {
   flex: 1 1 auto;
@@ -828,10 +842,10 @@ body.is-flying {
   text-align: left;
 }
 .results__table--blue caption {
-  color: #6aa8ff;
+  color: var(--blue-hi);
 }
 .results__table--red caption {
-  color: #ff7b72;
+  color: var(--red-hi);
 }
 .results__table th,
 .results__table td,
@@ -851,7 +865,7 @@ body.is-flying {
 }
 .results__table td small {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   opacity: 0.7;
 }
 .row--you td {
@@ -903,13 +917,13 @@ body.is-flying {
   font-variant-numeric: tabular-nums;
 }
 .hud__team--blue {
-  color: #6aa8ff;
+  color: var(--blue-hi);
 }
 .hud__team--red {
-  color: #ff7b72;
+  color: var(--red-hi);
 }
 .hud__clock {
-  font-size: 0.8em;
+  font-size: max(14px, 0.8em);
   min-width: 3.2em;
   text-align: center;
 }
@@ -948,7 +962,7 @@ body.is-flying {
 .hud__parts {
   display: flex;
   gap: 6px;
-  font-size: 0.8em;
+  font-size: max(14px, 0.8em);
   font-weight: 600;
 }
 .part {
@@ -964,7 +978,7 @@ body.is-flying {
   background: rgba(255, 138, 42, 0.9);
 }
 .hud__ammo {
-  font-size: 0.8em;
+  font-size: max(14px, 0.8em);
   font-variant-numeric: tabular-nums;
   white-space: pre;
   opacity: 0.9;
@@ -1022,12 +1036,12 @@ body.is-flying {
   100% { opacity: 0; }
 }
 .hud__feed {
-  top: calc(clamp(72px, 16vmin, 120px) + 18px + var(--safe-top));
+  top: calc(clamp(72px, 16vmin, 120px) * var(--hud-scale) + 18px + var(--safe-top));
   right: calc(10px + var(--safe-right));
   display: grid;
   justify-items: end;
   gap: 3px;
-  font-size: 0.85em;
+  font-size: max(14px, 0.85em);
 }
 .has-touch .hud__feed {
   right: calc(90px + var(--safe-right));
@@ -1062,17 +1076,17 @@ body.is-flying {
   top: -12px;
   border-left: 7px solid transparent;
   border-right: 7px solid transparent;
-  border-top: 10px solid #6aa8ff;
+  border-top: 10px solid var(--blue-hi);
 }
 .mk--enemy::before {
-  border-top-color: #ff6b5e;
+  border-top-color: var(--red-hi);
 }
 .mk span {
   position: absolute;
   left: 0;
   top: -30px;
   transform: translateX(-50%);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -1084,10 +1098,10 @@ body.is-flying {
   border-radius: 50%;
 }
 .dot--blue {
-  background: #6aa8ff;
+  background: var(--blue-hi);
 }
 .dot--red {
-  background: #ff6b5e;
+  background: var(--red-hi);
 }
 .hud__death {
   inset: 0;
@@ -1131,10 +1145,10 @@ body.is-flying {
   display: none;
 }
 .hud__board .row--blue td:first-child {
-  color: #6aa8ff;
+  color: var(--blue-hi);
 }
 .hud__board .row--red td:first-child {
-  color: #ff7b72;
+  color: var(--red-hi);
 }
 .hud__board .row--you td {
   color: #ffd166;
@@ -1220,7 +1234,7 @@ body.is-flying {
     padding: 10px 12px;
   }
   .hangar__stats {
-    font-size: 13px;
+    font-size: 14px;
   }
 }
 .hangar__panel > .btn {
@@ -1514,7 +1528,7 @@ body.is-flying {
   border-radius: 4px;
   background: rgba(14, 33, 56, 0.75);
   color: #b9f5c6;
-  font: 600 12px/1.35 ui-monospace, Menlo, monospace;
+  font: 600 14px/1.35 ui-monospace, Menlo, monospace;
   white-space: pre;
   pointer-events: none;
 }
@@ -1559,7 +1573,7 @@ body.is-flying {
   font-size: 15px;
 }
 .award small {
-  font-size: 12px;
+  font-size: 14px;
   opacity: 0.75;
 }
 .results__table caption small {
@@ -1684,7 +1698,7 @@ body.is-flying {
   padding: 1px 8px;
   border-radius: 999px;
   background: rgba(244, 247, 251, 0.14);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 .tag--ready {
@@ -1823,7 +1837,7 @@ body.is-flying {
   border-radius: 10px;
   background: #ffd166;
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 20px;
   text-align: center;
 }
@@ -2078,7 +2092,7 @@ body.is-flying {
   white-space: nowrap;
 }
 .rcard__cost {
-  font-size: 13px;
+  font-size: 14px;
   opacity: 0.85;
 }
 .rcard[aria-pressed='true'] {
@@ -2245,7 +2259,7 @@ body.is-flying {
 .mhud__rwr {
   --r: clamp(22px, 4.6vmin, 36px);
   top: calc(10px + var(--safe-top));
-  right: calc(clamp(72px, 16vmin, 120px) + 20px + var(--safe-right));
+  right: calc(clamp(72px, 16vmin, 120px) * var(--hud-scale) + 20px + var(--safe-right));
   width: clamp(64px, 13vmin, 96px);
   aspect-ratio: 1;
   border: 2px solid rgba(244, 247, 251, 0.6);
@@ -2302,7 +2316,7 @@ body.is-flying {
   transform: translateX(-50%);
   display: flex;
   gap: 12px;
-  font-size: 0.8em;
+  font-size: max(14px, 0.8em);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   opacity: 0.92;
@@ -2364,7 +2378,7 @@ body.is-flying {
 }
 .tbtn__count {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   opacity: 0.85;
 }
@@ -2470,7 +2484,7 @@ body.is-flying {
   opacity: 0.55;
 }
 .tier__num {
-  font-size: 13px;
+  font-size: 14px;
   opacity: 0.8;
 }
 .tier__name {
@@ -2572,7 +2586,7 @@ body.is-flying {
   border-top: 1px solid rgba(244, 247, 251, 0.12);
 }
 .board__table td small {
-  font-size: 13px;
+  font-size: 14px;
   opacity: 0.7;
 }
 .board__empty,
@@ -2605,14 +2619,14 @@ body.is-flying {
 }
 .hud__label {
   font-family: var(--text);
-  font-size: 0.42em;
+  font-size: max(14px, 0.42em);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0.8;
 }
 .hud__zones {
-  top: calc(52px + var(--safe-top));
+  top: calc(8px + 44px * var(--hud-scale) + var(--safe-top));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -2637,13 +2651,13 @@ body.is-flying {
   background: var(--red);
 }
 .hud__obj {
-  top: calc(84px + var(--safe-top));
+  top: calc(8px + 76px * var(--hud-scale) + var(--safe-top));
   left: 50%;
   transform: translateX(-50%);
   padding: 2px 10px;
   border-radius: 4px;
   background: rgba(14, 33, 56, 0.45);
-  font-size: 0.85em;
+  font-size: max(14px, 0.85em);
   font-weight: 600;
   max-width: 60vw;
   overflow: hidden;
@@ -2679,7 +2693,7 @@ body.is-flying {
   left: 0;
   top: 13px;
   transform: translateX(-50%);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -2700,21 +2714,21 @@ body.is-flying {
   width: 12px;
   height: 12px;
   transform: rotate(45deg);
-  border: 2px solid #6aa8ff;
+  border: 2px solid var(--blue-hi);
 }
 .omk--unit.omk--enemy b {
-  border-color: #ff6b5e;
+  border-color: var(--red-hi);
 }
 .omk--bomber b {
   left: -9px;
   top: -9px;
   width: 18px;
   height: 18px;
-  border: 2px solid #6aa8ff;
+  border: 2px solid var(--blue-hi);
   border-radius: 3px;
 }
 .omk--bomber.omk--enemy b {
-  border-color: #ff6b5e;
+  border-color: var(--red-hi);
 }
 .hud__map .mo {
   position: absolute;
@@ -2724,10 +2738,10 @@ body.is-flying {
   font-style: normal;
 }
 .mo--unit {
-  background: #6aa8ff;
+  background: var(--blue-hi);
 }
 .mo--unit.mo--red {
-  background: #ff6b5e;
+  background: var(--red-hi);
 }
 .hud__map .mo--zone {
   width: clamp(10px, 2.2vmin, 14px);
@@ -2778,10 +2792,238 @@ body.is-flying {
   display: block;
   margin: -4px 0 10px;
   opacity: 0.75;
-  font-size: 13px;
+  font-size: 14px;
 }
 @media (max-width: 560px) {
   .field--row {
     grid-template-columns: 1fr;
   }
+}
+
+/* Settings → HUD size: panels scale about the corner or edge they're anchored to (the CSS scale property
+   composes with their centring transforms). Buttons and touch controls keep their size. */
+.hud__readout,
+.hud__top,
+.hud__zones,
+.hud__obj,
+.hud__warn,
+.mhud__launch,
+.hud__board {
+  scale: var(--hud-scale);
+  transform-origin: 0 0;
+}
+.hud__status,
+.hud__hint,
+.mhud__load {
+  scale: var(--hud-scale);
+  transform-origin: 0 100%;
+}
+.hud__map,
+.hud__feed,
+.mhud__rwr {
+  scale: var(--hud-scale);
+  transform-origin: 100% 0;
+}
+
+/* Crash card (uncaught errors): above everything, readable on a phone. */
+.crash {
+  z-index: 50;
+  text-transform: none;
+}
+.crash p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.35;
+}
+.crash__msg {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  font-size: 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 30vh;
+  overflow: auto;
+}
+.crash__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hud__notice {
+  top: 38%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px - var(--safe-left) - var(--safe-right)));
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(14, 33, 56, 0.8);
+  border: 2px solid #ffd166;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  text-transform: none;
+}
+.hud__notice[hidden] {
+  display: none;
+}
+
+/* Tutorial card: top centre, clear of the Menu button (left), the minimap and touch buttons (right). */
+.tut {
+  position: absolute;
+  top: calc(8px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, calc(100vw - 2 * (var(--touch) + 150px) - var(--safe-left) - var(--safe-right)));
+  min-width: min(300px, 100vw);
+  display: grid;
+  gap: 4px;
+  padding: 8px 14px 10px;
+  border-radius: 10px;
+  background: rgba(14, 33, 56, 0.78);
+  border: 2px solid #ffd166;
+  pointer-events: auto;
+  text-transform: none;
+  z-index: 3;
+}
+.tut__step {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffd166;
+}
+.tut__title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 24px;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+.tut__hint,
+.tut__note {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.3;
+}
+.tut__note:empty {
+  display: none;
+}
+.tut__note {
+  color: #ffd166;
+}
+.tut__skip {
+  justify-self: start;
+  min-height: 44px;
+}
+body.is-tutorial .hud__top,
+body.is-tutorial .hud__scores-btn,
+body.is-tutorial .hud__zones,
+body.is-tutorial .hud__obj {
+  display: none;
+}
+@media (max-height: 430px) {
+  /* Short landscape phones: two columns (Skip beside the title) so the card stays above the aim circle. */
+  .tut {
+    top: calc(4px + var(--safe-top));
+    grid-template-columns: 1fr auto;
+    column-gap: 10px;
+    row-gap: 2px;
+    padding: 6px 10px 8px 12px;
+  }
+  .tut__step,
+  .tut__title {
+    grid-column: 1;
+  }
+  .tut__skip {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    min-width: 0;
+    padding: 0 12px;
+    font-size: 15px;
+  }
+  .tut__hint,
+  .tut__note {
+    grid-column: 1 / -1;
+    font-size: 14px;
+    line-height: 1.25;
+  }
+  .tut__title {
+    font-size: 19px;
+  }
+}
+
+/* How to play */
+.help {
+  text-transform: none;
+}
+.help__card {
+  width: min(680px, 100%);
+}
+.help__tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  touch-action: pan-x;
+  padding-bottom: 2px;
+}
+.help__tabs .chip {
+  align-content: center;
+  font-size: 16px;
+  white-space: nowrap;
+}
+.help__tabs .chip[aria-selected='true'] {
+  border-color: var(--paper);
+  background: var(--paper);
+  color: var(--ink);
+}
+.help__body {
+  font-size: 16px;
+  line-height: 1.4;
+}
+.help__body p,
+.help__body ul {
+  margin: 0 0 10px;
+}
+.help__body li {
+  margin-bottom: 4px;
+}
+.help__keys {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 10px;
+}
+.help__keys th,
+.help__keys td {
+  padding: 5px 8px 5px 0;
+  border-bottom: 1px solid rgba(244, 247, 251, 0.15);
+  text-align: left;
+  vertical-align: top;
+  font-size: 15px;
+}
+.help__keys th {
+  width: 42%;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.help__version {
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+/* First-launch tutorial offer */
+.tut-offer p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.35;
+  text-transform: none;
+}
+.tut-offer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
