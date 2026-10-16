@@ -20,8 +20,9 @@ export function createTracers(guns: readonly Gun[]): Tracers {
   // Instance colours need an initial write so the attribute exists.
   mesh.setColorAt(0, new Color(1, 1, 1));
 
-  const colourByGun = new Map<string, Color>(guns.map((g) => [g.id, new Color(g.tracerColor)]));
-  const fallback = new Color('#fff1b8');
+  // Above-white tracer colours (Day 11) so the bloom pass makes them glow.
+  const colourByGun = new Map<string, Color>(guns.map((g) => [g.id, new Color(g.tracerColor).multiplyScalar(5)]));
+  const fallback = new Color('#fff1b8').multiplyScalar(5);
   const m = new Matrix4();
   const q = new Quaternion();
   const pos = new Vector3();

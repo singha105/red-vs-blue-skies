@@ -79,29 +79,28 @@ test.describe('keyboard and mouse', () => {
     await page.keyboard.up('KeyW');
     await expect.poll(async () => (await me(page)).wep, { timeout: 3000 }).toBe(true);
     await tap(page, 'KeyS');
-    expect((await cockpit(page)).throttle).toBeLessThanOrEqual(1);
+    await expect.poll(async () => (await cockpit(page)).throttle).toBeLessThanOrEqual(1);
 
     // Q / E: rudder ramps in while held and recentres on release.
     await page.keyboard.down('KeyE');
     await page.waitForTimeout(450);
-    expect((await cockpit(page)).rudder).toBeGreaterThan(0.9);
+    await expect.poll(async () => (await cockpit(page)).rudder).toBeGreaterThan(0.9);
     await page.keyboard.up('KeyE');
     await page.waitForTimeout(450);
-    expect(Math.abs((await cockpit(page)).rudder)).toBeLessThan(0.05);
+    await expect.poll(async () => Math.abs((await cockpit(page)).rudder)).toBeLessThan(0.05);
     await page.keyboard.down('KeyQ');
     await page.waitForTimeout(100);
     // (The 0.3 s ramp itself is unit-tested; headless frames are too uneven to time it here.)
-    expect((await cockpit(page)).rudder).toBeLessThan(-0.05);
+    await expect.poll(async () => (await cockpit(page)).rudder).toBeLessThan(-0.05);
     await page.keyboard.up('KeyQ');
 
     // H airbrake, F flaps, V view, C free look (held), Shift secondary, 1/2/3 radar.
     await tap(page, 'KeyH');
     await tap(page, 'KeyF');
     await tap(page, 'KeyV');
-    let c = await cockpit(page);
-    expect(c.airbrake).toBe(true);
-    expect(c.flaps).toBe(true);
-    expect(c.view).toBe('hud');
+    await expect.poll(async () => (await cockpit(page)).airbrake).toBe(true);
+    await expect.poll(async () => (await cockpit(page)).flaps).toBe(true);
+    await expect.poll(async () => (await cockpit(page)).view).toBe('hud');
     await page.waitForTimeout(400);
     await page.screenshot({ path: `${SHOTS}/${info.project.name}-day11-hud-view.png` });
     await tap(page, 'KeyV');
@@ -109,23 +108,25 @@ test.describe('keyboard and mouse', () => {
     await tap(page, 'KeyF');
     await page.keyboard.down('KeyC');
     await page.waitForTimeout(100);
-    expect((await cockpit(page)).freeLook).toBe(true);
+    await expect.poll(async () => (await cockpit(page)).freeLook).toBe(true);
     await page.keyboard.up('KeyC');
     await tap(page, 'ShiftLeft');
-    expect((await cockpit(page)).secondary).toBe(0);
+    await expect.poll(async () => (await cockpit(page)).secondary).toBe(0);
     await tap(page, 'Digit3');
-    expect((await cockpit(page)).radarRange).toBe(2);
+    await expect.poll(async () => (await cockpit(page)).radarRange).toBe(2);
     await tap(page, 'Digit2');
-    expect((await cockpit(page)).radarDogfight).toBe(true);
+    await expect.poll(async () => (await cockpit(page)).radarDogfight).toBe(true);
     await tap(page, 'Digit2');
     await tap(page, 'Digit1');
-    expect((await cockpit(page)).radarOn).toBe(false);
+    await expect.poll(async () => (await cockpit(page)).radarOn).toBe(false);
     await tap(page, 'Digit1');
 
-    // An enemy dead ahead: T selects it, R locks it with the radar, and the scope shows the lock.
+    // An enemy dead ahead: T selects it, R locks it with the radar, and the scope shows the lock. (First put us
+    // well above the peaks: a slow software-rendered run can fly into Mountain Valley's mountains by now.)
+    await hook(page, 'placePlayer', 0, -5000, 2400, 90);
     const enemy = await hook<string>(page, 'placeEnemyAhead', 3500);
     await tap(page, 'KeyT');
-    expect((await cockpit(page)).target).toBe(enemy);
+    await expect.poll(async () => (await cockpit(page)).target).toBe(enemy);
     await tap(page, 'KeyR');
     await expect.poll(async () => (await me(page)).radarLock, { timeout: 3000 }).toBe(enemy);
     await page.screenshot({ path: `${SHOTS}/${info.project.name}-day11-radar-lock.png` });
@@ -139,18 +140,18 @@ test.describe('keyboard and mouse', () => {
 
     // M map, Tab scoreboard (held), P pause (solo), Esc menu.
     await tap(page, 'KeyM');
-    expect((await cockpit(page)).mapOpen).toBe(true);
+    await expect.poll(async () => (await cockpit(page)).mapOpen).toBe(true);
     await tap(page, 'KeyM');
     await page.keyboard.down('Tab');
     await expect(page.locator('.hud__board')).toBeVisible();
     await page.keyboard.up('Tab');
     await expect(page.locator('.hud__board')).toBeHidden();
     await tap(page, 'KeyP');
-    expect((await cockpit(page)).paused).toBe(true);
+    await expect.poll(async () => (await cockpit(page)).paused).toBe(true);
     await tap(page, 'KeyP');
     await tap(page, 'Escape');
     await expect(page.getByTestId('match-menu')).toBeVisible();
-    expect((await cockpit(page)).paused).toBe(true);
+    await expect.poll(async () => (await cockpit(page)).paused).toBe(true);
     await page.getByTestId('match-menu').getByRole('button', { name: 'Resume' }).click();
     await expect(page.getByTestId('match-menu')).toBeHidden();
     expect(errors).toEqual([]);
@@ -227,20 +228,20 @@ test.describe('gamepad', () => {
     // LB [L1] rudder left.
     await pad(4, 1);
     await page.waitForTimeout(400);
-    expect((await cockpit(page)).rudder).toBeLessThan(-0.9);
+    await expect.poll(async () => (await cockpit(page)).rudder).toBeLessThan(-0.9);
     await pad(4, 0);
     // X [Square] switches the secondary; d-pad right range, d-pad left mode.
     await press(2);
-    expect((await cockpit(page)).secondary).toBe(0);
+    await expect.poll(async () => (await cockpit(page)).secondary).toBe(0);
     await press(15);
-    expect((await cockpit(page)).radarRange).toBe(2);
+    await expect.poll(async () => (await cockpit(page)).radarRange).toBe(2);
     await press(14);
-    expect((await cockpit(page)).radarDogfight).toBe(true);
+    await expect.poll(async () => (await cockpit(page)).radarDogfight).toBe(true);
     await press(14);
     // Y [Triangle] selects the enemy ahead, d-pad up locks it.
     const enemy = await hook<string>(page, 'placeEnemyAhead', 3000);
     await press(3);
-    expect((await cockpit(page)).target).toBe(enemy);
+    await expect.poll(async () => (await cockpit(page)).target).toBe(enemy);
     await press(12);
     await expect.poll(async () => (await me(page)).radarLock, { timeout: 3000 }).toBe(enemy);
     // D-pad down: flares and chaff.
@@ -249,7 +250,7 @@ test.describe('gamepad', () => {
     await expect.poll(async () => (await me(page)).flares).toBeLessThan(flares);
     // RS [R3] switches view; View [Touchpad] holds the scoreboard.
     await press(11);
-    expect((await cockpit(page)).view).toBe('hud');
+    await expect.poll(async () => (await cockpit(page)).view).toBe('hud');
     await pad(8, 1);
     await expect(page.locator('.hud__board')).toBeVisible();
     await pad(8, 0);
@@ -302,21 +303,21 @@ test.describe('touch', () => {
     // ZOOM held; the eye dragged looks around.
     const zoom = page.getByRole('button', { name: 'ZOOM' });
     await zoom.dispatchEvent('pointerdown', { pointerId: 8, pointerType: 'touch' });
-    expect((await cockpit(page)).zoom).toBe(true);
+    await expect.poll(async () => (await cockpit(page)).zoom).toBe(true);
     await zoom.dispatchEvent('pointerup', { pointerId: 8, pointerType: 'touch' });
     const eye = page.getByTestId('look-btn');
     const box = (await eye.boundingBox())!;
     await eye.dispatchEvent('pointerdown', { pointerId: 9, pointerType: 'touch', clientX: box.x + 20, clientY: box.y + 20 });
     await eye.dispatchEvent('pointermove', { pointerId: 9, pointerType: 'touch', clientX: box.x - 60, clientY: box.y + 20 });
-    expect((await cockpit(page)).freeLook).toBe(true);
+    await expect.poll(async () => (await cockpit(page)).freeLook).toBe(true);
     await eye.dispatchEvent('pointerup', { pointerId: 9, pointerType: 'touch' });
-    expect((await cockpit(page)).freeLook).toBe(false);
+    await expect.poll(async () => (await cockpit(page)).freeLook).toBe(false);
     // Throttle slider's top band: WEP.
     const slider = page.getByRole('slider', { name: 'Throttle' });
     const sb = (await slider.boundingBox())!;
     await slider.dispatchEvent('pointerdown', { pointerId: 10, pointerType: 'touch', clientX: sb.x + sb.width / 2, clientY: sb.y + 3 });
     await slider.dispatchEvent('pointerup', { pointerId: 10, pointerType: 'touch' });
-    expect((await cockpit(page)).throttle).toBeGreaterThan(1);
+    await expect.poll(async () => (await cockpit(page)).throttle).toBeGreaterThan(1);
     await expect(slider).toContainText('WEP');
     // Tapping the team scores opens the scoreboard.
     await page.locator('.hud__top').click();
@@ -332,7 +333,7 @@ test.describe('touch', () => {
     await expect(right).toBeVisible();
     await right.dispatchEvent('pointerdown', { pointerId: 3, pointerType: 'touch' });
     await page.waitForTimeout(400);
-    expect((await cockpit(page)).rudder).toBeGreaterThan(0.9);
+    await expect.poll(async () => (await cockpit(page)).rudder).toBeGreaterThan(0.9);
     await right.dispatchEvent('pointerup', { pointerId: 3, pointerType: 'touch' });
   });
 });

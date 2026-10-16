@@ -91,6 +91,12 @@ Fairness rules:
 - A missile hit does 70–100% damage depending on plane HP, so guns still matter.
 - Every missile must have a counter a skilled player can use. If one proves nearly unbeatable, nerf it in data.
 
+## Engine, radar and cockpit (Day 11)
+
+- **WEP / afterburner:** 100% throttle without it gives 85% of full thrust (about 92% of top speed); holding throttle-up at 100% lights WEP (afterburner on jets) for full thrust. It heats the engine over the era's `wepTimeS` (30 s WW1 … 90 s Modern); at full heat the engine overheats and runs at 45% for 10 s, then cools. Afterburner makes a jet hotter for IR seekers (×1.4) and flares 40% less convincing. Airbrake (drag ×2.6) and flaps (stall speed −15%, a little extra pitch at low speed, some drag; only below 60% of top speed) are switches.
+- **Radar** (jets with a `radar` block in planes.json: range in km, half-angle of the scan, modes): **Search** shows what it sees on the scope and locks the picked target (or the one nearest the nose) on request; **Lock** is a continuous track that the target's radar warning shows; **Dogfight** locks by itself on the first enemy within 10° of the nose and 10 km. Ground clutter below 300 m halves the range and notching (flying at 90° to the radar) hides a target; a lock survives a second out of sight. Radar missiles only lock with the radar locked, and semi-active ones guide only while it holds and sees the target. The scope's 5/10/20 km is display range.
+- **HUD per era:** reflector gunsight and gauges (WW1–Late WW2), gyro gunsight (Early Jets), full green jet HUD (Cold War, Modern). Controls for every device are in `docs/HOW_TO_PLAY.md`.
+
 ## Research points (RP) and unlocks
 
 Points are permanent and can be spent in any era's tree, unlocking tiers in order. Tier 1 of every era is free.
@@ -134,7 +140,7 @@ Data: `src/data/modes.json` (rules' numbers) and `src/data/objectives.json` (gro
 About 16 × 16 km each, generated from a seed so they cost nothing to store. Data: `src/data/maps.json` (seed, size, colours, spawn points, zone positions). Ground target layouts are generated from the seed and heightmap (`src/game/groundLayout.ts`) and sent by the host in the match start message.
 
 - **Island Chain** (`island_chain`, default): open ocean and green islands.
-- **Mountain Valley** (`mountain_valley`): ridged mountains up to ~1,250 m with one winding canyon carved through them west to east, 550 m wide at the floor, with a river; the three zones sit on the canyon floor, so capturing means flying the canyon.
+- **Mountain Valley** (`mountain_valley`): an alpine valley (Day 11): ridged, eroded peaks to ~1,600 m with snow above ~1,250 m, dense pine forest on the lower and middle slopes, bare rock on the steep faces, and one winding canyon carved through them west to east, 550 m wide at the floor, with a river; the three zones sit on the canyon floor, so capturing means flying the canyon.
 - **Desert Mesas** (`desert_mesas`): terraced noise: flat-topped plateaus in steps of 115 m above a desert floor at ~45 m, great visibility.
 - **Carrier Strike** (`carrier_strike`): open ocean with one aircraft carrier per team (steaming in a wide circle behind its side, with three destroyers); the carriers are the ground targets in Ground Strike and Bomber Escort, scenery in the other modes.
 

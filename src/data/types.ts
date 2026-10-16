@@ -150,6 +150,12 @@ export interface GameMap {
   colors: Record<'skyTop' | 'skyHorizon' | 'water' | 'sand' | 'grass' | 'rock', string>;
   spawns: { red: Vec3; blue: Vec3 };
   zones: [number, number][];
+  /** Day 11 look: where the sun is (it also blinds IR seekers), the snow line, forest colour, and haze. */
+  sun: { azimuthDeg: number; elevationDeg: number };
+  snowLineM: number;
+  forestColor: string;
+  /** Distant mountain ranges on the horizon: how tall (m), 0 for none. */
+  horizonRangeM: number;
 }
 
 export interface GameMode {

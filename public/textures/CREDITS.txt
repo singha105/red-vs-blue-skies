@@ -1,0 +1,8 @@
+Textures and HDRI from Poly Haven (https://polyhaven.com), public domain (CC0).
+
+grass: "leafy_grass" by Poly Haven, CC0, https://polyhaven.com/a/leafy_grass
+forest: "forest_ground_04" by Poly Haven, CC0, https://polyhaven.com/a/forest_ground_04
+rock: "lichen_rock" by Poly Haven, CC0, https://polyhaven.com/a/lichen_rock
+snow: "snow_field_aerial" by Poly Haven, CC0, https://polyhaven.com/a/snow_field_aerial
+sand: "coast_sand_01" by Poly Haven, CC0, https://polyhaven.com/a/coast_sand_01
+sky.hdr: "kloofendal_48d_partly_cloudy_puresky" by Poly Haven, CC0, https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky

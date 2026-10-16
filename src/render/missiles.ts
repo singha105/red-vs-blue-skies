@@ -13,11 +13,13 @@ const TRAIL_PER_S = 40;
 const FLARE_TRAIL_PER_S = 14;
 
 export interface GlowSource {
-  /** World position of an afterburning exhaust. */
+  /** World position of a jet exhaust. */
   x: number;
   y: number;
   z: number;
   size: number;
+  /** 1 = afterburner lit; below that, engine heat (throttle) for the dull glow behind a jet. */
+  heat: number;
 }
 
 export interface MissileFx {
@@ -50,9 +52,12 @@ export function createMissileFx(effects: Effects): MissileFx {
   glows.setColorAt(0, new Color());
   root.add(bodies, glows);
 
-  const FLAME = new Color('#ffb347');
-  const FLARE = new Color('#fff2c4');
-  const BURNER = new Color('#ff7a2e');
+  // Above-white intensities (Day 11): the bloom pass lights these up; without bloom they just look hot.
+  const FLAME = new Color('#ffb347').multiplyScalar(6);
+  const FLARE = new Color('#fff2c4').multiplyScalar(7);
+  const BURNER = new Color('#ff7a2e').multiplyScalar(4.5);
+  const CORE = new Color('#fff4e0').multiplyScalar(7);
+  const HEAT = new Color('#ff5a1e');
   const m = new Matrix4();
   const q = new Quaternion();
   const p = new Vector3();
@@ -112,8 +117,16 @@ export function createMissileFx(effects: Effects): MissileFx {
         if (Math.random() < FLARE_TRAIL_PER_S * effects.density * frameDt) effects.emit('trail', d.pos[0], d.pos[1], d.pos[2]);
       }
       for (const a of afterburners) {
+        if (a.heat < 1) {
+          // Engine heat glow behind a jet out of afterburner: a dim red-orange smudge.
+          c.copy(HEAT).multiplyScalar(0.35 + 0.65 * a.heat);
+          g = glow(g, a.x, a.y, a.z, a.size * 0.55, c);
+          continue;
+        }
+        // Afterburner: a wide orange disc and a white-hot core.
         c.copy(BURNER).multiplyScalar(0.85 + 0.15 * Math.sin(flicker * 1.3 + a.x));
         g = glow(g, a.x, a.y, a.z, a.size * (0.9 + 0.1 * Math.sin(flicker)), c);
+        g = glow(g, a.x, a.y, a.z, a.size * 0.42, CORE);
       }
       glows.count = g;
       glows.instanceMatrix.needsUpdate = true;

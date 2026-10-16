@@ -1,151 +1,231 @@
-// Flat-shaded low-poly terrain in 2 km chunks, each with three levels of detail (THREE.LOD picks by distance).
-// Chunk edges get short "skirts" hanging down so cracks between neighbouring detail levels are never visible.
-import { BufferAttribute, BufferGeometry, Color, DoubleSide, Group, LOD, Mesh, MeshLambertMaterial } from 'three';
+// Terrain in 2 km chunks, smooth-shaded, with four levels of detail chosen per chunk by the distance from the
+// camera to the chunk's nearest point. Changing level never pops: going coarser, the chunk first morphs its
+// vertices onto the coarser level's surface (uMorph 0 → 1 over MORPH_S), then swaps to that level; going finer,
+// it swaps at once with uMorph = 1 and relaxes to 0. Chunk edges hang short "skirts" so neighbours at different
+// levels never show a crack. Shading is in terrainMaterial.ts.
+import { BufferAttribute, BufferGeometry, Group, Mesh, Vector3, type Material } from 'three';
 import type { GameMap } from '../data/types';
 import type { Terrain } from '../game/terrain';
 
 export const CHUNK_M = 2000;
-const SEGMENTS = [40, 20, 10] as const; // 50 m, 100 m, 200 m cells
-const LOD_DIST = [0, 2600, 5200] as const;
-const SKIRT_M = 60;
+/** Cells per chunk side for each level: 20 m, 40 m, 80 m, 160 m (each half the one before, so morph targets
+ *  line up with the next level's vertices). */
+const LEVELS = [96, 48, 24, 12] as const;
+/** A chunk drops to level i+1 beyond these distances (× the quality tier's lodScale). */
+const LOD_DIST = [1400, 3200, 6500] as const;
+const SKIRT_M = 40;
+const MORPH_S = 0.6;
 
 export interface TerrainMesh {
   group: Group;
   setLodScale(scale: number): void;
+  /** Pick levels and advance morphs (call every frame with the camera position). */
+  update(camera: Vector3, dt: number): void;
   /** Number of chunks that have land above water (the rest are skipped entirely). */
   chunkCount: number;
+  /** Triangles drawn by the terrain this frame (for the perf overlay). */
+  readonly triangles: number;
 }
 
-export function createTerrainMesh(map: GameMap, terrain: Terrain, receiveShadow: boolean): TerrainMesh {
-  const material = new MeshLambertMaterial({ vertexColors: true, flatShading: true, side: DoubleSide });
-  const palette = {
-    sand: new Color(map.colors.sand),
-    grass: new Color(map.colors.grass),
-    grassDark: new Color(map.colors.grass).multiplyScalar(0.72),
-    rock: new Color(map.colors.rock),
-    snow: new Color('#eef2f4'),
-    seabed: new Color(map.colors.sand).multiplyScalar(0.55),
-  };
+interface Chunk {
+  x0: number;
+  z0: number;
+  meshes: Mesh[];
+  level: number;
+  /** Level being morphed toward (coarser), or −1. */
+  target: number;
+  morph: number;
+  /** Per-chunk morph value written into the shared material just before this chunk draws. */
+  uMorph: { value: number };
+}
 
+/** `materialFor` makes each chunk's material around that chunk's morph uniform (see terrainMaterial.ts). */
+export function createTerrainMesh(map: GameMap, terrain: Terrain, materialFor: (uMorph: { value: number }) => Material, receiveShadow: boolean): TerrainMesh {
   const group = new Group();
-  const lods: LOD[] = [];
+  const chunks: Chunk[] = [];
   const n = Math.round(map.sizeM / CHUNK_M);
-  const maxSeg = SEGMENTS[0];
-  const cell = CHUNK_M / maxSeg;
+  const fine = LEVELS[0];
+  const cell = CHUNK_M / fine;
+  let lodScale = 1;
+  let tris = 0;
 
   for (let cz = 0; cz < n; cz++) {
     for (let cx = 0; cx < n; cx++) {
       const x0 = -map.sizeM / 2 + cx * CHUNK_M;
       const z0 = -map.sizeM / 2 + cz * CHUNK_M;
-      // Sample once at full detail; coarser levels reuse every 2nd / 4th sample.
-      const heights = new Float32Array((maxSeg + 1) * (maxSeg + 1));
+      // Sample once at full detail (one extra ring for normals); coarser levels reuse every 2nd / 4th / 8th sample.
+      const stride = fine + 3;
+      const heights = new Float32Array(stride * stride);
       let top = -Infinity;
-      for (let j = 0; j <= maxSeg; j++) {
-        for (let i = 0; i <= maxSeg; i++) {
+      for (let j = -1; j <= fine + 1; j++) {
+        for (let i = -1; i <= fine + 1; i++) {
           const h = terrain.heightAt(x0 + i * cell, z0 + j * cell);
-          heights[j * (maxSeg + 1) + i] = h;
+          heights[(j + 1) * stride + (i + 1)] = h;
           if (h > top) top = h;
         }
       }
       if (top < -2) continue; // all under the (opaque) ocean
-
-      const lod = new LOD();
-      lod.position.set(x0, 0, z0);
-      SEGMENTS.forEach((seg, level) => {
-        const mesh = new Mesh(buildChunk(heights, maxSeg, seg, palette), material);
+      const chunk: Chunk = { x0, z0, meshes: [], level: LEVELS.length - 1, target: -1, morph: 0, uMorph: { value: 0 } };
+      const mat = materialFor(chunk.uMorph);
+      LEVELS.forEach((seg, level) => {
+        const next = LEVELS[level + 1] ?? seg;
+        const mesh = new Mesh(buildChunk(heights, fine, seg, next), mat);
+        mesh.position.set(x0, 0, z0);
         mesh.receiveShadow = receiveShadow;
         mesh.matrixAutoUpdate = false;
-        lod.addLevel(mesh, LOD_DIST[level]);
+        mesh.updateMatrix();
+        mesh.visible = false;
+        group.add(mesh);
+        chunk.meshes.push(mesh);
       });
-      lod.matrixAutoUpdate = false;
-      lod.updateMatrix();
-      group.add(lod);
-      lods.push(lod);
+      chunks.push(chunk);
     }
   }
 
+  const levelFor = (c: Chunk, cam: Vector3): number => {
+    // Distance to the chunk's nearest point (horizontally), plus some height so high flight coarsens it.
+    const dx = Math.max(c.x0 - cam.x, 0, cam.x - (c.x0 + CHUNK_M));
+    const dz = Math.max(c.z0 - cam.z, 0, cam.z - (c.z0 + CHUNK_M));
+    const d = Math.hypot(dx, dz, Math.max(0, cam.y - 800) * 0.6);
+    let level = 0;
+    while (level < LOD_DIST.length && d > LOD_DIST[level]! * lodScale) level++;
+    return level;
+  };
+
+  const show = (c: Chunk): void => {
+    c.meshes.forEach((m, i) => (m.visible = i === c.level));
+  };
+  // Start every chunk at its coarsest level until the first update.
+  for (const c of chunks) show(c);
+
   return {
     group,
-    chunkCount: lods.length,
+    chunkCount: chunks.length,
+    get triangles() {
+      return tris;
+    },
     setLodScale(scale) {
-      for (const lod of lods) {
-        lod.levels.forEach((level, i) => {
-          level.distance = (LOD_DIST[i] ?? 0) * scale;
-        });
+      lodScale = scale;
+    },
+    update(cam, dt) {
+      tris = 0;
+      for (const c of chunks) {
+        const want = levelFor(c, cam);
+        if (c.target >= 0) {
+          // Morphing toward a coarser level: finish, then swap.
+          if (want <= c.level) {
+            c.target = -1; // changed our mind: relax back
+          } else {
+            c.morph = Math.min(1, c.morph + dt / MORPH_S);
+            if (c.morph >= 1) {
+              c.level = c.target;
+              c.target = -1;
+              c.morph = 0;
+              show(c);
+            }
+          }
+        } else if (want > c.level) {
+          c.target = c.level + 1;
+        } else if (want < c.level) {
+          // Finer: swap now, starting fully morphed onto the coarser shape we were showing.
+          c.level = want === c.level - 1 ? c.level - 1 : want;
+          c.morph = 1;
+          show(c);
+        } else if (c.morph > 0) {
+          c.morph = Math.max(0, c.morph - dt / MORPH_S);
+        }
+        c.uMorph.value = c.morph;
+        const seg = LEVELS[c.level]!;
+        tris += seg * seg * 2;
       }
     },
   };
 }
 
-type Palette = Record<'sand' | 'grass' | 'grassDark' | 'rock' | 'snow' | 'seabed', Color>;
-
-function buildChunk(heights: Float32Array, maxSeg: number, seg: number, pal: Palette): BufferGeometry {
-  const step = maxSeg / seg;
+/**
+ * One level's indexed grid. `heights` is the full-detail grid with a one-sample border; `next` is the coarser
+ * level's segment count, used for each vertex's morph target (the coarser surface's height at that point).
+ */
+function buildChunk(heights: Float32Array, fine: number, seg: number, next: number): BufferGeometry {
+  const stride = fine + 3;
+  const step = fine / seg;
   const cell = CHUNK_M / seg;
-  const stride = maxSeg + 1;
-  const h = (i: number, j: number): number => heights[j * step * stride + i * step]!;
-
-  const tris = seg * seg * 2 + seg * 4 * 2;
-  const pos = new Float32Array(tris * 9);
-  const col = new Float32Array(tris * 9);
-  let v = 0;
-  const tmp = new Color();
-
-  const pushTri = (ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number, c: Color): void => {
-    pos.set([ax, ay, az, bx, by, bz, cx, cy, cz], v * 3);
-    for (let k = 0; k < 3; k++) c.toArray(col, (v + k) * 3);
-    v += 3;
+  const H = (i: number, j: number): number => heights[(j + 1) * stride + (i + 1)]!;
+  const verts = (seg + 1) * (seg + 1);
+  const skirtVerts = seg * 4 * 2;
+  const pos = new Float32Array((verts + skirtVerts) * 3);
+  const nor = new Float32Array((verts + skirtVerts) * 3);
+  const morph = new Float32Array(verts + skirtVerts);
+  const nstep = fine / next;
+  const coarseAt = (fi: number, fj: number): number => {
+    // Bilinear on the coarser grid (in fine-sample units), matching how its triangles would cover this point.
+    const gi = Math.min(next - 1e-6, fi / nstep);
+    const gj = Math.min(next - 1e-6, fj / nstep);
+    const i0 = Math.floor(gi), j0 = Math.floor(gj);
+    const u = gi - i0, v = gj - j0;
+    const a = H(i0 * nstep, j0 * nstep), b = H((i0 + 1) * nstep, j0 * nstep);
+    const c = H(i0 * nstep, (j0 + 1) * nstep), d = H((i0 + 1) * nstep, (j0 + 1) * nstep);
+    return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
   };
-
-  const colourFor = (ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number): Color => {
-    // Face normal's y tells how steep the face is.
-    const ux = bx - ax, uy = by - ay, uz = bz - az;
-    const wx = cx - ax, wy = cy - ay, wz = cz - az;
-    const nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx;
-    const steep = Math.abs(ny) / Math.hypot(nx, ny, nz);
-    const y = (ay + by + cy) / 3;
-    if (y < -4) return tmp.copy(pal.seabed);
-    if (y < 14) return tmp.copy(pal.sand);
-    if (y > 560) return tmp.copy(steep > 0.8 ? pal.snow : pal.rock);
-    if (steep < 0.78 || y > 340) return tmp.copy(pal.rock);
-    // Grass darkens with height, with a little per-face variation (deterministic from position).
-    const t = Math.min(1, y / 340);
-    tmp.copy(pal.grass).lerp(pal.grassDark, t);
-    return tmp.offsetHSL(0, 0, (Math.sin(ax * 12.9898 + az * 78.233) * 0.5) * 0.04);
-  };
-
-  for (let j = 0; j < seg; j++) {
-    for (let i = 0; i < seg; i++) {
-      const x0 = i * cell, x1 = x0 + cell, z0 = j * cell, z1 = z0 + cell;
-      const h00 = h(i, j), h10 = h(i + 1, j), h01 = h(i, j + 1), h11 = h(i + 1, j + 1);
-      // Alternate the diagonal for a less gridded look. Winding is counter-clockwise seen from above.
-      if ((i + j) % 2 === 0) {
-        pushTri(x0, h00, z0, x0, h01, z1, x1, h11, z1, colourFor(x0, h00, z0, x0, h01, z1, x1, h11, z1));
-        pushTri(x0, h00, z0, x1, h11, z1, x1, h10, z0, colourFor(x0, h00, z0, x1, h11, z1, x1, h10, z0));
-      } else {
-        pushTri(x0, h00, z0, x0, h01, z1, x1, h10, z0, colourFor(x0, h00, z0, x0, h01, z1, x1, h10, z0));
-        pushTri(x1, h10, z0, x0, h01, z1, x1, h11, z1, colourFor(x1, h10, z0, x0, h01, z1, x1, h11, z1));
-      }
+  for (let j = 0; j <= seg; j++) {
+    for (let i = 0; i <= seg; i++) {
+      const fi = Math.round(i * step), fj = Math.round(j * step);
+      const k = j * (seg + 1) + i;
+      const h = H(fi, fj);
+      pos[k * 3] = i * cell;
+      pos[k * 3 + 1] = h;
+      pos[k * 3 + 2] = j * cell;
+      morph[k] = next === seg ? h : coarseAt(fi, fj);
+      // Smooth normal from the full-detail neighbours one sample away (the border ring makes chunk edges match).
+      const nx = H(fi - 1, fj) - H(fi + 1, fj);
+      const nz = H(fi, fj - 1) - H(fi, fj + 1);
+      const ny = 2 * (CHUNK_M / fine);
+      const l = Math.hypot(nx, ny, nz);
+      nor[k * 3] = nx / l;
+      nor[k * 3 + 1] = ny / l;
+      nor[k * 3 + 2] = nz / l;
     }
   }
-
-  // Skirts along the four edges.
-  const skirt = (ax: number, az: number, ah: number, bx: number, bz: number, bh: number): void => {
-    pushTri(ax, ah, az, bx, bh, bz, ax, ah - SKIRT_M, az, pal.rock);
-    pushTri(bx, bh, bz, bx, bh - SKIRT_M, bz, ax, ah - SKIRT_M, az, pal.rock);
-  };
-  for (let i = 0; i < seg; i++) {
-    const a = i * cell, b = a + cell;
-    skirt(a, 0, h(i, 0), b, 0, h(i + 1, 0));
-    skirt(b, CHUNK_M, h(i + 1, seg), a, CHUNK_M, h(i, seg));
-    skirt(0, b, h(0, i + 1), 0, a, h(0, i));
-    skirt(CHUNK_M, a, h(seg, i), CHUNK_M, b, h(seg, i + 1));
+  const index: number[] = [];
+  for (let j = 0; j < seg; j++) {
+    for (let i = 0; i < seg; i++) {
+      const a = j * (seg + 1) + i, b = a + 1, c = a + seg + 1, d = c + 1;
+      // Alternate the diagonal for a less gridded look. Counter-clockwise seen from above.
+      if ((i + j) % 2 === 0) index.push(a, c, d, a, d, b);
+      else index.push(a, c, b, b, c, d);
+    }
   }
-
+  // Skirts: a copy of each edge vertex hanging SKIRT_M lower, stitched to the edge.
+  let v = verts;
+  const edge = (k: number): number => {
+    pos[v * 3] = pos[k * 3]!;
+    pos[v * 3 + 1] = pos[k * 3 + 1]! - SKIRT_M;
+    pos[v * 3 + 2] = pos[k * 3 + 2]!;
+    nor.set([nor[k * 3]!, nor[k * 3 + 1]!, nor[k * 3 + 2]!], v * 3);
+    morph[v] = morph[k]! - SKIRT_M;
+    return v++;
+  };
+  const sides: [number, number][][] = [[], [], [], []];
+  for (let i = 0; i < seg; i++) {
+    sides[0]!.push([i, i + 1]); // z = 0
+    sides[1]!.push([seg * (seg + 1) + i + 1, seg * (seg + 1) + i]); // z = max
+    sides[2]!.push([(i + 1) * (seg + 1), i * (seg + 1)]); // x = 0
+    sides[3]!.push([i * (seg + 1) + seg, (i + 1) * (seg + 1) + seg]); // x = max
+  }
+  for (const side of sides) {
+    for (const [a, b] of side) {
+      const a2 = edge(a);
+      const b2 = edge(b);
+      index.push(a, b, a2, b, b2, a2);
+    }
+  }
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new BufferAttribute(pos, 3));
-  geometry.setAttribute('color', new BufferAttribute(col, 3));
-  geometry.computeVertexNormals();
+  geometry.setAttribute('normal', new BufferAttribute(nor, 3));
+  geometry.setAttribute('morphY', new BufferAttribute(morph, 1));
+  geometry.setIndex(index);
   geometry.computeBoundingSphere();
+  // Morphing can lift vertices a little: pad the bounds so frustum culling never clips a chunk.
+  if (geometry.boundingSphere) geometry.boundingSphere.radius += 80;
   return geometry;
 }

@@ -11,3 +11,4 @@ tools/blender/refs/
 tools/blender/build/
 tests/balance/out/
 tools/build/
+__pycache__/

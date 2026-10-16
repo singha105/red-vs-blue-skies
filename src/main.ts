@@ -33,6 +33,7 @@ import { combineHosts, type Network } from './net/transport';
 import { createCallsignScreen, createConnecting, createNetMenu, createNetOverlay, saveCallsign, savedCallsign, type StatusScreen } from './ui/netScreens';
 import { createChaseCamera } from './render/chaseCamera';
 import { createEffects } from './render/effects';
+import { createRibbons } from './render/ribbons';
 import { createMissileFx, type GlowSource } from './render/missiles';
 import { createPylonMissiles } from './render/pylonMissiles';
 import { createCockpitAudio } from './core/audio';
@@ -40,11 +41,14 @@ import { createSound, gunClass, type EngineInput, type GunClass } from './core/s
 import { cockpitState, targetAt } from './app/weapons';
 import { afterburner, isJet, launch as launchMissile } from './game/missiles';
 import { createMapScene } from './render/mapScene';
+import { createPost } from './render/post';
+import { loadHeightfield } from './render/heightfieldLoader';
+import { hasBakedTerrain, heightfieldFor } from './game/heightfield';
 import { setTeamPalette } from './render/planeMesh';
 import { createGroundRenderer } from './render/groundUnits';
 import { bomberFor, isBomber, unitDef } from './game/objectives';
 import type { ObjectiveFrame, ObjectiveMarker } from './ui/hud';
-import { createPlaneVisual, isModelReady, loadEra, loadPlane, type PlaneVisual } from './render/models';
+import { createPlaneVisual, isModelReady, loadEra, loadPlane, setModelDetail, visualOutdated, type PlaneVisual } from './render/models';
 import { isProp, PLANE_MODELS, planeSize } from './game/planeModels';
 import { createView } from './render/renderer';
 import { createTitleShot } from './render/titleShot';
@@ -108,6 +112,7 @@ function boot(): void {
   const view = createView(canvas, { antialias: !env.isTouch && settings.graphics !== 'low' && forced !== 'low' });
   const tracers = createTracers(data.guns);
   const effects = createEffects();
+  const ribbons = createRibbons();
   const missileFx = createMissileFx(effects);
   const missileClass = new Map(data.missiles.missiles.map((m) => [m.id, m.class]));
   const pylonMissiles = createPylonMissiles((type) => missileClass.get(type));
@@ -116,20 +121,32 @@ function boot(): void {
   const sound = createSound();
   const audio = createCockpitAudio(sound);
   const silhouettes = createSilhouettes(view.renderer);
+  // Bloom on Medium and High (post.ts); the map draws its backdrop and scene passes into it.
+  const post = createPost(view.renderer);
+  const drawScene = (): void => mapScene.render(view.renderer, view.camera);
   // One scene per map, built the first time a match is voted onto it and kept (at most 4), so switching back is free.
   interface MapWorld {
     ctx: WorldContext;
     scene: ReturnType<typeof createMapScene>;
     titleShot: ReturnType<typeof createTitleShot>;
+    /** Built on the baked (eroded) heightmap, not the procedural fallback. */
+    baked: boolean;
   }
   const mapWorlds = new Map<string, MapWorld>();
   let titlePlane: (() => Object3D) | null = null;
   const buildMap = (mapId: string): MapWorld => {
     let mw = mapWorlds.get(mapId);
+    // Built before its heightmap arrived: rebuild now that it's here (never under a match in progress).
+    if (mw && !mw.baked && heightfieldFor(mapId) && !(mode === 'match' && ctx.map.id === mapId)) {
+      mapWorlds.delete(mapId);
+      mw.titleShot.setVisible(false);
+      mw.scene.dispose();
+      mw = undefined;
+    }
     if (!mw) {
       const c = createWorldContext(data, mapId);
-      const scene = createMapScene(c.map, c.terrain);
-      mw = { ctx: c, scene, titleShot: createTitleShot(scene.scene, c.terrain) };
+      const scene = createMapScene(c.map, c.terrain, view.renderer);
+      mw = { ctx: c, scene, titleShot: createTitleShot(scene.scene, c.terrain), baked: Boolean(heightfieldFor(mapId)) || !hasBakedTerrain(mapId) };
       if (titlePlane) mw.titleShot.setModel(titlePlane());
       mapWorlds.set(mapId, mw);
     }
@@ -139,14 +156,23 @@ function boot(): void {
   let ctx: WorldContext = current.ctx;
   let mapScene = current.scene;
   let titleShot = current.titleShot;
-  mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root, pylonMissiles.root, ground.root, tutorialProps.root);
+  mapScene.scene.add(tracers.mesh, effects.mesh, ribbons.mesh, missileFx.root, pylonMissiles.root, ground.root, tutorialProps.root);
 
-  let quality: QualityLevel = forced ?? initialLevel(settings.graphics, env.isTouch);
+  /** Low graphics: no engine heat glow, no vapour ribbons. */
+  let effectsLow = false;
+  /** The era being flown (its models upgrade when the quality changes). */
+  let matchEra: EraId | null = null;
+  let quality: QualityLevel = forced ?? initialLevel(settings.graphics, env.isTouch, navigator.webdriver === true);
   const applyQuality = (level: QualityLevel): void => {
     quality = level;
     view.setMaxPixelRatio(QUALITY[level].maxPixelRatio);
+    // Detailed plane models on Medium and High (era models already loading get upgraded as they arrive).
+    setModelDetail(level === 'low' ? 'lod' : 'high', view.renderer);
+    if (matchEra && level !== 'low') void loadEra(matchEra, data.planes.filter((p) => p.era === matchEra).map((p) => p.id));
     mapScene.setQuality(level, view.renderer, view.camera);
+    post.setBloom(QUALITY[level].bloom);
     effects.density = level === 'low' ? 0.5 : 1;
+    effectsLow = level === 'low';
     effects.heavy = level !== 'low';
   };
   applyQuality(quality);
@@ -165,7 +191,8 @@ function boot(): void {
 
   /** Switch the scene to another map (the voted one) before a match starts there. */
   const useMap = (mapId: string): void => {
-    if (ctx.map.id === mapId || !data.maps.some((m) => m.id === mapId)) return;
+    if (!data.maps.some((m) => m.id === mapId)) return;
+    if (ctx.map.id === mapId && (current.baked || !heightfieldFor(mapId))) return;
     const visible = !document.body.classList.contains('is-flying');
     titleShot.setVisible(false);
     current = buildMap(mapId);
@@ -173,9 +200,16 @@ function boot(): void {
     mapScene = current.scene;
     titleShot = current.titleShot;
     titleShot.setVisible(visible);
-    mapScene.scene.add(tracers.mesh, effects.mesh, missileFx.root, pylonMissiles.root, ground.root, tutorialProps.root);
+    mapScene.scene.add(tracers.mesh, effects.mesh, ribbons.mesh, missileFx.root, pylonMissiles.root, ground.root, tutorialProps.root);
     applyQuality(quality);
   };
+  // Every map's baked heightmap downloads in the background from the start (the title's map first); when the
+  // one on screen arrives, its scene is rebuilt on it (not during a match).
+  for (const m of [map, ...data.maps.filter((x) => x !== map)]) {
+    void loadHeightfield(m.id).then((ok) => {
+      if (ok && ctx.map.id === m.id && mode !== 'match') useMap(m.id);
+    });
+  }
 
   const controls = createPlayerControls();
   // Display and control settings that apply at once: invert pitch, HUD size, team colours.
@@ -375,6 +409,8 @@ function boot(): void {
     endedAt = 0;
     controls.target = null;
     missileFx.clear();
+    ribbons.clear();
+    ribbonsLive.clear();
     pylonMissiles.clear();
     ground.clear();
     audio.mute();
@@ -760,10 +796,10 @@ function boot(): void {
   }
 
   function renderHangar(frameDt: number): void {
-    if (hangar.visual?.placeholder && isModelReady(hangar.planeId)) setHangarVisual();
+    if (hangar.visual && visualOutdated(hangar.visual, hangar.planeId)) setHangarVisual();
     if (!hangar.touched) hangar.yaw += frameDt * 0.25;
     const v = hangar.visual;
-    if (v?.prop) v.prop.rotation.z += frameDt * 6;
+    for (const prop of v?.props ?? []) prop.rotation.z += frameDt * 6;
     // The full missile load on the pylons.
     if (v) pylonMissiles.update(hangarCarrier, ctx.planeDefs, () => (v.placeholder ? null : v.root));
     const cp = Math.cos(hangar.pitch);
@@ -779,10 +815,13 @@ function boot(): void {
     }
   }
 
-  function startSolo(choice: SoloChoice): void {
+  async function startSolo(choice: SoloChoice): Promise<void> {
     closeNet();
     lastChoice = choice;
-    useMap(data.maps.some((m) => m.id === choice.map) ? choice.map! : map!.id);
+    const mapId = data.maps.some((m) => m.id === choice.map) ? choice.map! : map!.id;
+    // The baked heightmap has almost always arrived by now; if not, it's a few hundred KB away.
+    await loadHeightfield(mapId);
+    useMap(mapId);
     enterMatch(
       createSoloSession(ctx, {
         era: choice.era,
@@ -807,6 +846,7 @@ function boot(): void {
     const mine = me ? ctx.planeDefs.get(me.planeId) : undefined;
     // Only this match's era models are downloaded.
     const era = mine?.era ?? lastChoice?.era;
+    matchEra = era ?? null;
     if (era) void loadEra(era, data.planes.filter((p) => p.era === era).map((p) => p.id));
     // Weapon models only for eras whose planes carry missiles, rockets or bombs.
     if (era && data.planes.some((p) => p.era === era && (p.missiles.length > 0 || p.ordnance))) void pylonMissiles.load();
@@ -1055,7 +1095,7 @@ function boot(): void {
   const ensureVisual = (p: PlaneState): PlaneVisual => {
     let v = visuals.get(p.id);
     // Rebuilt when the model finishes loading, or when the pilot respawns in a different plane.
-    if (!v || (v.placeholder && isModelReady(p.planeId)) || visualPlane.get(p.id) !== p.planeId) {
+    if (!v || visualOutdated(v, p.planeId) || visualPlane.get(p.id) !== p.planeId) {
       if (v) mapScene.scene.remove(v.root);
       v = createPlaneVisual(p.planeId, p.team);
       visuals.set(p.id, v);
@@ -1379,8 +1419,11 @@ function boot(): void {
         if (netOverlay && Math.floor(clock * 2) !== Math.floor((clock - frameDt) * 2)) netOverlay.update(netLines(session));
       }
       effects.update(frameDt, view.camera.position);
+      ribbons.update(frameDt, view.camera.position);
       mapScene.update(clock, view.camera);
-      view.renderer.render(mapScene.scene, view.camera);
+      // Count every pass of the frame (backdrop, scene, bloom) for the debug draw-call numbers.
+      view.renderer.info.reset();
+      post.render(drawScene);
       fps?.frame(frameDt);
       auto?.frame(frameDt);
     },
@@ -1454,13 +1497,27 @@ function boot(): void {
   const trailAcc = new Map<string, number>();
   const tipLocal = new Vector3();
   const CONTRAIL_ALT_M = 8000;
+  /** Planes whose ribbons are still being fed (they keep their last point at the wingtip until G drops). */
+  const ribbonsLive = new Set<string>();
   function emitTrails(p: PlaneState, visual: PlaneVisual, mesh: Object3D, frameDt: number): void {
     const def = ctx.planeDefs.get(p.planeId);
     if (!def) return;
     const jet = !isProp(def.era) || PLANE_MODELS[p.planeId]?.engine === 'jet';
     const contrail = jet && p.pos[1] > CONTRAIL_ALT_M;
-    const vapour = p.g > (jet ? 6 : 5);
-    if (!contrail && !vapour) return;
+    const threshold = jet ? 6 : 5;
+    const vapour = p.g > threshold;
+    // Wingtip vapour ribbons (Medium/High): fed every frame while pulling, so they curve with the turn.
+    if (!effectsLow && (vapour || ribbonsLive.has(p.id))) {
+      const half = planeSize(def).wingspanM * 0.49;
+      const strength = Math.min(1, Math.max(0, (p.g - threshold) / 2.5));
+      for (const side of [1, -1]) {
+        tipLocal.set(side * half, 0, -0.4).applyMatrix4(mesh.matrixWorld);
+        ribbons.feed(`${p.id}${side}`, tipLocal, strength, frameDt);
+      }
+      if (vapour) ribbonsLive.add(p.id);
+      else ribbonsLive.delete(p.id);
+    }
+    if (!contrail && !(vapour && effectsLow)) return;
     let acc = (trailAcc.get(p.id) ?? 0) + frameDt * (contrail ? 22 : 30);
     const half = planeSize(def).wingspanM * 0.48;
     while (acc >= 1) {
@@ -1476,7 +1533,7 @@ function boot(): void {
           effects.emit('contrail', mesh.position.x - f[0] * 8, mesh.position.y - f[1] * 8, mesh.position.z - f[2] * 8);
         }
       }
-      if (vapour) {
+      if (vapour && effectsLow) {
         for (const side of [1, -1]) {
           tipLocal.set(side * half, 0, -0.5).applyMatrix4(mesh.matrixWorld);
           effects.emit('vapour', tipLocal.x, tipLocal.y, tipLocal.z);
@@ -1492,8 +1549,15 @@ function boot(): void {
   const projectDir = (d: Vec3): { x: number; y: number } | null => toScreen(projVec.copy(view.camera.position).add(vc.set(d[0], d[1], d[2]).multiplyScalar(3000)));
 
   /** The canvas HUD and the bottom-right panel: era HUD, radar scope, RWR, throttle / heat / hull bars. */
+  let cockpitFrame = 0;
+  let cockpitDt = 0;
   function drawCockpit(s: Session, me: PlaneState, def: NonNullable<ReturnType<typeof ctx.planeDefs.get>>, rwr: { angle: number; kind: string }[], frameDt: number, nose: { x: number; y: number } | null): void {
     if (!flightHud || !radarPanel) return;
+    // On Low the two HUD canvases redraw at most 30 times a second (they're whole-screen 2D draws).
+    cockpitDt += frameDt;
+    if (quality === 'low' && cockpitFrame++ % 2 === 1 && cockpitDt < 1 / 20) return;
+    frameDt = cockpitDt;
+    cockpitDt = 0;
     const st = getSettings();
     const params = ctx.params.get(me.planeId)!;
     const compact = env.isTouch && window.innerHeight < 520;
@@ -1642,7 +1706,7 @@ function boot(): void {
       }
       mesh.updateMatrixWorld();
       // Props spin with throttle (a wreck's windmills slowly).
-      if (visual.prop) visual.prop.rotation.z += frameDt * (p.alive ? 12 + 55 * p.throttle : 4);
+      for (const prop of visual.props) prop.rotation.z += frameDt * (p.alive ? 12 + 55 * p.throttle : 4);
       // Muzzle flashes at every gun muzzle while firing.
       if (p.firing && visual.muzzles.length > 0) {
         for (const mz of visual.muzzles) {
@@ -1650,16 +1714,21 @@ function boot(): void {
           effects.emit('muzzle', vc.x, vc.y, vc.z);
         }
       }
-      // Afterburner glow at every exhaust (or the tail when the model has none).
-      if (p.alive && afterburner(p, ctx.planeDefs.get(p.planeId))) {
-        const size = Math.max(0.8, planeSize(ctx.planeDefs.get(p.planeId)!).lengthM / 16);
+      // Afterburner glow at every exhaust (or the tail when the model has none); jets out of afterburner get a
+      // dull heat glow there instead (Day 11), brighter with throttle.
+      const pDef = ctx.planeDefs.get(p.planeId);
+      const lit = p.alive && afterburner(p, pDef);
+      if (p.alive && pDef && (lit || (isJet(pDef) && p.throttle > 0.3 && !effectsLow))) {
+        const size = Math.max(0.8, planeSize(pDef).lengthM / 16);
+        const heat = lit ? 1 : Math.min(0.9, p.throttle * 0.8);
         const add = (x: number, y: number, z: number): void => {
-          const g = burnerPool[burners.length] ?? { x: 0, y: 0, z: 0, size: 1 };
+          const g = burnerPool[burners.length] ?? { x: 0, y: 0, z: 0, size: 1, heat: 1 };
           burnerPool[burners.length] = g;
           g.x = x;
           g.y = y;
           g.z = z;
           g.size = size;
+          g.heat = heat;
           burners.push(g);
         };
         if (visual.exhausts.length > 0) {
@@ -1873,6 +1942,16 @@ function boot(): void {
   });
   document.body.dataset['ready'] = 'true';
 
+  // Day 11 renderer experiment: ?debug=1&webgpuprobe=1 (src/dev/webgpuProbe.ts, loaded only then).
+  if (env.debug && params.get('webgpuprobe') === '1') {
+    loop.stop();
+    void import('./dev/webgpuProbe').then(async ({ runWebGpuProbe }) => {
+      const r = await runWebGpuProbe(view.renderer);
+      (window as unknown as { __webgpuProbe: unknown }).__webgpuProbe = r;
+      console.info('webgpu probe', JSON.stringify(r));
+    });
+  }
+
   if (env.debug) {
     // Test and debugging hooks (Playwright reads these). Only with ?debug=1.
     (window as unknown as { __rvbs: unknown }).__rvbs = {
@@ -1970,6 +2049,20 @@ function boot(): void {
         enemy.protectedFor = 0;
         return enemy.id;
       },
+      /** Solo only: put the player at x, z, `aglM` above the ground, flying toward `headingDeg` (0 = +Z). */
+      placePlayer: (x: number, z: number, aglM: number, headingDeg = 0) => {
+        const me = player();
+        if (!session || session.kind !== 'solo' || !me) return false;
+        const h = (headingDeg * Math.PI) / 180;
+        const fwd = normalize([-Math.sin(h), 0, Math.cos(h)]);
+        me.pos = [x, ctx.terrain.surfaceAt(x, z) + aglM, z];
+        me.quat = quatLookRotation(fwd);
+        me.vel = [fwd[0] * 200, 0, fwd[2] * 200];
+        me.protectedFor = 30;
+        controls.resetTo(me);
+        chase.reset();
+        return true;
+      },
       /** Solo only: put the player `distM` from a ground unit of `kind` (any team), `heightM` up, facing it. */
       placeNearUnit: (kind: string, distM = 700, heightM = 250) => {
         const me = player();
@@ -2040,6 +2133,13 @@ function boot(): void {
       sound: () => ({ state: sound.ctx?.state ?? 'none', unlocked: sound.unlocked, level: sound.level() }),
       drawCalls: () => view.renderer.info.render.calls,
       triangles: () => view.renderer.info.render.triangles,
+      /** Profiling: hide or show one part of the map scene (sky, terrain, forest, clouds, ocean, horizon, far). */
+      part: (name: string, visible: boolean) => {
+        const o = mapScene.parts[name];
+        if (o) o.visible = visible;
+        return Object.keys(mapScene.parts);
+      },
+      forest: () => ({ trees: mapScene.stats.trees(), near: mapScene.stats.nearTrees(), terrainTriangles: mapScene.stats.terrainTriangles() }),
       terrainChunks: () => mapScene.stats.terrainChunks,
       heightAt: (x: number, z: number) => ctx.terrain.heightAt(x, z),
       camera: () => view.camera.position.toArray(),

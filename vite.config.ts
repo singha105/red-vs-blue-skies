@@ -26,5 +26,6 @@ export default defineConfig({
   test: {
     include: ['tests/unit/**/*.test.ts'],
     environment: 'node',
+    setupFiles: ['tests/unit/setupTerrain.ts'],
   },
 });

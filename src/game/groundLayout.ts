@@ -55,16 +55,16 @@ export function groundLayout(map: GameMap, terrain: Terrain): GroundLayout {
   return layout;
 }
 
-/** Flat dry ground: above the water and less than ~10° of slope. */
+/** Flat dry ground: above the water and less than ~15° of slope (eroded terrain since Day 11 is rougher). */
 function flatLand(t: Terrain, x: number, z: number): boolean {
   const h = t.heightAt(x, z);
   if (h < 8) return false;
   const d = 30;
   return (
-    Math.abs(t.heightAt(x + d, z) - h) < 6 &&
-    Math.abs(t.heightAt(x - d, z) - h) < 6 &&
-    Math.abs(t.heightAt(x, z + d) - h) < 6 &&
-    Math.abs(t.heightAt(x, z - d) - h) < 6
+    Math.abs(t.heightAt(x + d, z) - h) < 8 &&
+    Math.abs(t.heightAt(x - d, z) - h) < 8 &&
+    Math.abs(t.heightAt(x, z + d) - h) < 8 &&
+    Math.abs(t.heightAt(x, z - d) - h) < 8
   );
 }
 

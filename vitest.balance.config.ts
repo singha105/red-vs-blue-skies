@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     include: ['tests/balance/**/*.test.ts'],
     environment: 'node',
+    setupFiles: ['tests/unit/setupTerrain.ts'],
     testTimeout: 3_600_000,
   },
 });

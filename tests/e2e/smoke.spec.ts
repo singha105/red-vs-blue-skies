@@ -33,6 +33,7 @@ async function canvasHasPixels(page: Page): Promise<boolean> {
 }
 
 test('title screen and test scene load without errors', async ({ page }, info) => {
+  test.setTimeout(60_000); // software-rendered: the Day 11 scene is slow to draw here
   const errors = watchErrors(page);
   await page.goto('./');
   await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');

@@ -103,6 +103,8 @@ export interface MissileContext {
   planeDefs: Map<string, Plane>;
   surfaceAt(x: number, z: number): number;
   random(): number;
+  /** The map's sun (IR seekers looking into it lose the target); SUN_DIR when missing. */
+  sunDir?: Vec3;
 }
 
 export type MissileEvent =
@@ -130,7 +132,7 @@ export function heatOf(p: PlaneState, def: Plane | undefined): number {
 }
 
 /** Can an IR seeker at `from`, looking along `look`, see `target`'s heat? (null = yes, else the reason). */
-export function irBlocked(from: Vec3, look: Vec3, target: PlaneState, def: Plane | undefined, m: Missile, cls: MissileClass, coneDeg: number, inFlight = false): string | null {
+export function irBlocked(from: Vec3, look: Vec3, target: PlaneState, def: Plane | undefined, m: Missile, cls: MissileClass, coneDeg: number, inFlight = false, sun: Vec3 = SUN_DIR): string | null {
   const los = sub(target.pos, from);
   const d = len(los);
   if (angleBetween(look, los) > coneDeg * DEG) return 'cone';
@@ -140,7 +142,7 @@ export function irBlocked(from: Vec3, look: Vec3, target: PlaneState, def: Plane
   if (cls.aspect === 'rear' && tailAngle > (inFlight ? REAR_ASPECT_FLIGHT_DEG : REAR_ASPECT_DEG) * DEG) return 'aspect';
   const aspectFactor = cls.aspect === 'rear' ? 1 : 0.6 + 0.4 * ((1 + Math.cos(tailAngle)) / 2);
   if (d > m.maxRangeM * Math.min(1.2, heatOf(target, def)) * aspectFactor) return 'range';
-  if (angleBetween(los, SUN_DIR) < SUN_CONE_DEG * DEG) return 'sun';
+  if (angleBetween(los, sun) < SUN_CONE_DEG * DEG) return 'sun';
   return null;
 }
 
@@ -167,9 +169,9 @@ export function radarBlocked(from: Vec3, look: Vec3, target: PlaneState, rangeM:
 }
 
 /** Can this plane's seeker for `m` see the target right now? Used for locking and by the launcher's radar. */
-export function seekerSees(shooter: PlaneState, target: PlaneState, m: Missile, cls: MissileClass, targetDef: Plane | undefined): boolean {
+export function seekerSees(shooter: PlaneState, target: PlaneState, m: Missile, cls: MissileClass, targetDef: Plane | undefined, sun: Vec3 = SUN_DIR): boolean {
   const nose = rotate(shooter.quat, FORWARD);
-  if (cls.seeker === 'ir') return irBlocked(shooter.pos, nose, target, targetDef, m, cls, m.coneDeg) === null;
+  if (cls.seeker === 'ir') return irBlocked(shooter.pos, nose, target, targetDef, m, cls, m.coneDeg, false, sun) === null;
   return radarBlocked(shooter.pos, nose, target, m.maxRangeM, RADAR_CONE_DEG, targetDef) === null;
 }
 
@@ -184,7 +186,7 @@ function pickMount(shooter: PlaneState, def: Plane, target: PlaneState, mc: Miss
     const m = mc.missileDefs.get(mount.type);
     const cls = m ? mc.missileClasses.get(m.class) : undefined;
     if (!m || !cls) return;
-    if (!seekerSees(shooter, target, m, cls, mc.planeDefs.get(target.planeId))) return;
+    if (!seekerSees(shooter, target, m, cls, mc.planeDefs.get(target.planeId), mc.sunDir)) return;
     // Radar missiles need the plane's own radar locked on the target (planes without a radar block keep the
     // missile's own seeker test, which is how Day 7 worked).
     if (cls.seeker === 'radar' && def.radar && shooter.radarLock !== target.id) return;
@@ -346,7 +348,7 @@ function track(w: MissileWorld, mc: MissileContext, ms: MissileState, m: Missile
   const look = len(ms.vel) > 1 ? ms.vel : rotate(t.quat, FORWARD);
   let tracked: boolean;
   if (cls.seeker === 'ir') {
-    tracked = irBlocked(ms.pos, look, t, tDef, m, cls, Math.max(MISSILE_GIMBAL_DEG, m.coneDeg), true) === null;
+    tracked = irBlocked(ms.pos, look, t, tDef, m, cls, Math.max(MISSILE_GIMBAL_DEG, m.coneDeg), true, mc.sunDir) === null;
   } else {
     const launcher = w.planes.find((p) => p.id === ms.owner);
     // A launcher with a radar must hold its radar lock on the target and actually see it this tick (a lock

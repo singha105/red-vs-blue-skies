@@ -15,7 +15,8 @@ export const TIER1: Record<string, string> = {
   'Cold War': 'MiG-21F-13',
   Modern: 'MiG-29A',
 };
-export const flags = (extra = ''): string => `debug=1&gfx=low${PUBLIC ? '' : '&signal=localhost:9187'}${extra}`;
+// renderscale: three software-rendered pages share one browser; a quarter of the pixels keeps them all moving.
+export const flags = (extra = ''): string => `debug=1&gfx=low&renderscale=0.5${PUBLIC ? '' : '&signal=localhost:9187'}${extra}`;
 
 export const LAPTOP = { viewport: { width: 960, height: 540 } };
 // A small phone in landscape (Chromium with touch): 667 × 375 like an iPhone SE.

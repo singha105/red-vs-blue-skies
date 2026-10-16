@@ -25,10 +25,16 @@ const ready = Date.now() - t0;
 await page.waitForFunction(() => document.querySelector('.title') !== null);
 await page.waitForTimeout(1500);
 console.log(`first load (Slow 4G, 4x CPU): title ready ${(ready / 1000).toFixed(2)} s, ${(bytes / 1024).toFixed(0)} KB over the wire by then+1.5 s`);
+// Day 11: first match playable, still on Slow 4G: start the solo match (its map's heightmap and the era's plane
+// models download now) and wait until the player's plane is in the air with its model.
+const t1 = Date.now();
+await page.evaluate((c) => window.__rvbs.startSolo(c), { era, planeId, map, mode });
+await page.waitForFunction(() => window.__rvbs.mode() === 'match' && window.__rvbs.models().some((m) => !m.placeholder), null, { timeout: 60_000, polling: 100 });
+const matchMs = Date.now() - t1;
+console.log(`first match playable (Slow 4G, 4x CPU): ${((ready + 1500 + matchMs) / 1000).toFixed(2)} s from opening the page (match start took ${(matchMs / 1000).toFixed(2)} s), ${(bytes / 1024).toFixed(0)} KB in all`);
 await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
 
-// 2. A fight at low graphics with 4× CPU throttling.
-await page.evaluate((c) => window.__rvbs.startSolo(c), { era, planeId, map, mode });
+// 2. A fight at low graphics with 4× CPU throttling (the match is already running).
 await page.waitForTimeout(20_000);
 // GC pauses over 8 s (trace events), then the allocation sample over the next 8 s.
 const gc = { minor: 0, major: 0, ms: 0, worst: 0 };

@@ -1,0 +1,20 @@
+{
+  "mountain_valley": {
+    "res": 1025,
+    "minM": -15,
+    "maxM": 1588,
+    "file": "terrain/mountain_valley.png"
+  },
+  "island_chain": {
+    "res": 513,
+    "minM": -106,
+    "maxM": 612,
+    "file": "terrain/island_chain.png"
+  },
+  "desert_mesas": {
+    "res": 513,
+    "minM": 40,
+    "maxM": 654,
+    "file": "terrain/desert_mesas.png"
+  }
+}

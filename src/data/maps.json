@@ -16,7 +16,11 @@
       [-3000, 2500],
       [0, -1500],
       [3000, 2500]
-    ]
+    ],
+    "sun": { "azimuthDeg": 43.2, "elevationDeg": 48.7 },
+    "snowLineM": 9999,
+    "forestColor": "#2f5d34",
+    "horizonRangeM": 500
   },
   {
     "id": "mountain_valley",
@@ -26,7 +30,7 @@
     "seed": 4242,
     "terrain": "canyon",
     "description": "A canyon you can fly through to escape missiles.",
-    "colors": { "skyTop": "#3a6ea5", "skyHorizon": "#d6e6ef", "water": "#3c6e71", "sand": "#b9a77f", "grass": "#4f7a3a", "rock": "#8a8178" },
+    "colors": { "skyTop": "#3a6ea5", "skyHorizon": "#d6e6ef", "water": "#3c6e71", "sand": "#b9a77f", "grass": "#557f3d", "rock": "#8a8d8f" },
     "spawns": {
       "red": [-6500, 2200, 0],
       "blue": [6500, 2200, 0]
@@ -35,7 +39,11 @@
       [-3500, 0],
       [0, 0],
       [3500, 0]
-    ]
+    ],
+    "sun": { "azimuthDeg": 135, "elevationDeg": 38 },
+    "snowLineM": 1250,
+    "forestColor": "#1f4a2c",
+    "horizonRangeM": 2600
   },
   {
     "id": "desert_mesas",
@@ -54,7 +62,11 @@
       [-3000, -3000],
       [0, 0],
       [3000, 3000]
-    ]
+    ],
+    "sun": { "azimuthDeg": 210, "elevationDeg": 55 },
+    "snowLineM": 9999,
+    "forestColor": "#4f5a2e",
+    "horizonRangeM": 900
   },
   {
     "id": "carrier_strike",
@@ -73,6 +85,10 @@
       [-4000, 0],
       [0, 0],
       [4000, 0]
-    ]
+    ],
+    "sun": { "azimuthDeg": 70, "elevationDeg": 42 },
+    "snowLineM": 9999,
+    "forestColor": "#2f5d34",
+    "horizonRangeM": 0
   }
 ]

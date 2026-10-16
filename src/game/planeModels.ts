@@ -6,7 +6,11 @@ import raw from '../data/planeModels.json';
 import type { Vec3 } from './math';
 
 export interface PlaneModelInfo {
+  /** Detailed model (Medium/High), the low-poly LOD (Low, and far away), and the baked detail texture. */
   file: string;
+  lodFile?: string;
+  detailFile?: string;
+  lodTris?: number;
   lengthM: number;
   wingspanM: number;
   heightM: number;

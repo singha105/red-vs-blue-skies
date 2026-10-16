@@ -369,6 +369,14 @@ export function validateGameData(raw: RawData): ValidationResult {
     if (colors) {
       for (const k of ['skyTop', 'skyHorizon', 'water', 'sand', 'grass', 'rock']) c.str(colors, k, `${p}.colors`, HEX);
     }
+    const sun = c.obj(o['sun'], `${p}.sun`);
+    if (sun) {
+      c.num(sun, 'azimuthDeg', `${p}.sun`, -360, 360);
+      c.num(sun, 'elevationDeg', `${p}.sun`, 10, 85);
+    }
+    c.num(o, 'snowLineM', p, 0, 20000);
+    c.str(o, 'forestColor', p, HEX);
+    c.num(o, 'horizonRangeM', p, 0, 5000);
     const spawns = c.obj(o['spawns'], `${p}.spawns`);
     if (spawns) {
       c.vec(spawns['red'], `${p}.spawns.red`, 3);

@@ -3,26 +3,45 @@ import type { GraphicsLevel } from './settings';
 
 export type QualityLevel = 'low' | 'medium' | 'high';
 
+/**
+ * Every visual feature has a switch here (Day 11):
+ * Low (phones): tone mapping, haze, impostor trees only, palette-coloured terrain, simple water, no shadows,
+ * no bloom, no image-based light. Medium: textured terrain, near 3D trees, bloom, sky light (IBL).
+ * High: everything, plus detail normals, reflective water, player-following shadows, denser forests, more clouds.
+ */
 export interface QualityPreset {
   /** Upper bound on devicePixelRatio. */
   maxPixelRatio: number;
   shadows: boolean;
   clouds: number;
-  /** Camera far plane and fog end, metres. */
+  /** Camera far plane, metres; the haze is tuned to it. */
   drawDistance: number;
   /** Multiplier on terrain level-of-detail switch distances. */
   lodScale: number;
+  /** Poly Haven textures on the terrain (else palette colours with noise). */
+  terrainTextures: boolean;
+  detailNormals: boolean;
+  /** Tree density and distances (forest.ts FOREST_TIERS). */
+  forest: 'low' | 'medium' | 'high';
+  /** Image-based light from the HDRI. */
+  ibl: boolean;
+  reflectiveWater: boolean;
+  bloom: boolean;
+  /** Distant mountain ranges on the horizon. */
+  horizon: boolean;
 }
 
 export const QUALITY: Record<QualityLevel, QualityPreset> = {
-  low: { maxPixelRatio: 1, shadows: false, clouds: 35, drawDistance: 7000, lodScale: 0.6 },
-  medium: { maxPixelRatio: 1.5, shadows: false, clouds: 90, drawDistance: 10500, lodScale: 1 },
-  high: { maxPixelRatio: 2, shadows: true, clouds: 150, drawDistance: 14000, lodScale: 1.5 },
+  low: { maxPixelRatio: 1, shadows: false, clouds: 35, drawDistance: 7000, lodScale: 0.6, terrainTextures: false, detailNormals: false, forest: 'low', ibl: false, reflectiveWater: false, bloom: false, horizon: true },
+  medium: { maxPixelRatio: 1.5, shadows: false, clouds: 90, drawDistance: 10500, lodScale: 1, terrainTextures: true, detailNormals: false, forest: 'medium', ibl: true, reflectiveWater: false, bloom: true, horizon: true },
+  high: { maxPixelRatio: 2, shadows: true, clouds: 150, drawDistance: 14000, lodScale: 1.5, terrainTextures: true, detailNormals: true, forest: 'high', ibl: true, reflectiveWater: true, bloom: true, horizon: true },
 };
 
 /** Starting level before "auto" has measured anything. */
-export function initialLevel(setting: GraphicsLevel, isTouch: boolean): QualityLevel {
+export function initialLevel(setting: GraphicsLevel, isTouch: boolean, automated = false): QualityLevel {
   if (setting !== 'auto') return setting;
+  // Automated test browsers render in software: start them on Low (tests that need a tier pass ?gfx=).
+  if (automated) return 'low';
   return isTouch ? 'low' : 'medium';
 }
 
