@@ -1,7 +1,7 @@
 {
   "name": "red-vs-blue-skies",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
     "e2e": "playwright test",
     "icons": "node tools/make-icons.mjs",
     "models": "node tools/build-models.mjs",
+    "balance": "node tools/balance.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project demo-rvbs \"vitest run --config vitest.rules.config.ts\"",
     "rules:deploy": "firebase deploy --only firestore:rules",
     "test:profile": "firebase emulators:exec --only auth,firestore --project demo-rvbs \"EMULATORS=1 playwright test profile.spec\""

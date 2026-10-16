@@ -3,6 +3,68 @@
 Live: https://singha105.github.io/red-vs-blue-skies/ (`?debug=1` shows the FPS counter)
 Repo: https://github.com/singha105/red-vs-blue-skies
 
+## Day 10: Performance, mobile QA, balance, launch (2026-10-15)
+
+### Done
+
+- **Bot tournament** (`npm run balance`, `tests/balance/`): 200 seeded 1v1 duels per adjacent tier pair in every era (54 pairs, 10,800 duels, ~40 s with one process per era). Before: 33 of 54 pairs outside 55–80% (10% to 98%, several inverted). Fixes: a bot stalemate breaker (jets circled each other for the whole 3 minutes), three tier swaps (Spitfire Mk XIV ↔ Me 262, MiG-19 ↔ F-8, Rafale ↔ Typhoon), and an automatic tuner on HP and turn rate only. **After, on a seed the tuner never saw: every pair 56.3–74.2%.** A first fresh-seed check had four pairs at 49.5–53%, so I re-tuned with 400 duels per round and aimed at 66%. Everything is in `docs/BALANCE_REPORT.md`.
+- **Tutorial** (`src/app/tutorial.ts`, `src/render/tutorialProps.ts`, `src/ui/tutorialPanel.ts`): offered on first launch, about 70 s: four rings, three balloons (with the lead diamond), an R-73 at a target drone, then flares against an enemy K-13 from behind. Instructions in each device's words, Skip, and Settings → Play the tutorial again. The plane is repaired and re-armed every step; a crash restarts the step. A unit test flies the whole thing with the autopilot.
+- **Accessibility**: colour-blind team colours (blue and orange: plane paint, ground pennants, zones, markers, minimap, kill feed, scoreboard; the logo keeps red), HUD size 100–160%, invert pitch (mouse, drag, stick, arrows). Every warning sound already has a visual (lock box and ring for the seeker tones, the RWR display, the MISSILE launch warning with its counter, stall/edge text, damage arrows and hit markers); Settings now says so.
+- **Mobile QA** (researched current iOS Safari / Android Chrome quirks, see below): `tests/e2e/mobile.spec.ts` audits five landscape phones (667×375 to 932×430) on the title, settings, How to play, setup and the flight HUD. It found 30+ text styles under 14 px; all are 14 px or more now. No overlapping or off-screen buttons. 30 fps cap option; the Screen Wake Lock keeps the screen on in rooms and matches; on `visibilitychange` held keys and touch buttons are released and sound is suspended; a phone that drops out while locked rejoins its room by itself ("Reconnecting to room …"); a phone host sees a 9 s warning at match start that locking ends the match; a host's hidden tab keeps the match running on a timer instead of freezing everyone. PWA (manifest, maskable icon, apple-touch-icon, viewport-fit=cover, home-screen metas) checked; service worker cache bumped to `rvbs-v2`.
+- **Error overlay**: uncaught errors and rejections show "Something went wrong" with **Copy error** (version, screen, page, browser, window size, stack), Reload and Keep playing; later errors bump a count.
+- **How to play** (title): Phone / Keyboard + mouse / Gamepad / Modes + unlocks / Hosting / Credits, opening on your device's tab. README rewritten (controls for every device, hosting, unlocks, settings, credits). **v1.0.0** on the title screen; CHANGELOG.md; docs/GAME_NIGHT.md.
+- **Bug bash** (PROGRESS known issues, worst first):
+  - Fixed: convoys drove through each other (trucks at 32 km/h and the tank at 26 km/h shared one road; convoys now move at the slowest vehicle's speed and keep 8 m right of the road, so the column passes itself at the ends; tested at every land map for 10 minutes); Island Chain's red half had no convoy (shorter roads allowed on small islands; every land map now has two per team); the host tab had to stay visible (now keeps running); moving any Settings slider restarted the automatic graphics test; text under 14 px on phones; phones dropping out for good after a lock.
+  - Not changed (design limits, not bugs; no new features today): ground units don't collide and ships don't wake; bombers bomb by flying over and their gunners have all-round arcs; rockets and bombs only hurt ground targets; engine sound for the three nearest planes, no doppler; a wreck still falling at respawn explodes mid-air; notching is all-or-nothing; friends-grade anti-cheat; no offline unlock purchases.
+  - No friends' bug reports yet (the prompt's notes were empty): game night is the next step.
+
+### Performance
+
+Phone proxy (`node tools/perf/profile.mjs`): GPU Chromium at 844×390 @3x, 4× CPU throttling, low graphics.
+
+| | Before | After |
+| --- | --- | --- |
+| First load (Slow 4G 1.6 Mbps / 150 ms, 4× CPU, cold cache) | 3.29 s | 3.10 s (target < 5 s) |
+| Frame rate, Ground Strike over Mountain Valley (heaviest scene) | 60 fps | 60 fps (p99 16.8 ms) |
+| GC pauses per 8 s of that fight | 54.1 ms (0.68%), worst 7.2 ms | 39.8 ms (0.50%), worst 3.9 ms |
+| Garbage allocated | ~15.3 MB/s | ~13.8 MB/s |
+| Draw calls, perf spec (high laptop · low phone · Ground Strike · Bomber Escort) | 102 · 78 · 125 · – (Day 9) | 100 · 70 · 125 · 32 (budget 150) |
+
+What changed: bullets move in place with two scratch vectors (no arrays per bullet per tick), the swept sphere test is scalar, bullets and bot look-aheads skip the terrain lookup above the map's highest ground (`maxSurfaceM`), missile seekers and auto-targeting don't allocate, and the HUD writes styles and classes only when they change, with the minimap at 10 Hz. Most of what's left is the simulation's tuple math (`rotate`, `normalize`) making short-lived vectors; young-generation GC handles it in under 0.5% of the time, so I left it.
+
+Sizes: main bundle 993 KB (278 KB gzip), PeerJS 24 KB gzip and Firebase 63 KB gzip load only when needed; models 844.5 KB in all, one era's 115–142 KB per match (lazy, unchanged since Day 9); **whole site 2.4 MB** (budget 10 MB). Code-splitting the main bundle further wasn't needed for the 5 s target.
+
+### Mobile quirks looked up (2026-10-15)
+
+- iOS Safari kills a tab over a per-process memory budget (WebKit bug 300782, March 2026 comment), and then may reload it in a loop: keep GPU memory small. The game uses no image textures (vertex colours only) and one canvas, so it stays far under that; one map scene per voted map is kept (up to 4).
+- iOS 26.0–26.1 home-screen apps lose Web Audio after being reopened (WebKit bug 295518, reported fixed in 26.2): GAME_NIGHT tells phone players to update or play in Safari.
+- iOS suspends WebRTC when the phone locks or Safari goes to the background: hence the automatic rejoin and the phone-host warning.
+- Chrome exempts tabs with WebRTC connections from heavy background timer throttling, so a hidden host keeps simulating.
+
+### Tests
+
+- Vitest: 166 (+11: tutorial ring/balloon detection, an autopilot flies the whole tutorial, every step reachable; tournament determinism and pair counts; every map's terrain under its ceiling; Day 10 settings; capped auto quality; two convoys per team on every land map; convoy vehicles never closer than 9 m over 10 minutes). Firestore rules: 10.
+- Playwright locally: **47 passed**, 21 skipped (device-specific halves, the emulator and full-match specs). New: `mobile.spec` (five phone sizes), `day10.spec` (crash card with Copy error, the tutorial's four steps, Skip and replay, colour-blind palette, HUD size, 30 fps cap, invert pitch on touch), and `multiplayer.spec` now locks the phone mid-match and checks it rejoins with a new seat that the host sees. `npm run test:profile` on the emulators: 4 passed. Perf: 60 fps on all four profiles (100 / 70 / 125 / 32 draw calls).
+- Balance: `npm run balance` with SEED=4242 (the after table).
+
+### Deploy
+
+- Pushed; deploy and live-site test run below.
+
+### Known issues
+
+- **TURN is still not configured**: phones on mobile data may not connect (GAME_NIGHT says to use Wi-Fi).
+- A phone that rejoins mid-match comes back as a new player: its RP from before the lock is saved, but the rules allow one result per player per match, so the rest of that match isn't.
+- A phone host that locks its screen still ends the match (iOS suspends WebRTC); the lobby and a match-start notice warn.
+- Balance comes from normal-difficulty 1v1 bot duels; 10 v 10 fights and human skill will shift it. HP now spreads more within an era (Modern 63–300); missiles still remove a percentage of max HP.
+- Mode numbers (AA strength, ground-unit HP, ticket rates) were not re-tuned; the tournament covers plane-vs-plane only. Day 9's headless mode matches still capture zones, destroy targets and shoot down bombers.
+- The simulation still allocates ~14 MB/s of short-lived vectors (0.5% of time in GC on the phone proxy).
+- Design limits listed in the bug bash above; Day 8's friends-grade anti-cheat.
+
+### Still to do for Day 10's done-when (the user's game night)
+
+- A full 10-minute match with at least 6 real players including 2 phones, without a crash or desync: follow docs/GAME_NIGHT.md (laptop host on Wi-Fi, phones on Wi-Fi, TDM on Island Chain in WW1 first). Also still owed by hand: Day 8's cross-device RP check and Day 9's sound on a real iPhone.
+
 ## Day 9: Remaining planes, maps, modes, sound, effects (2026-10-15)
 
 ### Done
@@ -69,7 +131,7 @@ A match downloads one era's models (115–142 KB), its bomber in Bomber Escort (
 
 ### Next steps (Day 10)
 
-- Performance, mobile QA on real phones (sound on a real iPhone), balance (AA strength, unit HP, ticket rates), launch.
+- Performance, mobile QA on real phones (sound on a real iPhone), balance (AA strength, unit HP, ticket rates), launch. Done, see Day 10 (plane balance by bot tournament; ground-target numbers unchanged).
 
 ## Day 8: Progression, unlocks, Firebase (2026-10-15)
 

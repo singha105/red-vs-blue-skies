@@ -26,6 +26,8 @@ Always read docs/PROGRESS.md first. It says where the last session stopped.
 | `npm run test:profile` | Starts the auth + Firestore emulators and runs `profile.spec` (RP saved, research, offline queue, Google linking on a second device) |
 | `npm run rules:deploy` | Deploy `firestore.rules` to the real project (`npx firebase login` first, with the Google account that owns the project) |
 | `npm run icons` | Regenerate the PWA roundel icons in `public/icons/` |
+| `npm run balance` | Bot tournament: 200 1v1 duels per adjacent tier pair in every era (one Vitest process per era, ~40 s), prints the table. `-- before` replays planes.json from git HEAD, `-- tune` runs the HP/turn-rate tuner and writes planes.json. `SEED`, `DUELS`, `ERAS` env. Results in `tests/balance/{before,after,out}/`, write-up in `docs/BALANCE_REPORT.md` |
+| `node tools/perf/profile.mjs [era plane map mode]` | Phone-proxy profile against a running `npx vite preview --port 4187`: first load on Slow 4G + 4× CPU, frame times, draw calls, GC pauses, top allocation sites (build with `--minify false` to read names) |
 | `npm run models` | Clean rebuild of every plane spec + weapon with headless Blender, meshopt-compress with gltf-transform, write `public/models/<era>/<id>.glb`, `public/models/manifest.json`, `src/data/planeModels.json` and previews; prints sizes. `npm run models -- f4e weapons` rebuilds only some |
 
 The Mac has 8 GB RAM: don't leave dev servers running, and stop any server you start when you're done.
@@ -38,7 +40,8 @@ src/
   core/          loop (fixed 60 Hz), desktop input, playerControls (aim state → ControlInput),
                  quality presets + auto picker, settings (localStorage), env (URL flags),
                  sound (procedural Web Audio: engines, guns, hits, explosions, UI; buses + iPhone unlock),
-                 audio (cockpit seeker/warning tones on the sound engine's context)
+                 audio (cockpit seeker/warning tones on the sound engine's context), wakeLock (screen on in rooms
+                 and matches)
   game/          simulation: plain serializable data, NO Three.js imports
                  math, terrain (seeded heightmap), flight (energy model), autopilot (mouse-aim PD),
                  controls (ControlInput), ballistics (guns, bullets, hit spheres), missiles (seekers, PN
@@ -57,15 +60,16 @@ src/
   profile/       progress (Day 8): model (pure: profile, results, queue, leaderboard ranking), cloud (Firebase
                  Auth + Firestore Lite, lazy-loaded), store (cached profile, offline queue, sync), config (web config)
   app/           session.ts: what the renderer needs from a match (solo or networked); weapons.ts: cockpit
-                 missile state (lock box, RWR, warnings, tones) and target picking
+                 missile state (lock box, RWR, warnings, tones) and target picking; tutorial.ts: the first-launch
+                 lesson (rings, balloons, drone, flares) as a solo Session with a script
   net/           multiplayer: transport (interface), peerTransport (PeerJS, lazy-loaded), fakeTransport
                  (in-memory, delay/loss, also the host's loopback), protocol (binary input/snapshot),
                  room (host-owned lobby state machine, pure), hostServer (room + authoritative match),
                  clientSession (prediction + interpolation, room/results/chat), roomCode, ice, hostAdvice
-  ui/            HTML/CSS overlays: title, soloSetup, settingsPanel, HUD, results, touch controls,
+  ui/            HTML/CSS overlays: title, howToPlay, tutorialPanel, soloSetup, settingsPanel, HUD, results, touch controls,
                  netScreens (callsign, host/join), roomScreens (lobby, vote, teams, plane select, results,
                  chat), respawn (plane picker with SP costs), research (unlock trees), leaderboard, rotate
-                 prompt, error overlay, FPS
+                 prompt, error overlay (data errors + the "Copy error" crash card), FPS
   data/          JSON data files + types.ts + validate.ts (checked at startup); objectives.json holds ground
                  units, AA, bomber gunners, rockets/bombs and the AI bombers
   styles.css     global styles; fonts.css declares the self-hosted fonts
@@ -82,10 +86,11 @@ tools/
   make-icons.mjs icon generator
 tests/
   unit/          Vitest
+  balance/       bot tournament + tuner (npm run balance; not part of npm test)
   rules/         Firestore rules tests (emulator, npm run test:rules)
   e2e/           Playwright
   screenshots/   Playwright output (committed so changes are visible in diffs)
-docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md
+docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md, BALANCE_REPORT.md, GAME_NIGHT.md, MULTIPLAYER_TEST.md
 ```
 
 ## Coding conventions
@@ -143,6 +148,8 @@ docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md
 - Touch: drag the right side to aim, a quick tap on an enemy picks it as the missile target, throttle slider on the left, Fire/Missile/Flare by the left thumb (the Missile button shows a lock ring), Level/Look top right.
 - Gamepad: left stick aim, right stick look, RT/LT throttle, A fire, B missile, X flare, RB next target, Y level.
 - Tab (or the Scores button) shows the scoreboard.
+- Settings (Day 10): 30 fps cap (`cap30`, the loop skips display frames; auto quality then never picks high), colour-blind team colours (`setTeamPalette` in planeMesh.ts repaints TEAM materials and sets `html[data-teams]` for CSS `--red`/`--red-hi`), HUD size (`--hud-scale`, CSS `scale` on the anchored HUD panels, 1–1.6 so text stays ≥ 14 px), invert pitch (`controls.invertPitch`).
+- Tutorial: offered on first launch (`rvbs.tutorial.v1` in storage; never to automated browsers unless `?tutorial=1`, never with `?room=`). Hooks: `startTutorial()`, `tutorial()`, `tutorialNext()`. Its planes are `z1`/`z2`: **missile target ids starting with "d" are decoys** (missiles.ts), so never give a plane such an id.
 - `?debug=1` FPS counter plus Firestore reads/writes (this match and this session), `window.__rvbs` test hooks (`startSolo({era, planeId, map, mode})`, `objectives()`, `sound()`, `placeNearUnit(kind)`…); all planes selectable **only on localhost** (`&locks=1` keeps the real unlocks); with debug, `?timescale=N` runs the sim N× faster and `?matchtime=S` shortens the match. `?gfx=low|medium|high` forces a quality level.
 - With `?debug=1`: `&emu=1` (localhost) uses the Firebase emulators, `&offline=1` pretends Firebase is unreachable. Automated browsers (Playwright) never touch the real Firebase unless the page has `&fb=1`.
 - `?room=CODE` opens the callsign step for that room (the lobby's share link and QR use it). With `?debug=1`, a network match shows ping, loss, snapshots/s and KB/s in and out, and `?signal=host:port` uses a local PeerJS signaling server.
@@ -171,6 +178,15 @@ The service worker (`public/sw.js`) is network-first, so a normal reload picks u
 - AI bombers are ordinary planes with pilot `role: 'bomber'` (ids `B1`…), added after the players; they never respawn on their own, don't count as seats, and are left out of team BR, scoreboards and results. `isBomber(world, id)`.
 - Network: the `start` message carries `mode`, the host's ground `layout` and the `escort` team; snapshots carry zone progress/owner and one byte per unit; `drop` events let clients fly rockets and bombs cosmetically.
 - Sound: one AudioContext (`createSound`), buses engine / weapons / cockpit / ui with sliders in Settings; unlocked on the first pointerdown/touchend/keydown with a silent buffer; `navigator.audioSession.type = 'playback'` where supported.
+
+## Day 10 notes
+
+- Balance is data: after editing planes.json run `npm run balance` and keep every adjacent pair 55–80% (the tuner aims at ~65% because one 200-duel run has ±3.5% noise). Only HP and turn rate are tuned; real speeds, guns and missiles stay.
+- Bots break off a turning stalemate (12 s on the same close target with no shot, target neither fleeing nor pointing at them) and extend for 10 s (`STALEMATE_S`, `EXTEND_S` in bots.ts).
+- Convoys move at their slowest vehicle's speed (`unitSpeedMs`) and keep 8 m right of the road, so the column never overlaps itself.
+- Background/foreground: on `visibilitychange` hidden, held keys and touch buttons are released and sound is suspended; a host's hidden tab keeps stepping on a timer (`loop.keepRunningHidden`); a client that lost the connection while hidden (within 20 s) rejoins its room automatically (`joinRoom(code, true)`; test hook `lockAndDrop()`).
+- Errors: `installErrorOverlay` catches `error` and `unhandledrejection` (ignoring ResizeObserver, cross-origin "Script error." and extensions) and shows one card; `body[data-screen]` names the screen in the report.
+- `tests/e2e/mobile.spec.ts` audits five landscape phone sizes for text under 14 px, overlapping or off-screen buttons and touch targets; `day10.spec.ts` covers the crash card, tutorial and settings.
 
 ## Tools on this machine
 
