@@ -5,6 +5,7 @@ import type { ControlInput } from './controls';
 import { neutralInput } from './controls';
 import { edgeTurnInput, flightParams, stepPlane, stepWreck, type FlightParams, type PlaneState, type Team } from './flight';
 import { normalize, quatLookRotation, scale, type Vec3 } from './math';
+import { stepRadar } from './radar';
 import { stepMissiles, stepWeapons, type Decoy, type MissileContext, type MissileEvent, type MissileState } from './missiles';
 import { createTerrain, type Terrain } from './terrain';
 import type { GroundLayout } from './groundLayout';
@@ -287,6 +288,17 @@ export function spawnPlane(
     rockets: def.ordnance?.rockets ?? 0,
     bombs: def.ordnance?.bombs ?? 0,
     ordnanceCooldown: 0,
+    wep: false,
+    engineHeat: 0,
+    overheatFor: 0,
+    airbrake: false,
+    flaps: false,
+    radarOn: Boolean(def.radar),
+    radarMode: 'search',
+    radarRange: 1,
+    radarLock: null,
+    radarLostFor: 0,
+    secondary: -1,
   };
   world.tiers[opts.id] = def.tier;
   const existing = world.planes.findIndex((p) => p.id === opts.id);
@@ -421,6 +433,7 @@ export function stepWorld(world: WorldState, ctx: WorldContext, inputs: Record<s
       if (fireGuns(plane, def, fc, dt, world.bullets) > 0) plane.protectedFor = 0;
       plane.firing = plane.ammo.some((a) => a > 0);
     }
+    stepRadar(plane, def, input, world.planes, ctx.planeDefs, dt);
     const before = world.events.length;
     stepWeapons(world, mc, plane, input, dt, missileEvents);
     // Launching a missile gives up spawn protection too.

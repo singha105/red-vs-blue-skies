@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "icons": "node tools/make-icons.mjs",
+    "docs:readme": "node tools/sync-readme.mjs",
     "models": "node tools/build-models.mjs",
     "balance": "node tools/balance.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project demo-rvbs \"vitest run --config vitest.rules.config.ts\"",

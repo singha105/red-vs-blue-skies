@@ -2,7 +2,7 @@
 // radar-warning display (threat directions around your plane), and the red launch warning that also says
 // which counter to use. Lives inside the HUD element; DOM writes only happen when a shown value changes.
 
-export type ThreatKind = 'spike' | 'missile';
+export type ThreatKind = 'spike' | 'lock' | 'missile';
 
 export interface WeaponsFrame {
   /** The plane you're locking (or have picked), on screen. `locked` once the seeker tone goes steady. */

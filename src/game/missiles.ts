@@ -117,8 +117,8 @@ const angleBetween = (a: Vec3, b: Vec3): number => {
   return l < 1e-12 ? 0 : Math.acos(clamp((a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / l, -1, 1));
 };
 
-/** Jets light the afterburner at full throttle. */
-export const afterburner = (p: PlaneState, def: Plane | undefined): boolean => Boolean(def && isJet(def) && p.throttle >= 0.95);
+/** Jets light the afterburner with WEP at full throttle. */
+export const afterburner = (p: PlaneState, def: Plane | undefined): boolean => Boolean(def && isJet(def) && p.wep);
 export const isJet = (def: Plane): boolean => def.era === 'early_jets' || def.era === 'cold_war' || def.era === 'modern';
 
 /** Engine heat as an IR seeker sees it: 0.55 idle … 1 full throttle, ×1.4 with afterburner. */
@@ -174,16 +174,20 @@ export function seekerSees(shooter: PlaneState, target: PlaneState, m: Missile, 
 }
 
 /** The mount to lock with: radar beyond the IR missiles' reach, IR up close; only mounts with missiles left. */
-function pickMount(shooter: PlaneState, def: Plane, target: PlaneState, mc: MissileContext): number {
+function pickMount(shooter: PlaneState, def: Plane, target: PlaneState, mc: MissileContext, only = -1): number {
   const d = len(sub(target.pos, shooter.pos));
   let best = -1;
   let bestScore = -Infinity;
   def.missiles.forEach((mount, i) => {
     if ((shooter.missiles[i] ?? 0) <= 0) return;
+    if (only >= 0 && i !== only) return;
     const m = mc.missileDefs.get(mount.type);
     const cls = m ? mc.missileClasses.get(m.class) : undefined;
     if (!m || !cls) return;
     if (!seekerSees(shooter, target, m, cls, mc.planeDefs.get(target.planeId))) return;
+    // Radar missiles need the plane's own radar locked on the target (planes without a radar block keep the
+    // missile's own seeker test, which is how Day 7 worked).
+    if (cls.seeker === 'radar' && def.radar && shooter.radarLock !== target.id) return;
     // Prefer the missile whose sweet spot (about half its range) is closest to the target's distance.
     const score = -Math.abs(d - m.maxRangeM * 0.5) + (d < m.minRangeM ? -1e6 : 0);
     if (score > bestScore) {
@@ -251,9 +255,15 @@ export function stepWeapons(w: MissileWorld, mc: MissileContext, shooter: PlaneS
     return;
   }
 
-  const chosen = input.target ? w.planes.find((p) => p.id === input.target && p.alive && p.team !== shooter.team) ?? null : null;
+  // The picked target, else the radar lock, else the enemy nearest the nose. A picked secondary that still has
+  // missiles limits the lock to that mount.
+  const enemy = (id: string | null): PlaneState | null => (id ? w.planes.find((p) => p.id === id && p.alive && p.team !== shooter.team) ?? null : null);
+  const chosen = enemy(input.target) ?? enemy(shooter.radarLock);
   const target = chosen ?? autoTarget(shooter, def, w.planes, mc);
-  const mount = target ? pickMount(shooter, def, target, mc) : -1;
+  const sec = input.secondary ?? -1;
+  shooter.secondary = sec >= 0 && sec < def.missiles.length ? sec : -1;
+  const only = shooter.secondary >= 0 && (shooter.missiles[shooter.secondary] ?? 0) > 0 ? shooter.secondary : -1;
+  const mount = target ? pickMount(shooter, def, target, mc, only) : -1;
   if (!target || mount < 0) {
     // Lost sight: the lock fades quickly.
     shooter.lockProgress = Math.max(0, shooter.lockProgress - dt * 2);
@@ -339,7 +349,12 @@ function track(w: MissileWorld, mc: MissileContext, ms: MissileState, m: Missile
     tracked = irBlocked(ms.pos, look, t, tDef, m, cls, Math.max(MISSILE_GIMBAL_DEG, m.coneDeg), true) === null;
   } else {
     const launcher = w.planes.find((p) => p.id === ms.owner);
-    const launcherSees = Boolean(launcher?.alive && seekerSees(launcher, t, m, cls, tDef));
+    // A launcher with a radar must hold its radar lock on the target and actually see it this tick (a lock
+    // coasting through a gap on memory doesn't illuminate the target).
+    const launcherDef = launcher ? mc.planeDefs.get(launcher.planeId) : undefined;
+    const launcherSees = Boolean(
+      launcher?.alive && (launcherDef?.radar ? launcher.radarOn && launcher.radarLock === t.id && launcher.radarLostFor === 0 : seekerSees(launcher, t, m, cls, tDef)),
+    );
     if (cls.guidance === 'semi_active') tracked = launcherSees && angleBetween(look, sub(t.pos, ms.pos)) < MISSILE_GIMBAL_DEG * DEG;
     else {
       const terminal = len(sub(t.pos, ms.pos)) < TERMINAL_M ? 0.5 : 1;

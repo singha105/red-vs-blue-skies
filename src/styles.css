@@ -222,6 +222,7 @@ body {
   position: absolute;
   bottom: calc(30px + var(--safe-bottom));
   right: calc(10px + var(--safe-right));
+  z-index: 2;
   padding: 3px 8px;
   border-radius: 4px;
   background: rgba(14, 33, 56, 0.7);
@@ -3026,4 +3027,302 @@ body.is-tutorial .hud__obj {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+/* ---- Day 11: canvas flight HUD, instrument panel, new touch buttons, match menu, chat, Controls screen ---- */
+.fhud {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+/* The canvas HUD shows speed, altitude and throttle; the RWR moved into the panel. */
+.hud__readout,
+.mhud__rwr {
+  display: none !important;
+}
+.rpanel {
+  right: calc(10px + var(--safe-right));
+  bottom: calc(10px + var(--safe-bottom));
+  pointer-events: none;
+  scale: var(--hud-scale);
+  transform-origin: 100% 100%;
+}
+.rpanel[hidden] {
+  display: none;
+}
+.has-touch .rpanel {
+  /* Clear of the LEVEL / look / ZOOM column; taps on contacts select them. */
+  right: calc(86px + var(--safe-right));
+  pointer-events: auto;
+  scale: 1;
+}
+.has-touch .hud__status {
+  /* Health and ammo sit top left under Menu / Scores, away from the left thumb and the panel. */
+  left: calc(92px + var(--safe-left));
+  right: auto;
+  top: calc(60px + var(--safe-top));
+  bottom: auto;
+  width: min(250px, 34vw);
+  justify-items: start;
+}
+.has-touch .mhud__load,
+.has-touch .hud__hp,
+.has-touch .hud__ammo,
+.has-touch .part:not(.is-hit) {
+  /* Phones: the panel's HULL bar, the HUD's counts and the MSL button carry these; only hit parts show. */
+  display: none;
+}
+.hud__status {
+  left: calc(14px + var(--safe-left));
+  bottom: calc(14px + var(--safe-bottom));
+  transform: none;
+  justify-items: start;
+  width: min(300px, 34vw);
+}
+.mhud__load {
+  left: calc(14px + var(--safe-left));
+  bottom: calc(92px + var(--safe-bottom));
+  transform: none;
+  flex-wrap: wrap;
+  max-width: 34vw;
+}
+.hud__hint {
+  top: calc(56px + var(--safe-top));
+  bottom: auto;
+}
+.hud__warn {
+  top: 13%;
+}
+/* M: the minimap grows. */
+.hud.is-map-open .hud__map {
+  width: min(52vmin, 360px);
+}
+.hud.is-map-open .hud__feed {
+  top: calc(min(52vmin, 360px) + 18px + var(--safe-top));
+}
+.hud.is-map-open .hud__map .dot {
+  width: 8px;
+  height: 8px;
+}
+
+/* Touch: throttle WEP band, secondary switch arrow, radar button, rudder buttons. */
+.touch__wep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 12%;
+  background: repeating-linear-gradient(135deg, rgba(255, 209, 102, 0.35) 0 6px, rgba(255, 209, 102, 0.12) 6px 12px);
+  border-bottom: 2px solid rgba(255, 209, 102, 0.8);
+}
+.touch__throttle.is-wep {
+  border-color: #ffd166;
+}
+.touch__throttle.is-wep .touch__throttle-fill {
+  background: rgba(255, 209, 102, 0.55);
+}
+.touch__weapons {
+  grid-template-columns: auto auto auto;
+}
+.tbtn--switch {
+  min-width: 56px;
+  padding: 0;
+  font-size: 26px;
+  line-height: 1;
+}
+.tbtn--switch[hidden],
+.tbtn--radar[hidden] {
+  display: none;
+}
+.tbtn__name {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffd166;
+  max-width: 7em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tbtn--radar {
+  position: relative;
+}
+.tbtn--radar.is-locked {
+  border-color: #ff5a4e;
+  background: rgba(214, 38, 30, 0.55);
+}
+.tbtn__sub {
+  display: block;
+  font-size: 14px;
+  opacity: 0.85;
+}
+.tbtn--eye svg {
+  width: 26px;
+  height: 26px;
+  vertical-align: middle;
+}
+.touch__rudder {
+  left: 50%;
+  bottom: calc(14px + var(--safe-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+}
+.touch__rudder[hidden] {
+  display: none;
+}
+.has-touch .hud__top {
+  /* Above the steering pad, which covers the right side of the screen. */
+  z-index: 3;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* In-match menu and chat. */
+.mmenu[hidden] {
+  display: none;
+}
+.mmenu__card {
+  width: min(340px, 100%);
+}
+.mmenu__note {
+  margin: 0;
+  font-size: 15px;
+  opacity: 0.85;
+}
+.mchat {
+  position: absolute;
+  left: 50%;
+  bottom: calc(110px + var(--safe-bottom));
+  transform: translateX(-50%);
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  pointer-events: auto;
+  z-index: 4;
+}
+.mchat__form[hidden],
+.mchat__quick[hidden] {
+  display: none;
+}
+.mchat input {
+  width: min(420px, 70vw);
+  min-height: 44px;
+  padding: 0 12px;
+  border: 2px solid rgba(244, 247, 251, 0.8);
+  border-radius: 8px;
+  background: rgba(10, 20, 30, 0.85);
+  color: var(--paper);
+  font: 600 16px var(--text);
+}
+.mchat__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* Controls screen. */
+.controls__card {
+  width: min(640px, 100%);
+}
+.controls__tabs {
+  display: flex;
+  gap: 8px;
+}
+.controls__tabs .chip[aria-selected='true'] {
+  border-color: var(--paper);
+  background: var(--paper);
+  color: var(--ink);
+}
+.controls__note {
+  margin: 0;
+  font-size: 15px;
+  opacity: 0.85;
+}
+.controls__list h3 {
+  margin: 12px 0 4px;
+  font-family: var(--display);
+  font-size: 20px;
+}
+.bind__row {
+  display: grid;
+  grid-template-columns: 1fr minmax(96px, 9em) minmax(96px, 9em);
+  gap: 8px;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 16px;
+}
+.bind {
+  min-height: 44px;
+  padding: 0 8px;
+  border: 2px solid rgba(244, 247, 251, 0.4);
+  border-radius: 6px;
+  background: rgba(244, 247, 251, 0.06);
+  color: var(--paper);
+  font: 600 15px var(--text);
+  cursor: pointer;
+}
+.bind.is-clash {
+  border-color: #ffd166;
+  color: #ffd166;
+}
+.bind.is-waiting {
+  border-color: var(--paper);
+  background: var(--paper);
+  color: var(--ink);
+}
+.controls__warn {
+  margin: 0;
+  min-height: 1.2em;
+  color: #ffd166;
+  font-size: 15px;
+}
+.controls__warn:empty {
+  display: none;
+}
+.controls__foot {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+@media (max-width: 560px) {
+  .bind__row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .bind__label {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Debug FPS counter: in a match it moves to the top, clear of the instrument panel. */
+body.is-flying .fps {
+  bottom: auto;
+  top: calc(150px + var(--safe-top));
+  left: calc(14px + var(--safe-left));
+  right: auto;
+  font-size: 14px;
+  opacity: 0.8;
+}
+/* How to play renders docs/HOW_TO_PLAY.md: wide tables wrap on phones. */
+.help__keys thead th {
+  width: auto;
+  opacity: 0.75;
+  font-weight: 600;
+}
+.help__keys th {
+  white-space: normal;
+  min-width: 30%;
+}
+.help__body h3 {
+  margin: 12px 0 4px;
+  font-family: var(--display);
+  font-size: 20px;
+}
+.help__body ol,
+.help__body ul {
+  padding-left: 1.2em;
 }

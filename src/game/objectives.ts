@@ -371,9 +371,13 @@ export function bulletHitsUnit(world: WorldState, ctx: WorldContext, b: Bullet, 
 /** The missile button on an attacker: rockets in pairs while there are any, then bombs, one per press interval. */
 export function stepOrdnanceRelease(world: WorldState, ctx: WorldContext, p: PlaneState, input: ControlInput, dt: number, events: GameEvent[]): void {
   p.ordnanceCooldown = Math.max(0, p.ordnanceCooldown - dt);
+  // Left Shift picks rockets (0) or bombs (1); automatic is rockets first, then bombs.
+  const sec = input.secondary ?? -1;
+  p.secondary = sec === 0 || sec === 1 ? sec : -1;
   if (!input.missile || p.ordnanceCooldown > 0) return;
   const defs = ctx.data.objectives.ordnance;
-  const kind: 'rocket' | 'bomb' | null = p.rockets > 0 ? 'rocket' : p.bombs > 0 ? 'bomb' : null;
+  const kind: 'rocket' | 'bomb' | null =
+    p.secondary === 1 ? (p.bombs > 0 ? 'bomb' : null) : p.secondary === 0 ? (p.rockets > 0 ? 'rocket' : null) : p.rockets > 0 ? 'rocket' : p.bombs > 0 ? 'bomb' : null;
   if (!kind) return;
   const od = defs[kind];
   const forward = rotate(p.quat, FORWARD);

@@ -149,12 +149,13 @@ describe('protocol', () => {
     start(r);
     r.step(30);
     const w = r.server.match!.world;
-    const buf = encodeSnapshot({ rosterVersion: 1, tick: w.tick, ackSeq: 7, timeLeftS: 432.1, score: { red: 3, blue: 5 }, ended: false }, w.planes, { ammo: [120, 1400], missiles: [2, 4], flares: 24, chaff: 23, lockMount: 1, rockets: 0, bombs: 0 });
-    expect(buf.byteLength).toBeLessThan(17 + 20 * PLANE_BYTES + 22);
+    const buf = encodeSnapshot({ rosterVersion: 1, tick: w.tick, ackSeq: 7, timeLeftS: 432.1, score: { red: 3, blue: 5 }, ended: false }, w.planes, { ammo: [120, 1400], missiles: [2, 4], flares: 24, chaff: 23, lockMount: 1, rockets: 0, bombs: 0, engineHeat: 0.5, overheatFor: 3.5, secondary: 1 });
+    expect(buf.byteLength).toBeLessThan(17 + 20 * PLANE_BYTES + 25);
     const s = decodeSnapshot(buf)!;
     expect(s.planes).toHaveLength(20);
     expect(s.ackSeq).toBe(7);
-    expect(s.own).toEqual({ ammo: [120, 1400], missiles: [2, 4], flares: 24, chaff: 23, lockMount: 1, rockets: 0, bombs: 0 });
+    expect(s.own).toMatchObject({ ammo: [120, 1400], missiles: [2, 4], flares: 24, chaff: 23, lockMount: 1, rockets: 0, bombs: 0, overheatFor: 3.5, secondary: 1 });
+    expect(s.own.engineHeat).toBeCloseTo(0.5, 2);
     expect(s.missiles).toEqual([]);
     expect(s.score).toEqual({ red: 3, blue: 5 });
     w.planes.forEach((p, i) => {

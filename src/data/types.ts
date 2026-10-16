@@ -47,6 +47,8 @@ export interface Era {
   ceilingM: number;
   /** Stall speed as a fraction of the plane's (game) top speed. */
   stallSpeedRatio: number;
+  /** Seconds of WEP / afterburner from a cold engine before it overheats. */
+  wepTimeS: number;
 }
 
 export interface PlaneStats {
@@ -86,6 +88,19 @@ export interface Plane {
   radarSignature?: number;
   /** Unguided rockets and bombs on the pylons (Late WW2 attackers), released with the missile button. */
   ordnance?: { rockets: number; bombs: number };
+  /** Search radar (jets that had one). Game values scaled to the 16 km maps. */
+  radar?: PlaneRadar;
+}
+
+export type RadarMode = 'search' | 'lock' | 'dogfight';
+
+export interface PlaneRadar {
+  /** Detection and lock range, km. */
+  rangeKm: number;
+  /** Full scan width ahead of the nose, degrees (the scope's cone). */
+  coneDeg: number;
+  /** Always includes search and lock; dogfight (auto-lock in a narrow cone) on later sets. */
+  modes: RadarMode[];
 }
 
 export interface MissileClass {

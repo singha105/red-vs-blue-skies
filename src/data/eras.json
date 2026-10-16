@@ -8,7 +8,8 @@
     "missileClasses": [],
     "missileMinTier": null,
     "ceilingM": 6500,
-    "stallSpeedRatio": 0.45
+    "stallSpeedRatio": 0.45,
+    "wepTimeS": 30
   },
   {
     "id": "early_ww2",
@@ -19,7 +20,8 @@
     "missileClasses": [],
     "missileMinTier": null,
     "ceilingM": 10000,
-    "stallSpeedRatio": 0.3
+    "stallSpeedRatio": 0.3,
+    "wepTimeS": 40
   },
   {
     "id": "late_ww2",
@@ -30,7 +32,8 @@
     "missileClasses": [],
     "missileMinTier": null,
     "ceilingM": 12500,
-    "stallSpeedRatio": 0.28
+    "stallSpeedRatio": 0.28,
+    "wepTimeS": 45
   },
   {
     "id": "early_jets",
@@ -41,7 +44,8 @@
     "missileClasses": ["ir_rear"],
     "missileMinTier": 9,
     "ceilingM": 15000,
-    "stallSpeedRatio": 0.22
+    "stallSpeedRatio": 0.22,
+    "wepTimeS": 60
   },
   {
     "id": "cold_war",
@@ -52,7 +56,8 @@
     "missileClasses": ["ir_rear", "ir_all_aspect", "radar_semi_active"],
     "missileMinTier": 1,
     "ceilingM": 17500,
-    "stallSpeedRatio": 0.17
+    "stallSpeedRatio": 0.17,
+    "wepTimeS": 75
   },
   {
     "id": "modern",
@@ -63,6 +68,7 @@
     "missileClasses": ["ir_all_aspect", "ir_hobs", "radar_semi_active", "radar_active"],
     "missileMinTier": 1,
     "ceilingM": 18000,
-    "stallSpeedRatio": 0.15
+    "stallSpeedRatio": 0.15,
+    "wepTimeS": 90
   }
 ]

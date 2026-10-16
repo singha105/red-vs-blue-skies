@@ -1,85 +1,90 @@
-// "How to play" (title screen): controls for each device, the modes, missiles and flares, how unlocks work,
-// hosting tips and credits. The device you're on opens first.
-export type HelpTab = 'touch' | 'desktop' | 'gamepad' | 'game' | 'hosting' | 'credits';
+// "How to play" (title screen and the in-match menu). The text is docs/HOW_TO_PLAY.md itself, bundled at build
+// time and shown one "##" section per tab, so the game, the README and the doc can't drift apart. The device
+// you're on opens first.
+import source from '../../docs/HOW_TO_PLAY.md?raw';
 
-const TABS: [HelpTab, string][] = [
-  ['touch', 'Phone'],
-  ['desktop', 'Keyboard + mouse'],
-  ['gamepad', 'Gamepad'],
-  ['game', 'Modes + unlocks'],
-  ['hosting', 'Hosting'],
-  ['credits', 'Credits'],
-];
+export type HelpTab = 'touch' | 'desktop' | 'gamepad';
 
-const rows = (r: [string, string][]): string => `<table class="help__keys"><tbody>${r.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</tbody></table>`;
+interface Section {
+  id: string;
+  title: string;
+  html: string;
+}
 
-const CONTENT: Record<HelpTab, string> = {
-  touch: `
-    <p>Hold the phone sideways. You point where you want to fly; the plane follows the aim circle.</p>
-    ${rows([
-      ['Right side: drag', 'Move the aim circle (like a trackpad)'],
-      ['Right side: quick tap', 'Pick the enemy under your finger as the missile target'],
-      ['Left slider', 'Throttle'],
-      ['Fire', 'Guns, while held'],
-      ['Missile', 'Fires once the ring around it is full (locked). Rocket planes: rockets, then bombs'],
-      ['Flare', 'Flares and chaff against missiles'],
-      ['Level', 'Wings level, nose on the horizon'],
-      ['Look', 'Look around with the drag; tap again to stop'],
-      ['Scores', 'Scoreboard'],
-    ])}
-    <p>Touch players get a little aim assist (Settings → Touch aim assist). On iPhone, Share → Add to Home Screen gives you full screen.</p>`,
-  desktop: `
-    <p>Click the game once to capture the mouse, then move it: the plane flies toward the aim circle.</p>
-    ${rows([
-      ['Mouse', 'Aim'],
-      ['Left button / Space', 'Guns'],
-      ['Right button / Q', 'Missile (rocket planes: rockets, then bombs)'],
-      ['F', 'Flares and chaff'],
-      ['R', 'Next missile target'],
-      ['W / S', 'Throttle up / down'],
-      ['A / D', 'Roll'],
-      ['Arrow keys', 'Fly directly, without the mouse'],
-      ['C (hold)', 'Look around'],
-      ['L', 'Level the wings'],
-      ['Tab (hold)', 'Scoreboard'],
-      ['Esc', 'Release the mouse'],
-    ])}`,
-  gamepad: `
-    <p>Any standard gamepad (Xbox or PlayStation layout) works once you press a button.</p>
-    ${rows([
-      ['Left stick', 'Aim'],
-      ['Right stick', 'Look around'],
-      ['RT / LT', 'Throttle up / down'],
-      ['A (cross)', 'Guns'],
-      ['B (circle)', 'Missile'],
-      ['X (square)', 'Flares and chaff'],
-      ['RB', 'Next missile target'],
-      ['Y (triangle)', 'Level the wings'],
-    ])}`,
-  game: `
-    <p><b>Modes.</b> Team Deathmatch: first to 50 kills or most after 10 minutes. Air Domination: hold the three zones by flying low inside them. Ground Strike: destroy the other team's convoys, bunkers, AA and ships. Bomber Escort: one team escorts bombers to the enemy base, the other shoots them down.</p>
-    <p><b>Flying.</b> Tight turns bleed speed, dives build it, and a slow plane stalls. Keep your speed up and attack from above.</p>
-    <p><b>Missiles.</b> Keep an enemy in front of you until the box goes solid red, then fire. When MISSILE flashes on your screen: heat seekers (IR) → flares, cut the throttle, turn hard; radar missiles → chaff and turn side-on to the missile.</p>
-    <p><b>Research points (RP).</b> Every match earns RP for kills (more for shooting down better planes), assists, damage, objectives, surviving and winning. Spend RP in Research to unlock the next plane of an era: tier 2 costs 400 RP, tier 10 costs 2,000. Tier 1 of every era is free. Progress is saved to a guest account; Settings → Link Google account keeps it on your other devices.</p>
-    <p><b>Spawn points (SP).</b> Better planes cost more to respawn in. Earn SP with kills and objectives; the era's tier-1 plane is always free.</p>`,
-  hosting: `
-    <ul>
-      <li>One player's browser runs the match for everyone. Host from a <b>laptop on Wi-Fi or Ethernet, plugged in</b>, with the game tab in front.</li>
-      <li>Host / Join → Host, then share the link or QR code. Friends open it and pick a callsign; bots fill the empty seats up to 10 vs 10.</li>
-      <li>A phone can host, but locking it or switching apps ends the match for everyone.</li>
-      <li>Phone players: play in landscape, turn off Low Power Mode, use headphones.</li>
-      <li>If a phone drops out, it rejoins the room by itself when it comes back.</li>
-    </ul>`,
-  credits: `
-    <p>Red vs Blue Skies: built in 10 days with Claude Code by Arnab Singh.</p>
-    <ul>
-      <li>Three.js (MIT), PeerJS (MIT), Firebase JS SDK (Apache 2.0), qrcode-generator (MIT), Vite (MIT).</li>
-      <li>Fonts: Big Shoulders Display and Barlow Semi Condensed (SIL Open Font License).</li>
-      <li>Every plane, ground unit, map, sound and icon is generated by the game's own code and Blender scripts. No assets from other games.</li>
-    </ul>`,
+/** Short tab names for the doc's "##" headings (anything else keeps its heading). */
+const TAB_NAMES: Record<string, string> = {
+  'Joining a match': 'Join',
+  'Keyboard and mouse': 'Keyboard + mouse',
+  'Touch (phones and tablets)': 'Phone',
+  Gamepad: 'Gamepad',
+  'Reading the HUD': 'HUD',
+  'Radar step by step': 'Radar',
+  'Missiles: firing and dodging': 'Missiles',
+  'Points and unlocks': 'Unlocks',
+  'Tips for new pilots': 'Tips',
+  Hosting: 'Hosting',
+  Credits: 'Credits',
 };
+const START: Record<HelpTab, string> = { touch: 'Touch (phones and tablets)', desktop: 'Keyboard and mouse', gamepad: 'Gamepad' };
+
+const esc = (s: string): string => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] ?? ch);
+/** **bold** and `code`, after escaping. */
+const inline = (s: string): string => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`(.+?)`/g, '<code>$1</code>');
+
+/** The small subset of Markdown the doc uses: ### headings, paragraphs, - and 1. lists, and tables. */
+export function renderMarkdown(md: string): string {
+  const out: string[] = [];
+  const lines = md.split('\n');
+  for (let i = 0; i < lines.length; ) {
+    const line = lines[i]!;
+    if (line.trim() === '') {
+      i++;
+      continue;
+    }
+    if (line.startsWith('### ')) {
+      out.push(`<h3>${inline(line.slice(4))}</h3>`);
+      i++;
+    } else if (line.startsWith('|')) {
+      const rows: string[][] = [];
+      for (; i < lines.length && lines[i]!.startsWith('|'); i++) {
+        const cells = lines[i]!.split('|').slice(1, -1).map((c) => c.trim());
+        if (cells.every((c) => /^-+$/.test(c))) continue;
+        rows.push(cells);
+      }
+      const [head, ...body] = rows;
+      out.push(
+        `<table class="help__keys"><thead><tr>${(head ?? []).map((c) => `<th>${inline(c)}</th>`).join('')}</tr></thead><tbody>${body
+          .map((r) => `<tr>${r.map((c, k) => (k === 0 ? `<th>${inline(c)}</th>` : `<td>${inline(c)}</td>`)).join('')}</tr>`)
+          .join('')}</tbody></table>`,
+      );
+    } else if (/^(- |\d+\. )/.test(line)) {
+      const ordered = /^\d+\. /.test(line);
+      const items: string[] = [];
+      for (; i < lines.length && /^(- |\d+\. )/.test(lines[i]!); i++) items.push(`<li>${inline(lines[i]!.replace(/^(- |\d+\. )/, ''))}</li>`);
+      out.push(ordered ? `<ol>${items.join('')}</ol>` : `<ul>${items.join('')}</ul>`);
+    } else {
+      const para: string[] = [];
+      for (; i < lines.length && lines[i]!.trim() !== '' && !/^(\||- |\d+\. |#)/.test(lines[i]!); i++) para.push(lines[i]!);
+      out.push(`<p>${inline(para.join(' '))}</p>`);
+    }
+  }
+  return out.join('');
+}
+
+/** The doc split at its "##" headings (the title and intro before the first one are left out). */
+export function helpSections(md = source): Section[] {
+  return md
+    .split(/^## /m)
+    .slice(1)
+    .map((chunk, i) => {
+      const nl = chunk.indexOf('\n');
+      const title = chunk.slice(0, nl).trim();
+      return { id: `s${i}`, title, html: renderMarkdown(chunk.slice(nl + 1)) };
+    });
+}
 
 export function openHowToPlay(parent: HTMLElement, opts: { start: HelpTab; version: string; onClose?: () => void }): { dispose(): void } {
+  const sections = helpSections();
   const el = document.createElement('div');
   el.className = 'modal help';
   el.setAttribute('role', 'dialog');
@@ -88,21 +93,28 @@ export function openHowToPlay(parent: HTMLElement, opts: { start: HelpTab; versi
   el.innerHTML = `
     <div class="modal__card help__card">
       <h2>How to play</h2>
-      <div class="help__tabs" role="tablist">${TABS.map(([id, label]) => `<button type="button" role="tab" class="chip" data-tab="${id}">${label}</button>`).join('')}</div>
+      <div class="help__tabs" role="tablist">${sections.map((s) => `<button type="button" role="tab" class="chip" data-tab="${s.id}">${esc(TAB_NAMES[s.title] ?? s.title)}</button>`).join('')}</div>
       <div class="help__body" role="tabpanel"></div>
-      <small class="help__version">Version ${opts.version}</small>
+      <small class="help__version">Version ${esc(opts.version)}</small>
       <button type="button" class="btn btn--primary btn--small" data-act="close">Done</button>
     </div>`;
   parent.appendChild(el);
   const body = el.querySelector<HTMLElement>('.help__body')!;
-  const show = (tab: HelpTab): void => {
-    body.innerHTML = CONTENT[tab];
-    for (const b of el.querySelectorAll<HTMLElement>('[data-tab]')) b.setAttribute('aria-selected', String(b.dataset['tab'] === tab));
+  const show = (id: string): void => {
+    const s = sections.find((x) => x.id === id) ?? sections[0];
+    if (!s) return;
+    body.innerHTML = s.html;
+    body.scrollTop = 0;
+    for (const b of el.querySelectorAll<HTMLElement>('[data-tab]')) {
+      const on = b.dataset['tab'] === s.id;
+      b.setAttribute('aria-selected', String(on));
+      if (on) b.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    }
   };
-  show(opts.start);
+  show(sections.find((s) => s.title === START[opts.start])?.id ?? 's0');
   el.addEventListener('click', (e) => {
     const t = e.target instanceof Element ? e.target.closest<HTMLElement>('[data-tab]') : null;
-    if (t) show(t.dataset['tab'] as HelpTab);
+    if (t) show(t.dataset['tab']!);
   });
   const dispose = (): void => {
     el.remove();

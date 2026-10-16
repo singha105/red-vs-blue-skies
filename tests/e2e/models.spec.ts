@@ -53,10 +53,10 @@ test('a WW1 match flies the Camel and Dr.I models with props and muzzles', async
     expect(m.prop).toBe(true);
     expect(m.muzzles).toBeGreaterThanOrEqual(2);
   }
-  await page.keyboard.down('Space');
+  await guns(page, true);
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${SHOTS}/${info.project.name}-ww1-models.png` });
-  await page.keyboard.up('Space');
+  await guns(page, false);
 });
 
 test('every one of the 60 planes opens its real model in the hangar', async ({ page }, info) => {
@@ -82,3 +82,18 @@ test('every one of the 60 planes opens its real model in the hangar', async ({ p
   }
   expect(seen).toBe(60);
 });
+
+/** Day 11: guns are the left mouse button (the first click only captures the mouse) or the FIRE button on touch. */
+async function guns(page: import('@playwright/test').Page, on: boolean): Promise<void> {
+  const fire = page.locator('.tbtn--fire');
+  if (await fire.count()) {
+    await fire.dispatchEvent(on ? 'pointerdown' : 'pointerup', { pointerId: 41, pointerType: 'touch' });
+    return;
+  }
+  const vp = page.viewportSize()!;
+  await page.mouse.move(vp.width / 2, vp.height / 2);
+  if (on) {
+    await page.mouse.click(vp.width / 2, vp.height / 2);
+    await page.mouse.down();
+  } else await page.mouse.up();
+}

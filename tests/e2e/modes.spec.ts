@@ -99,8 +99,23 @@ test('sound starts on the first tap and plays during a match', async ({ page }, 
   else await solo.click();
   await expect.poll(async () => (await page.evaluate(() => (window as unknown as { __rvbs: Hooks }).__rvbs.sound())).state, { timeout: 5_000 }).toBe('running');
   await page.getByRole('button', { name: 'Start match' }).click();
-  await page.keyboard.down('Space');
+  await guns(page, true);
   // Engines and guns: something is coming out of the master bus.
   await expect.poll(async () => (await page.evaluate(() => (window as unknown as { __rvbs: Hooks }).__rvbs.sound())).level, { timeout: 8_000 }).toBeGreaterThan(0.005);
-  await page.keyboard.up('Space');
+  await guns(page, false);
 });
+
+/** Day 11: guns are the left mouse button (the first click only captures the mouse) or the FIRE button on touch. */
+async function guns(page: import('@playwright/test').Page, on: boolean): Promise<void> {
+  const fire = page.locator('.tbtn--fire');
+  if (await fire.count()) {
+    await fire.dispatchEvent(on ? 'pointerdown' : 'pointerup', { pointerId: 41, pointerType: 'touch' });
+    return;
+  }
+  const vp = page.viewportSize()!;
+  await page.mouse.move(vp.width / 2, vp.height / 2);
+  if (on) {
+    await page.mouse.click(vp.width / 2, vp.height / 2);
+    await page.mouse.down();
+  } else await page.mouse.up();
+}

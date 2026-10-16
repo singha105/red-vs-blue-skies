@@ -224,7 +224,12 @@ export function createClientSession(
     target.hp = s.hp;
     target.respawnIn = s.respawnIn;
     target.g = s.g;
-    if (kinematics) target.throttle = s.throttle;
+    if (kinematics) {
+      target.throttle = s.throttle;
+      target.wep = s.wep;
+    }
+    target.radarLock = s.radarSlot ? roster[s.radarSlot - 1]?.id ?? null : null;
+    target.radarOn = target.radarOn || s.radarSlot > 0;
     target.lockTarget = s.lockSlot ? roster[s.lockSlot - 1]?.id ?? null : null;
     target.lockProgress = target.lockTarget ? s.lockProgress : 0;
     // Others' mounts aren't sent, only the seeker kind: point at the first mount with that seeker.
@@ -276,6 +281,9 @@ export function createClientSession(
     own.lockMount = s.own.lockMount;
     own.rockets = s.own.rockets;
     own.bombs = s.own.bombs;
+    own.engineHeat = s.own.engineHeat;
+    own.overheatFor = s.own.overheatFor;
+    own.secondary = s.own.secondary;
     while (history.length && history[0]!.seq <= s.ackSeq) history.shift();
     if (own.alive) {
       // Replay what the host hasn't seen yet: each input lasted TICKS_PER_INPUT ticks.

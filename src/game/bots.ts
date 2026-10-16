@@ -371,7 +371,14 @@ export function botInput(world: WorldState, ctx: WorldContext, brain: BotBrain, 
   if (speed < p.stallSpeedMs * 1.5) throttle = 1;
 
   const steer = aimControl(me, aim, brain.pd, dt);
-  return { ...steer, throttle, fire, missile, flare, target: brain.mode === 'attack' || brain.mode === 'evade' ? brain.targetId : null };
+  const picked = brain.mode === 'attack' || brain.mode === 'evade' ? brain.targetId : null;
+  // Full throttle means WEP / afterburner until the engine runs hot; then military power while it cools.
+  const wep = throttle >= 1 && me.engineHeat < 0.85;
+  // Radar: always on; lock whoever we're attacking (radar missiles need it). A light rudder kick lines up
+  // gun shots in the last few degrees, like a player's Q/E.
+  let yaw = steer.yaw;
+  if (brain.mode === 'attack' && fire) yaw = Math.max(-1, Math.min(1, yaw * 1.3));
+  return { ...steer, yaw, throttle, fire, missile, flare, target: picked, wep, radarOn: Boolean(def.radar), radarLock: Boolean(def.radar && picked), radarRange: 2 };
 }
 
 /** Target preference by mode: interceptors go for the bombers, escorts and defenders for whoever threatens theirs. */

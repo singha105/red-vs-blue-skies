@@ -1,5 +1,6 @@
 // The tutorial's instruction card (top centre) with the step, what to press on this device, progress, and Skip.
 import type { TutorialState, TutorialStep } from '../app/tutorial';
+import { keysText } from '../core/keybinds';
 
 export type Device = 'touch' | 'mouse' | 'gamepad';
 
@@ -14,9 +15,10 @@ const TITLES: Record<TutorialStep, string> = {
 /** What to do in each step, in the words of the device being used. */
 export function tutorialHint(step: TutorialStep, device: Device): string {
   const steer = device === 'touch' ? 'Drag on the right side of the screen to move the aim circle' : device === 'gamepad' ? 'Move the left stick to move the aim circle' : 'Click once, then move the mouse to move the aim circle';
-  const fire = device === 'touch' ? 'hold Fire' : device === 'gamepad' ? 'hold A' : 'hold Space or the left button';
-  const missile = device === 'touch' ? 'tap Missile' : device === 'gamepad' ? 'press B' : 'press Q (or the right button)';
-  const flare = device === 'touch' ? 'tap Flare' : device === 'gamepad' ? 'press X' : 'press F';
+  // Keyboard and gamepad words follow the player's bindings.
+  const fire = device === 'touch' ? 'hold FIRE' : device === 'gamepad' ? `hold ${keysText('fireGuns', 'gamepad')}` : `hold ${keysText('fireGuns')}`;
+  const missile = device === 'touch' ? 'tap MSL' : device === 'gamepad' ? `press ${keysText('fireSecondary', 'gamepad')}` : `press ${keysText('fireSecondary')}`;
+  const flare = device === 'touch' ? 'tap CM' : device === 'gamepad' ? `press ${keysText('countermeasures', 'gamepad')}` : `press ${keysText('countermeasures')}`;
   switch (step) {
     case 'rings':
       return `${steer}; the plane follows it. Fly through the yellow ring.`;

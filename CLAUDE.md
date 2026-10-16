@@ -1,6 +1,10 @@
 # Red vs Blue Skies
 
-Always read docs/PROGRESS.md first. It says where the last session stopped.
+Read first, in this order:
+
+1. `docs/PROGRESS.md`: where the last session stopped.
+2. `docs/ART_DIRECTION.md`: the look we're going for (terrain, sky, HUD, effects) and what to avoid. It describes another game's screenshots in words; copy nothing from that game.
+3. `docs/HOW_TO_PLAY.md`: every control on every device, the HUD, radar, missiles, points. It is the source of the in-game How to play screen and of the README's controls (`npm run docs:readme`; a unit test fails if they drift), so change controls there first.
 
 ## Project
 
@@ -26,6 +30,7 @@ Always read docs/PROGRESS.md first. It says where the last session stopped.
 | `npm run test:profile` | Starts the auth + Firestore emulators and runs `profile.spec` (RP saved, research, offline queue, Google linking on a second device) |
 | `npm run rules:deploy` | Deploy `firestore.rules` to the real project (`npx firebase login` first, with the Google account that owns the project) |
 | `npm run icons` | Regenerate the PWA roundel icons in `public/icons/` |
+| `npm run docs:readme` | Copy the controls, HUD, radar and missile sections of `docs/HOW_TO_PLAY.md` into README.md |
 | `npm run balance` | Bot tournament: 200 1v1 duels per adjacent tier pair in every era (one Vitest process per era, ~40 s), prints the table. `-- before` replays planes.json from git HEAD, `-- tune` runs the HP/turn-rate tuner and writes planes.json. `SEED`, `DUELS`, `ERAS` env. Results in `tests/balance/{before,after,out}/`, write-up in `docs/BALANCE_REPORT.md` |
 | `node tools/perf/profile.mjs [era plane map mode]` | Phone-proxy profile against a running `npx vite preview --port 4187`: first load on Slow 4G + 4× CPU, frame times, draw calls, GC pauses, top allocation sites (build with `--minify false` to read names) |
 | `npm run models` | Clean rebuild of every plane spec + weapon with headless Blender, meshopt-compress with gltf-transform, write `public/models/<era>/<id>.glb`, `public/models/manifest.json`, `src/data/planeModels.json` and previews; prints sizes. `npm run models -- f4e weapons` rebuilds only some |
@@ -114,8 +119,8 @@ docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md, BALANCE_REPORT.md, 
 1. $0 only: no paid services or assets. Ask the user before adding any new external service or account.
 2. Every feature must work on phones (touch, small screens, iPhone Safari) as well as on desktop.
 3. Don't break earlier work: run all tests before each commit.
-4. Performance budget: total download under 10 MB; 60 fps on a laptop, 30 fps on a mid-range phone.
-5. No copyrighted assets (nothing from War Thunder or other games). Make everything or use CC0.
+4. Performance budget (Day 11): total download under 25 MB; 60 fps on a laptop (High), 30 fps on a mid-range phone (Low); the first match playable within 8 s on 4G, high-detail assets streaming in afterwards. Every visual upgrade has a quality-tier switch.
+5. No copyrighted assets (nothing from War Thunder or other games). Make everything or use CC0 (Poly Haven textures and HDRIs) and OFL fonts, credited in the README.
 6. Finish by updating docs/PROGRESS.md, committing, pushing, and confirming the live deploy.
 
 ## Multiplayer (Days 5–6)
@@ -142,8 +147,15 @@ docs/            BUILD_PLAN.md, GAME_DESIGN.md, PROGRESS.md, BALANCE_REPORT.md, 
 
 ## Controls and URL flags
 
-- Mouse aim: the mouse moves the aim circle, the autopilot (`src/game/autopilot.ts`) flies the nose (small circle) onto it. Click to capture the mouse; if the browser refuses pointer lock, the cursor's offset from screen centre steers instead.
-- Keys: W/S throttle, A/D roll override, arrows fly directly, C free-look, Space fire, Q (or right mouse) missile (on the P-47D, F4U-4 and Fw 190 A-8: rockets in pairs, then bombs, while held), F flare + chaff, R next missile target, L auto-level.
+- Controls (Day 11, War Thunder style; the full list per device is `docs/HOW_TO_PLAY.md`): every action is in `src/data/keybinds.json` (keyboard codes, `MouseLeft/Middle/Right`, gamepad buttons by Xbox name). `src/core/keybinds.ts` resolves them with the player's changes (localStorage `rvbs.keybinds.v1`, only changed actions saved), finds conflicts, resets; the Controls screen (`src/ui/controlsPanel.ts`, from Settings and the in-match menu) rebinds two slots per action. `src/core/input.ts` applies the flying actions every frame and queues one-shot presses that `main.ts` `handlePresses` reads with `takePress`.
+- Mouse aim (default): the mouse moves the aim circle, the autopilot (`src/game/autopilot.ts`) flies the nose onto it; rudder (Q/E, ramped over 0.3 s in `playerControls.ts`) adds yaw on top. Mouse joystick (Settings): the mouse moves the stick (`controls.stick`), which drifts back to centre. Click to capture the mouse; Esc (or the browser releasing it) opens the in-match menu (`matchOverlays.ts`), which pauses solo. If pointer lock is refused, the cursor's offset from screen centre steers instead.
+- Default keys: W/S throttle (hold W at 100% for WEP), A/D roll, Q/E rudder, H airbrake, F flaps, L level, left mouse guns, Space missile/rocket/bomb, Left Shift switch secondary, middle mouse or T select target (again within 1.5 s: next), X flares + chaff, 1/2/3 radar power/mode/range, R radar lock, C free look, right mouse zoom, V chase/HUD view, Tab scores, M map, Enter chat, J quick chat, Esc menu, P pause (solo). Arrows fly directly.
+- ControlInput (Day 11 fields are optional): `wep`, `airbrake`, `flaps`, `radarOn`, `radarDogfight`, `radarRange`, `radarLock`, `secondary`. PlaneState has `wep`, `engineHeat` (0–1), `overheatFor`, `airbrake`, `flaps`, `radar*`, `secondary`. 100% throttle without WEP is `MIL_THRUST` (0.85 of full thrust, ~92% of top speed); WEP heats the engine over the era's `wepTimeS` (eras.json); at full heat the engine runs at 45% for 10 s. Bots use WEP at full throttle until the engine is 85% hot. The afterburner glow and IR heat follow `p.wep` on jets.
+- Radar (`src/game/radar.ts`, jets with a `radar` block in planes.json: rangeKm, coneDeg as the half-angle, modes): Search locks the picked target (or nearest the nose) when `radarLock` is asked; Dogfight auto-locks inside 10° up to 10 km; a lock survives 1 s out of sight. Radar missiles need the radar lock to lock, and semi-active ones guide only while it holds and sees the target that tick. The RWR shows radar locks (orange) separately from seeker spikes. Validation requires a radar for any plane with radar missiles.
+- Cockpit display: `src/ui/flightHud.ts` (one canvas; reflector sight + gauges for props, gyro sight for early jets, full green HUD for Cold War/Modern; units setting) and `src/ui/radarPanel.ts` (bottom-right card: scope with sweep, RWR, THR/HEAT/HULL bars; tap a contact on touch to select it). `main.ts` `drawCockpit` builds both frames. The old HTML speed readout and RWR are hidden by CSS.
+- Touch: drag right half to steer, slider (top 12% band = WEP), FIRE, MSL (+ › switch), CM, RDR (tap lock, long-press mode), LEVEL, eye (drag to look), ZOOM; tap the scores for the scoreboard; Settings: rudder buttons, tilt steering (`requestTiltPermission` from the settings tap). Touch-held zoom/rudder/look live in `controls.touch` so the desktop input doesn't overwrite them.
+- Gamepad: left stick steer, right stick look (click: view), LS zoom, RT/LT throttle (LT at idle = airbrake), LB/RB rudder, A guns, B secondary, X switch, Y target, d-pad down CM / up lock / left mode / right range, View scores, Menu menu.
+- Protocol (Day 11): input is 12 bytes (buttons byte carries WEP, airbrake, flaps, radar lock, radar on; an extra byte has dogfight, range and secondary); planes are 26 bytes (throttle 255 = WEP lit, plus the radar lock slot); the own-weapons trailer adds engine heat, overheat seconds and the secondary pick.
 - Solo setup: era, plane, difficulty, plus Map and Mode buttons in the header that cycle on each tap.
 - Touch: drag the right side to aim, a quick tap on an enemy picks it as the missile target, throttle slider on the left, Fire/Missile/Flare by the left thumb (the Missile button shows a lock ring), Level/Look top right.
 - Gamepad: left stick aim, right stick look, RT/LT throttle, A fire, B missile, X flare, RB next target, Y level.

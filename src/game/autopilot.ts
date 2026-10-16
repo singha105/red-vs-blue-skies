@@ -56,9 +56,10 @@ export function aimControl(
   const yaw = clamp(KP_YAW * yawErr + KD_YAW * d(yawErr, pd.yawErr), -1, 1);
   const roll = clamp(KP_ROLL * rollErr + KD_ROLL * d(rollErr, pd.rollErr), -1, 1);
 
-  pd.pitchErr = pitchErr;
-  pd.yawErr = yawErr;
-  pd.rollErr = rollErr;
+  // "+ 0" turns −0 into 0 so the state survives a JSON round trip unchanged.
+  pd.pitchErr = pitchErr + 0;
+  pd.yawErr = yawErr + 0;
+  pd.rollErr = rollErr + 0;
   pd.primed = true;
 
   return {

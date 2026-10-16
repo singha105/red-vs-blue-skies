@@ -16,7 +16,7 @@ import type { GameData } from './data/types';
 import { leadPoint } from './game/ballistics';
 import type { ControlInput } from './game/controls';
 import { speedKmh, type PlaneState } from './game/flight';
-import { dirFromYawPitch, FORWARD, normalize, quatLookRotation, rotate } from './game/math';
+import { dirFromYawPitch, FORWARD, normalize, quatConj, quatLookRotation, rotate, yawPitchFromDir, type Vec3 } from './game/math';
 import { createWorldContext, newStats, type GameEvent, type WorldContext } from './game/world';
 import { computeResults } from './game/results';
 import { createSilhouettes } from './render/silhouettes';
@@ -37,8 +37,8 @@ import { createMissileFx, type GlowSource } from './render/missiles';
 import { createPylonMissiles } from './render/pylonMissiles';
 import { createCockpitAudio } from './core/audio';
 import { createSound, gunClass, type EngineInput, type GunClass } from './core/sound';
-import { cockpitState, cycleTarget, targetAt } from './app/weapons';
-import { afterburner, launch as launchMissile } from './game/missiles';
+import { cockpitState, targetAt } from './app/weapons';
+import { afterburner, isJet, launch as launchMissile } from './game/missiles';
 import { createMapScene } from './render/mapScene';
 import { setTeamPalette } from './render/planeMesh';
 import { createGroundRenderer } from './render/groundUnits';
@@ -54,6 +54,13 @@ import { createFpsCounter } from './ui/fps';
 import { createHud, escapeHtml as esc, type Hud, type Marker, type ScoreRow } from './ui/hud';
 import { showResults } from './ui/results';
 import { openSettings } from './ui/settingsPanel';
+import { openControls } from './ui/controlsPanel';
+import { keysText } from './core/keybinds';
+import { createFlightHud, type FlightHud, type HudStyle } from './ui/flightHud';
+import { createRadarPanel, type PanelFrame, type RadarPanel, type ScopeContact } from './ui/radarPanel';
+import { createMatchChat, createMatchMenu, type MatchChat, type MatchMenu } from './ui/matchOverlays';
+import { RADAR_RANGES_KM, radarSees } from './game/radar';
+import { missileLabel } from './app/weapons';
 import { createSoloSetup, type SoloChoice } from './ui/soloSetup';
 import { createHangarUi } from './ui/hangar';
 import { createTitleScreen } from './ui/title';
@@ -174,6 +181,7 @@ function boot(): void {
   // Display and control settings that apply at once: invert pitch, HUD size, team colours.
   const applyDisplay = (st: ReturnType<typeof getSettings>): void => {
     controls.invertPitch = st.invertPitch;
+    controls.mode = st.controlMode;
     document.documentElement.style.setProperty('--hud-scale', String(st.hudScale));
     setTeamPalette(st.teamColours);
   };
@@ -192,6 +200,16 @@ function boot(): void {
   let hud: Hud | null = null;
   let touch: TouchControls | null = null;
   let netOverlay: ReturnType<typeof createNetOverlay> | null = null;
+  let flightHud: FlightHud | null = null;
+  let radarPanel: RadarPanel | null = null;
+  let matchMenu: MatchMenu | null = null;
+  let matchChat: MatchChat | null = null;
+  let controlsView: { close(): void } | null = null;
+  /** Solo only: P or the menu stops the simulation. */
+  let paused = false;
+  let maxG = 1;
+  let mapOpen = false;
+  onSettingsChange((st) => touch?.setOptions({ rudder: st.touchRudder, tilt: st.tiltSteer }));
   const visuals = new Map<string, PlaneVisual>();
   const pose: RenderPose = { pos: [0, 0, 0], quat: [0, 0, 0, 1] };
   const frameEvents: GameEvent[] = [];
@@ -323,8 +341,22 @@ function boot(): void {
 
   const leaveMatch = (): void => {
     desktop.setEnabled(false);
+    desktop.setTyping(false);
     hud?.dispose();
     hud = null;
+    flightHud = null;
+    radarPanel = null;
+    matchMenu?.dispose();
+    matchMenu = null;
+    matchChat?.dispose();
+    matchChat = null;
+    controlsView?.close();
+    controlsView = null;
+    paused = false;
+    mapOpen = false;
+    controls.view = 'chase';
+    controls.zoom = false;
+    chase.setZoom(false);
     touch?.dispose();
     touch = null;
     netOverlay?.dispose();
@@ -409,7 +441,15 @@ function boot(): void {
     const title = createTitleScreen(ui, env.version, {
       onSolo: showSetup,
       onHostJoin: () => showCallsign(null),
-      onSettings: () => openSettings(ui, { isTouch: env.isTouch, account: accountControls, onTutorial: startTutorial }),
+      onSettings: () =>
+        openSettings(ui, {
+          isTouch: env.isTouch,
+          account: accountControls,
+          onTutorial: startTutorial,
+          onControls: () => {
+            controlsView = openControls(ui, { capture: (fn) => desktop.captureNext(fn), isTouch: env.isTouch, onClose: () => (controlsView = null) });
+          },
+        }),
       onHelp: () => {
         closeOverlay();
         overlay = openHowToPlay(ui, { start: env.isTouch ? 'touch' : desktop.gamepadConnected ? 'gamepad' : 'desktop', version: env.version, onClose: () => (overlay = null) });
@@ -773,15 +813,45 @@ function boot(): void {
     // Bomber Escort: that era's bomber model.
     if (era && s.world.objectives.escort) void loadPlane(bomberFor(s.ctx, era).id);
     chase.setScale(mine ? planeSize(mine).lengthM / 9 : 1);
-    if (me) controls.resetTo(me);
+    if (me) controls.resetTo(me, Boolean(mine?.radar));
     controls.freeLook = false;
     chase.reset();
     wasAlive = true;
     killerId = null;
+    maxG = 1;
     hud = createHud(ui, {
-      onMenu: () => showTitle(),
+      onMenu: () => openMatchMenu(),
       onScores: (open) => hud?.setScoreboard(open ? scoreRows() : null),
     });
+    flightHud = createFlightHud(hud.el);
+    // Tapping a radar contact selects it (phones; the panel takes taps only there).
+    radarPanel = createRadarPanel(hud.el, (id) => (controls.target = id));
+    const solo = s.kind === 'solo';
+    matchMenu = createMatchMenu(ui, {
+      solo,
+      onResume: () => closeMatchMenu(),
+      onControls: () => {
+        matchMenu?.hide();
+        controlsView = openControls(ui, { capture: (fn) => desktop.captureNext(fn), isTouch: env.isTouch, onClose: () => ((controlsView = null), matchMenu?.show()) });
+      },
+      onSettings: () => {
+        matchMenu?.hide();
+        openSettings(ui, {
+          isTouch: env.isTouch,
+          onClose: () => matchMenu?.show(),
+          onControls: () => {
+            controlsView = openControls(ui, { capture: (fn) => desktop.captureNext(fn), isTouch: env.isTouch, onClose: () => ((controlsView = null), matchMenu?.show()) });
+          },
+        });
+      },
+      onHelp: () => {
+        matchMenu?.hide();
+        closeOverlay();
+        overlay = openHowToPlay(ui, { start: env.isTouch ? 'touch' : desktop.gamepadConnected ? 'gamepad' : 'desktop', version: env.version, onClose: () => ((overlay = null), matchMenu?.show()) });
+      },
+      onLeave: () => showTitle(),
+    });
+    matchChat = s.kind === 'net' ? createMatchChat(ui, (text) => net?.client.request({ t: 'chat', text }), (typing) => desktop.setTyping(typing)) : null;
     controls.target = null;
     if (env.isTouch) {
       // A quick tap on an enemy picks it as the missile target (tapping empty sky clears the pick).
@@ -790,6 +860,7 @@ function boot(): void {
         if (session && self) controls.target = targetAt(session.world, self, screenOfPlane, x, y);
       });
       if (me) touch.setPlane(me);
+      touch.setOptions({ rudder: getSettings().touchRudder, tilt: getSettings().tiltSteer });
     }
     if (env.debug && s.net) netOverlay = createNetOverlay(ui);
     // A phone host can't keep the match running in the background: say so where it can't be missed.
@@ -872,15 +943,112 @@ function boot(): void {
       .sort((a, b) => (a.team === b.team ? b.kills - a.kills || b.damage - a.damage : a.team === 'blue' ? -1 : 1));
   }
 
-  // Tab holds the scoreboard open on desktop.
-  window.addEventListener('keydown', (e) => {
-    if (e.code !== 'Tab' || mode !== 'match') return;
-    e.preventDefault();
-    if (!hud?.scoreboardOpen) hud?.setScoreboard(scoreRows());
-  });
-  window.addEventListener('keyup', (e) => {
-    if (e.code === 'Tab' && mode === 'match') hud?.setScoreboard(null);
-  });
+  // In-match menu: pauses a solo match while open.
+  function openMatchMenu(): void {
+    if (!matchMenu || matchMenu.open) return;
+    desktop.exitLock();
+    desktop.releaseAll();
+    touch?.releaseAll();
+    if (session?.kind === 'solo') paused = true;
+    matchMenu.show();
+  }
+  function closeMatchMenu(): void {
+    matchMenu?.hide();
+    paused = false;
+  }
+  // Quick chat (J) takes the digit keys while it's open, before the radar keys see them.
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      if (mode === 'match' && matchChat?.quickKey(e.code)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    },
+    true,
+  );
+  let scoreHeld = false;
+
+  /** One-shot actions from keys, buttons and touch: targets, secondary weapon, radar, views, menus. */
+  function handlePresses(s: Session, me: PlaneState | null): void {
+    const def = me ? ctx.planeDefs.get(me.planeId) : undefined;
+    if (desktop.takeLockLost() && !matchMenu?.open && !controlsView) openMatchMenu();
+    if (desktop.takePress('menu')) {
+      if (matchMenu?.open) closeMatchMenu();
+      else openMatchMenu();
+    }
+    if (desktop.takePress('pause') && s.kind === 'solo') {
+      paused = !paused;
+      hud?.notice(paused ? 'Paused. Press P to carry on.' : 'Carry on', paused ? 3600 : 1);
+    }
+    if (desktop.takePress('chat')) matchChat?.openInput();
+    if (desktop.takePress('quickChat')) matchChat?.toggleQuick();
+    if (desktop.takePress('map')) {
+      mapOpen = !mapOpen;
+      hud?.el.classList.toggle('is-map-open', mapOpen);
+    }
+    // Scoreboard: held on keyboard and gamepad.
+    const scores = desktop.held('scoreboard');
+    if (scores !== scoreHeld) {
+      scoreHeld = scores;
+      hud?.setScoreboard(scores ? scoreRows() : null);
+    }
+    desktop.takePress('scoreboard');
+    if (desktop.takePress('switchView')) controls.view = controls.view === 'chase' ? 'hud' : 'chase';
+    if (!me || !me.alive || !def) {
+      for (const a of ['selectTarget', 'cycleSecondary', 'radarPower', 'radarMode', 'radarRange', 'radarLock'] as const) desktop.takePress(a);
+      return;
+    }
+    if (desktop.takePress('selectTarget')) controls.target = selectTarget(s, me);
+    const secondaryCount = def.missiles.length || (def.ordnance ? 2 : 0);
+    if (desktop.takePress('cycleSecondary') || touch?.takePress('cycleSecondary')) {
+      controls.cycleSecondary(secondaryCount);
+      hud?.notice(`Secondary: ${secondaryName(me, controls.secondary)}`, 1.2);
+    }
+    if (def.radar) {
+      if (desktop.takePress('radarPower')) {
+        controls.radarOn = !controls.radarOn;
+        if (!controls.radarOn) controls.radarLockWanted = false;
+      }
+      if (desktop.takePress('radarMode') || touch?.takePress('radarMode')) controls.cycleRadarMode(def.radar.modes);
+      if (desktop.takePress('radarRange')) controls.cycleRadarRange();
+      if (desktop.takePress('radarLock') || touch?.takePress('radarLock')) controls.toggleRadarLock(me);
+    } else {
+      for (const a of ['radarPower', 'radarMode', 'radarRange', 'radarLock'] as const) desktop.takePress(a);
+      touch?.takePress('radarLock');
+      touch?.takePress('radarMode');
+    }
+  }
+
+  /** Middle mouse / T / Y: the enemy nearest the crosshair; pressed again within 1.5 s, the next one. */
+  let lastSelectAt = -10;
+  function selectTarget(s: Session, me: PlaneState): string | null {
+    const again = clock - lastSelectAt < 1.5;
+    lastSelectAt = clock;
+    const aim = controls.aimDir();
+    const list = s.world.planes
+      .filter((p) => p.alive && p.team !== me.team)
+      .map((p) => {
+        const dx = p.pos[0] - me.pos[0], dy = p.pos[1] - me.pos[1], dz = p.pos[2] - me.pos[2];
+        const d = Math.hypot(dx, dy, dz) || 1;
+        return { id: p.id, d, angle: Math.acos(Math.max(-1, Math.min(1, (dx * aim[0] + dy * aim[1] + dz * aim[2]) / d))) };
+      })
+      .filter((t) => t.d < 12000 && t.angle < Math.PI / 2)
+      // Nearest the crosshair, with a nudge toward closer planes (a far one barely off the nose loses to a near one).
+      .sort((a, b) => a.angle + a.d / 60000 - (b.angle + b.d / 60000));
+    if (list.length === 0) return null;
+    const i = again ? list.findIndex((t) => t.id === controls.target) : -1;
+    return i >= 0 ? list[(i + 1) % list.length]!.id : list[0]!.id;
+  }
+
+  function secondaryName(me: PlaneState, index: number): string {
+    const def = ctx.planeDefs.get(me.planeId);
+    if (!def) return '';
+    if (def.ordnance) return index === 1 ? 'Bombs' : index === 0 ? 'Rockets' : 'Rockets, then bombs';
+    if (index < 0) return 'Auto (best missile for the range)';
+    const md = ctx.missileDefs.get(def.missiles[index]?.type ?? '');
+    return md ? missileLabel(md) : '';
+  }
 
   /** The plane's visual: the placeholder until its model has loaded, then the real model. */
   const visualPlane = new Map<string, string>();
@@ -904,6 +1072,9 @@ function boot(): void {
   const vc = new Vector3();
   const aimVec = new Vector3();
   const lookVec = new Vector3();
+  const NO_LOOK = { yaw: 0, pitch: 0 };
+  const def0 = (p: PlaneState) => ctx.planeDefs.get(p.planeId)!;
+  const projVec = new Vector3();
   const proj = new Vector3();
   const camInv = new Matrix4();
   const toScreen = (p: Vector3): { x: number; y: number } | null => {
@@ -1162,16 +1333,17 @@ function boot(): void {
       if (roomView && Math.floor(clock * 4) !== Math.floor((clock - dt) * 4)) roomView.tick();
       if (mode !== 'match' || !session) return;
       const s = session;
+      handlePresses(s, player());
+      if (paused && s.kind === 'solo') return;
       // ?timescale speeds up solo only; a network match runs in real time.
       const steps = s.kind === 'solo' ? timeScale : 1;
       for (let step = 0; step < steps; step++) {
         const me = player();
         let input: ControlInput | null = null;
         if (me?.alive) {
-          if (desktop.takeTargetCycle()) controls.target = cycleTarget(s.world, me, controls.target);
           if (controls.target && !s.world.planes.some((p) => p.id === controls.target && p.alive)) controls.target = null;
           controls.fire = desktop.buttons.fire || (touch?.buttons.fire ?? false);
-          controls.missile = desktop.buttons.missile || (touch?.buttons.missile ?? false) || desktop.takeMissilePress() || (touch?.takeMissilePress() ?? false);
+          controls.missile = desktop.buttons.missile || (touch?.buttons.missile ?? false) || desktop.takePress('fireSecondary') || (touch?.takeMissilePress() ?? false);
           controls.flare = desktop.buttons.flare || (touch?.buttons.flare ?? false);
           input = controls.sample(me, dt);
         }
@@ -1180,7 +1352,8 @@ function boot(): void {
         if (session !== s) return; // a network event ended the match mid-step
         const after = player();
         if (after && after.alive && !wasAlive) {
-          controls.resetTo(after);
+          controls.resetTo(after, Boolean(ctx.planeDefs.get(after.planeId)?.radar));
+          maxG = 1;
           chase.reset();
           touch?.setPlane(after);
         }
@@ -1313,6 +1486,143 @@ function boot(): void {
     trailAcc.set(p.id, acc);
   }
 
+  const wrapAngle = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a));
+  const contacts: ScopeContact[] = [];
+  const scopeMissiles: { mb: number; md: number; tb: number; td: number }[] = [];
+  const projectDir = (d: Vec3): { x: number; y: number } | null => toScreen(projVec.copy(view.camera.position).add(vc.set(d[0], d[1], d[2]).multiplyScalar(3000)));
+
+  /** The canvas HUD and the bottom-right panel: era HUD, radar scope, RWR, throttle / heat / hull bars. */
+  function drawCockpit(s: Session, me: PlaneState, def: NonNullable<ReturnType<typeof ctx.planeDefs.get>>, rwr: { angle: number; kind: string }[], frameDt: number, nose: { x: number; y: number } | null): void {
+    if (!flightHud || !radarPanel) return;
+    const st = getSettings();
+    const params = ctx.params.get(me.planeId)!;
+    const compact = env.isTouch && window.innerHeight < 520;
+    const speed = Math.hypot(me.vel[0], me.vel[1], me.vel[2]);
+    const fwd = rotate(me.quat, FORWARD);
+    const { yaw: heading, pitch } = yawPitchFromDir(fwd);
+    const ground = Math.max(0, ctx.terrain.surfaceAt(me.pos[0], me.pos[2]));
+    if (me.alive) maxG = Math.max(maxG, me.g);
+    const local = rotate(quatConj(me.quat), me.vel);
+    const aoa = speed > 5 ? (Math.atan2(-local[1], Math.max(1, local[2])) * 180) / Math.PI : 0;
+    // Terrain under 4 s ahead along the flight path (or straight down while sinking).
+    let pullUp = false;
+    if (me.alive && speed > 20) {
+      for (let t = 0.25; t <= 4; t += 0.25) {
+        const x = me.pos[0] + me.vel[0] * t, y = me.pos[1] + me.vel[1] * t, z = me.pos[2] + me.vel[2] * t;
+        if (y < ctx.terrain.surfaceAt(x, z) + 8) {
+          pullUp = true;
+          break;
+        }
+      }
+    }
+    const era = def.era;
+    const style: HudStyle = era === 'cold_war' || era === 'modern' ? 'jet' : era === 'early_jets' ? 'gyro' : 'gunsight';
+    const mslMax = def.missiles.reduce((a, m) => a + m.count, 0);
+    const mslNow = me.missiles.reduce((a, b) => a + b, 0);
+    const pick = controls.secondary;
+    const secondary = def.ordnance
+      ? `RKT ${me.rockets}  BMB ${me.bombs}${pick === 0 ? ' ‹R›' : pick === 1 ? ' ‹B›' : ''}`
+      : mslMax > 0
+        ? `MSL ${mslNow}/${mslMax}${pick >= 0 ? ` ${secondaryName(me, pick)}` : ''}`
+        : '';
+    const vdir: Vec3 = speed > 1 ? [me.vel[0] / speed, me.vel[1] / speed, me.vel[2] / speed] : fwd;
+    flightHud.draw({
+      style,
+      units: st.units,
+      compact,
+      alive: me.alive,
+      speedMs: speed,
+      altM: me.pos[1],
+      radarAltM: me.pos[1] - ground,
+      heading,
+      pitch,
+      mach: speed / Math.max(295, 340.3 - 0.0041 * me.pos[1]),
+      g: me.g,
+      maxG,
+      gLimit: params.maxG,
+      aoaDeg: aoa,
+      throttle: me.throttle,
+      wep: me.wep,
+      jet: isJet(def),
+      heat: me.engineHeat,
+      wepLeftS: (1 - me.engineHeat) * params.wepTimeS,
+      overheatS: me.overheatFor,
+      airbrake: controls.airbrake || controls.airbrakeHeld,
+      flaps: controls.flaps,
+      guns: me.ammo.reduce((a, b) => a + b, 0),
+      secondary,
+      flares: me.flares,
+      pullUp,
+      nose,
+      fpm: me.alive ? projectDir(vdir) : null,
+      project: projectDir,
+    });
+
+    // Radar scope.
+    let radar: PanelFrame['radar'] = null;
+    if (def.radar) {
+      contacts.length = 0;
+      scopeMissiles.length = 0;
+      const w = s.world;
+      const rangeKm = RADAR_RANGES_KM[controls.radarRange] ?? 10;
+      const rangeM = Math.min(rangeKm * 1000, def.radar.rangeKm * 1000);
+      let lock: NonNullable<PanelFrame['radar']>['lock'] = null;
+      const bearingOf = (x: number, z: number): number => wrapAngle(Math.atan2(-(x - me.pos[0]), z - me.pos[2]) - heading);
+      for (const p of w.planes) {
+        if (p.id === me.id || !p.alive) continue;
+        const dx = p.pos[0] - me.pos[0], dy = p.pos[1] - me.pos[1], dz = p.pos[2] - me.pos[2];
+        const d = Math.hypot(dx, dy, dz);
+        if (p.id === me.radarLock) {
+          const closing = -((p.vel[0] - me.vel[0]) * dx + (p.vel[1] - me.vel[1]) * dy + (p.vel[2] - me.vel[2]) * dz) / Math.max(1, d);
+          lock = { id: p.id, bearing: bearingOf(p.pos[0], p.pos[2]), distM: d, altM: p.pos[1], closingMs: closing };
+          continue;
+        }
+        if (!controls.radarOn || d > rangeM || !radarSees(me, def.radar, p, ctx.planeDefs.get(p.planeId))) continue;
+        contacts.push({ id: p.id, bearing: bearingOf(p.pos[0], p.pos[2]), distM: d, enemy: p.team !== me.team });
+      }
+      for (const m of w.missiles) {
+        if (m.owner !== me.id || !m.target) continue;
+        const t = w.planes.find((p) => p.id === m.target);
+        if (!t) continue;
+        scopeMissiles.push({
+          mb: bearingOf(m.pos[0], m.pos[2]),
+          md: Math.hypot(m.pos[0] - me.pos[0], m.pos[1] - me.pos[1], m.pos[2] - me.pos[2]),
+          tb: bearingOf(t.pos[0], t.pos[2]),
+          td: Math.hypot(t.pos[0] - me.pos[0], t.pos[1] - me.pos[1], t.pos[2] - me.pos[2]),
+        });
+      }
+      radar = {
+        on: controls.radarOn,
+        mode: controls.radarDogfight ? 'dogfight' : 'search',
+        rangeKm,
+        coneDeg: def.radar.coneDeg,
+        contacts,
+        lock,
+        missiles: scopeMissiles,
+        lockWanted: controls.radarLockWanted,
+      };
+    }
+    const cb = st.teamColours === 'colourblind';
+    radarPanel.draw(
+      {
+        compact,
+        radar,
+        rwr: rwr as PanelFrame['rwr'],
+        showRwr: def.missiles.length > 0 || def.countermeasures.flares + def.countermeasures.chaff > 0 || isJet(def),
+        throttle: me.throttle,
+        wep: me.wep,
+        heat: me.engineHeat,
+        overheat: me.overheatFor > 0,
+        hp: Math.max(0, me.hp / me.maxHp),
+        units: st.units,
+        friendColor: '#5aa9ff',
+        enemyColor: cb ? '#ff9f1c' : '#ff5a5a',
+      },
+      frameDt,
+    );
+    radarPanel.el.hidden = !me.alive;
+  }
+
   function renderMatch(s: Session, alpha: number, frameDt: number): void {
     const w = s.world;
     const me = player();
@@ -1406,7 +1716,13 @@ function boot(): void {
     const sinceDeath = w.time - deathAt;
     let deathView: { phase: 'killcam' | 'respawn'; killer: string | null; respawnIn: number } | null = null;
 
-    if (me.alive) {
+    chase.setZoom(controls.zoom && me.alive);
+    const hudView = controls.view === 'hud' && me.alive;
+    // HUD view: no plane in the way (the camera sits at its nose).
+    meMesh.visible = (me.alive || me.wreck) && !hudView;
+    if (me.alive && hudView) {
+      chase.updateCockpit(frameDt, meMesh.position, meMesh.quaternion, planeSize(def0(me)).lengthM * 0.5, controls.freeLook ? controls.look : NO_LOOK, speedKmh(me) / 3.6);
+    } else if (me.alive) {
       aimVec.fromArray(controls.aimDir());
       let freeDir: Vector3 | null = null;
       if (controls.freeLook) {
@@ -1478,16 +1794,30 @@ function boot(): void {
     }
     const aimScreen = me.alive ? toScreen(va.copy(meMesh.position).addScaledVector(aimVec.fromArray(aimDir), 1500)) : null;
     const noseScreen = me.alive ? toScreen(vb.copy(meMesh.position).add(vc.set(nose[0], nose[1], nose[2]).multiplyScalar(1500))) : null;
+    const secondaryKeys = def.missiles.length
+      ? `, ${keysText('fireSecondary')} missile, ${keysText('selectTarget')} target, ${keysText('countermeasures')} flares`
+      : def.ordnance
+        ? `, ${keysText('fireSecondary')} rockets and bombs`
+        : '';
     const hint = env.isTouch || desktop.pointerLocked || desktop.gamepadConnected
       ? ''
       : desktop.cursorSteering
-        ? `Hold the cursor where you want to fly. Click or Space fires${def.missiles.length ? ', Q missile, R target, F flares' : def.ordnance ? ', Q rockets and bombs' : ''}, Tab shows scores`
-        : `Click to steer with the mouse. Space fires${def.missiles.length ? ', Q missile, R target, F flares' : def.ordnance ? ', Q rockets and bombs' : ''}, W/S throttle, Tab shows scores`;
+        ? `Hold the cursor where you want to fly. ${keysText('fireGuns')} fires guns${secondaryKeys}, ${keysText('scoreboard')} shows scores`
+        : `Click to steer with the mouse. ${keysText('fireGuns')} fires guns${secondaryKeys}, ${keysText('throttleUp')}/${keysText('throttleDown')} throttle, ${keysText('scoreboard')} shows scores`;
 
     const cockpit = cockpitState(w, ctx, me, controls.target, screenOfPlane);
     audio.update(cockpit.seeker, cockpit.warning, clock);
     updateSound(s, me.alive ? me : null, frameDt);
-    touch?.setWeapons(cockpit.touch);
+    const secCount = def.missiles.length || (def.ordnance ? 2 : 0);
+    touch?.setWeapons(
+      cockpit.touch
+        ? { ...cockpit.touch, label: controls.secondary >= 0 ? secondaryName(me, controls.secondary).split(' ')[0] ?? '' : 'AUTO', canSwitch: secCount > 1 }
+        : def.ordnance
+          ? { progress: 0, locked: false, missiles: me.rockets + me.bombs, flares: 0, chaff: 0, label: controls.secondary === 1 ? 'BOMB' : controls.secondary === 0 ? 'RKT' : 'AUTO', canSwitch: true }
+          : null,
+    );
+    touch?.setRadar(def.radar ? { locked: Boolean(me.radarLock), dogfight: controls.radarDogfight, on: controls.radarOn } : null);
+    drawCockpit(s, me, def, cockpit.frame?.rwr ?? [], frameDt, noseScreen);
 
     hud?.update({
       weapons: cockpit.frame,
@@ -1597,6 +1927,26 @@ function boot(): void {
           .map((p) => ({ id: p.id, name: w.pilots[p.id]!.name, pos: [...p.pos], alive: p.alive }));
       },
       aim: () => ({ ...controls.aim }),
+      /** Day 11 cockpit switches and views, for the controls e2e tests. */
+      cockpit: () => ({
+        throttle: controls.throttle,
+        rudder: controls.rudder,
+        airbrake: controls.airbrake,
+        flaps: controls.flaps,
+        radarOn: controls.radarOn,
+        radarDogfight: controls.radarDogfight,
+        radarRange: controls.radarRange,
+        radarLockWanted: controls.radarLockWanted,
+        secondary: controls.secondary,
+        target: controls.target,
+        view: controls.view,
+        zoom: controls.zoom,
+        freeLook: controls.freeLook,
+        mode: controls.mode,
+        paused,
+        menuOpen: matchMenu?.open ?? false,
+        mapOpen,
+      }),
       /** Missiles in the air and the player's weapon state. */
       missiles: () => {
         if (!session || mode !== 'match') return null;

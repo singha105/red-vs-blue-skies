@@ -78,6 +78,7 @@ describe('missiles: seekers', () => {
     t.throttle = 0.6;
     const mil = heatOf(t, def);
     t.throttle = 1;
+    t.wep = true;
     expect(heatOf(t, def)).toBeCloseTo(1.4, 5);
     expect(heatOf(t, def)).toBeGreaterThan(mil * 1.4);
   });

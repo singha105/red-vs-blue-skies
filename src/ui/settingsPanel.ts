@@ -2,6 +2,7 @@
 // colour-blind team colours), volume per sound bus (all saved immediately), the tutorial again, and your account:
 // progress lives on an anonymous Firebase account until you link Google, which carries it to other devices.
 import { getSettings, updateSettings, type GraphicsLevel } from '../core/settings';
+import { requestTiltPermission } from './touchControls';
 
 export interface AccountControls {
   /** One line: who you're signed in as and whether progress is synced. */
@@ -11,7 +12,7 @@ export interface AccountControls {
   onChange(fn: () => void): () => void;
 }
 
-export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; account?: AccountControls; onTutorial?: () => void }): void {
+export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; account?: AccountControls; onTutorial?: () => void; onControls?: () => void; onClose?: () => void }): void {
   const s = getSettings();
   const el = document.createElement('div');
   el.className = 'modal';
@@ -39,6 +40,30 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
           <option value="0" ${s.invertPitch ? '' : 'selected'}>Normal: up moves the nose up</option>
           <option value="1" ${s.invertPitch ? 'selected' : ''}>Inverted: up moves the nose down</option>
         </select>
+      </label>
+      ${opts.onControls ? '<button type="button" class="btn btn--secondary btn--small" data-act="controls" data-testid="open-controls">Controls and key bindings</button>' : ''}
+      <label class="field"><span>Mouse</span>
+        <select data-k="controlMode">
+          <option value="mouseAim" ${s.controlMode === 'mouseAim' ? 'selected' : ''}>Mouse aim (the plane flies to the aim circle)</option>
+          <option value="joystick" ${s.controlMode === 'joystick' ? 'selected' : ''}>Mouse joystick (the mouse moves the stick)</option>
+        </select>
+      </label>
+      <label class="field"><span>Units</span>
+        <select data-k="units">
+          <option value="imperial" ${s.units === 'imperial' ? 'selected' : ''}>Knots and feet</option>
+          <option value="metric" ${s.units === 'metric' ? 'selected' : ''}>km/h and metres</option>
+        </select>
+      </label>
+      <label class="field"><span>Touch extras</span>
+        <select data-k="touchRudder">
+          <option value="0" ${s.touchRudder ? '' : 'selected'}>No rudder buttons</option>
+          <option value="1" ${s.touchRudder ? 'selected' : ''}>Rudder buttons</option>
+        </select>
+        <select data-k="tiltSteer" data-testid="tilt-select">
+          <option value="0" ${s.tiltSteer ? '' : 'selected'}>Steer by dragging</option>
+          <option value="1" ${s.tiltSteer ? 'selected' : ''}>Steer by tilting the phone too</option>
+        </select>
+        <small class="tilt__msg" role="status" aria-live="polite">${opts.isTouch ? 'Tilt steering asks for motion access on iPhone.' : 'Rudder buttons and tilt steering are for touch screens.'}</small>
       </label>
       <label class="field"><span>Touch aim assist <output data-o="aimAssist">${Math.round(s.aimAssist * 100)}%</output></span>
         <input type="range" data-k="aimAssist" min="0" max="1" step="0.05" value="${s.aimAssist}" />
@@ -100,7 +125,21 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
     const k = t.dataset['k'];
     if (!k) return;
     if (k === 'graphics') updateSettings({ graphics: t.value as GraphicsLevel });
-    else if (k === 'cap30' || k === 'invertPitch') updateSettings({ [k]: t.value === '1' });
+    else if (k === 'cap30' || k === 'invertPitch' || k === 'touchRudder') updateSettings({ [k]: t.value === '1' });
+    else if (k === 'controlMode') updateSettings({ controlMode: t.value === 'joystick' ? 'joystick' : 'mouseAim' });
+    else if (k === 'units') updateSettings({ units: t.value === 'metric' ? 'metric' : 'imperial' });
+    else if (k === 'tiltSteer') {
+      if (t.value !== '1') updateSettings({ tiltSteer: false });
+      else {
+        // iPhone only sends motion after a permission prompt from this tap.
+        const msg = el.querySelector<HTMLElement>('.tilt__msg');
+        void requestTiltPermission().then((ok) => {
+          updateSettings({ tiltSteer: ok });
+          if (!ok) t.value = '0';
+          if (msg) msg.textContent = ok ? 'Tilt steering is on: tilt to steer, drag still works.' : 'Motion access was refused or isn\'t available, so tilt steering stays off.';
+        });
+      }
+    }
     else if (k === 'teamColours') updateSettings({ teamColours: t.value === 'colourblind' ? 'colourblind' : 'classic' });
     else {
       const v = Number(t.value);
@@ -134,7 +173,12 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
   const close = (): void => {
     off?.();
     el.remove();
+    opts.onClose?.();
   };
+  el.querySelector('[data-act="controls"]')?.addEventListener('click', () => {
+    close();
+    opts.onControls?.();
+  });
   el.querySelector('[data-act="close"]')!.addEventListener('click', close);
   el.querySelector('[data-act="tutorial"]')?.addEventListener('click', () => {
     close();

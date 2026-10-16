@@ -1,4 +1,5 @@
 // The single control format. Mouse, touch, gamepad, keyboard, bots and (Day 5) network clients all produce this.
+// The Day 11 fields are optional so older callers (tests, scripted planes) keep working: missing = off.
 
 export interface ControlInput {
   /** −1..1, positive = nose up. */
@@ -14,6 +15,18 @@ export interface ControlInput {
   flare: boolean;
   /** Plane id picked as the missile target (R / tap / RB), or null to let the weapons computer choose. */
   target: string | null;
+  /** WEP (props) or afterburner (jets): only works at full throttle, heats the engine. */
+  wep?: boolean;
+  airbrake?: boolean;
+  flaps?: boolean;
+  /** Radar power, Dogfight mode (else Search), display range index (0–2: 5/10/20 km), and whether the pilot
+   *  wants a lock (on `target` if the radar sees it, else the contact nearest the nose). */
+  radarOn?: boolean;
+  radarDogfight?: boolean;
+  radarRange?: number;
+  radarLock?: boolean;
+  /** Secondary weapon picked with Left Shift: a missile mount index (or 0 rockets / 1 bombs); −1 or missing = auto. */
+  secondary?: number;
 }
 
 export function neutralInput(throttle = 0.8): ControlInput {

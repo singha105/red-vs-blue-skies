@@ -441,7 +441,7 @@ export function createHostServer(data: GameData, transport: HostTransport, opts:
         const snap = encodeSnapshot(
           { rosterVersion, tick: w.tick, ackSeq: rec.lastSeq, timeLeftS: w.match.timeLeftS, score: w.match.score, ended: w.match.state === 'ended' },
           w.planes,
-          own ? { ammo: own.ammo, missiles: own.missiles, flares: own.flares, chaff: own.chaff, lockMount: own.lockMount, rockets: own.rockets, bombs: own.bombs } : NO_WEAPONS,
+          own ? { ammo: own.ammo, missiles: own.missiles, flares: own.flares, chaff: own.chaff, lockMount: own.lockMount, rockets: own.rockets, bombs: own.bombs, engineHeat: own.engineHeat, overheatFor: own.overheatFor, secondary: own.secondary } : NO_WEAPONS,
           w.missiles,
           snapshotContext(c),
           w.objectives,

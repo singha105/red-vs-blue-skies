@@ -640,7 +640,8 @@
     ],
     "countermeasures": { "flares": 0, "chaff": 0 },
     "model": "models/early_jets/f8.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 10, "coneDeg": 50, "modes": ["search", "lock"] }
   },
   {
     "id": "mig19s",
@@ -695,7 +696,8 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/f104g.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 12, "coneDeg": 50, "modes": ["search", "lock"] }
   },
   {
     "id": "mirage3e",
@@ -713,7 +715,8 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/mirage3e.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 12, "coneDeg": 55, "modes": ["search", "lock"] }
   },
   {
     "id": "f5e",
@@ -731,7 +734,8 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/f5e.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 10, "coneDeg": 50, "modes": ["search", "lock"] }
   },
   {
     "id": "f4e",
@@ -750,7 +754,8 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/f4e.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 16, "coneDeg": 60, "modes": ["search", "lock"] }
   },
   {
     "id": "mig23mld",
@@ -769,7 +774,8 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/mig23mld.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 16, "coneDeg": 60, "modes": ["search", "lock", "dogfight"] }
   },
   {
     "id": "mirage_f1c",
@@ -788,7 +794,8 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/mirage_f1c.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 14, "coneDeg": 60, "modes": ["search", "lock"] }
   },
   {
     "id": "f14a",
@@ -807,7 +814,8 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/f14a.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 20, "coneDeg": 65, "modes": ["search", "lock", "dogfight"] }
   },
   {
     "id": "f16a",
@@ -825,7 +833,8 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/f16a.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 14, "coneDeg": 60, "modes": ["search", "lock", "dogfight"] }
   },
   {
     "id": "f15a",
@@ -844,7 +853,8 @@
     ],
     "countermeasures": { "flares": 12, "chaff": 12 },
     "model": "models/cold_war/f15a.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 18, "coneDeg": 60, "modes": ["search", "lock", "dogfight"] }
   },
   {
     "id": "mig29a",
@@ -863,7 +873,8 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/mig29a.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 16, "coneDeg": 60, "modes": ["search", "lock", "dogfight"] }
   },
   {
     "id": "mirage2000_5",
@@ -882,7 +893,8 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/mirage2000_5.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 18, "coneDeg": 60, "modes": ["search", "lock", "dogfight"] }
   },
   {
     "id": "fa18c",
@@ -901,7 +913,8 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/fa18c.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 18, "coneDeg": 60, "modes": ["search", "lock", "dogfight"] }
   },
   {
     "id": "f16c_b50",
@@ -920,7 +933,8 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/f16c_b50.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 18, "coneDeg": 60, "modes": ["search", "lock", "dogfight"] }
   },
   {
     "id": "jas39c",
@@ -939,7 +953,8 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/jas39c.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 18, "coneDeg": 60, "modes": ["search", "lock", "dogfight"] }
   },
   {
     "id": "su27s",
@@ -958,7 +973,8 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/su27s.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 20, "coneDeg": 60, "modes": ["search", "lock", "dogfight"] }
   },
   {
     "id": "f15c",
@@ -977,7 +993,8 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/f15c.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 20, "coneDeg": 60, "modes": ["search", "lock", "dogfight"] }
   },
   {
     "id": "typhoon",
@@ -996,7 +1013,8 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/typhoon.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 20, "coneDeg": 60, "modes": ["search", "lock", "dogfight"] }
   },
   {
     "id": "rafale_c",
@@ -1015,7 +1033,8 @@
     ],
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/rafale_c.glb",
-    "verify": false
+    "verify": false,
+    "radar": { "rangeKm": 20, "coneDeg": 60, "modes": ["search", "lock", "dogfight"] }
   },
   {
     "id": "f22a",
@@ -1035,6 +1054,7 @@
     "countermeasures": { "flares": 24, "chaff": 24 },
     "model": "models/modern/f22a.glb",
     "verify": false,
-    "radarSignature": 0.5
+    "radarSignature": 0.5,
+    "radar": { "rangeKm": 20, "coneDeg": 60, "modes": ["search", "lock", "dogfight"] }
   }
 ]

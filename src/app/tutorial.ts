@@ -330,7 +330,7 @@ export function createTutorialSession(ctx: WorldContext): TutorialSession {
         // First launch 3 s into the step; if it hits, another one 4 s later (three tries, then move on).
         const inbound = w.missiles.some((m) => m.target === PLAYER);
         for (const e of events) {
-          if (e.t === 'detonate' && e.victim === PLAYER) note('It hit you. Press Flare as soon as the warning shows.');
+          if (e.t === 'detonate' && e.victim === PLAYER) note('It hit you. Drop flares as soon as the warning shows.');
           else if (e.t === 'detonate' && e.victim === null && w.missiles.every((m) => m.target !== PLAYER)) t.beaten = true;
         }
         if (!inbound) {

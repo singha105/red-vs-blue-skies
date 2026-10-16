@@ -155,6 +155,8 @@ export function createHud(parent: HTMLElement, handlers: { onMenu(): void; onSco
   const scoresBtn = q<HTMLButtonElement>('.hud__scores-btn');
   let boardOpen = false;
   scoresBtn.addEventListener('click', () => handlers.onScores(!boardOpen));
+  // Tapping the team scores opens the scoreboard too (phones).
+  q('.hud__top').addEventListener('click', () => handlers.onScores(!boardOpen));
 
   let noticeTimer = 0;
   const reticle = q('.hud__reticle');

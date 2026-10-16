@@ -1,21 +1,23 @@
 // Wire protocol. Binary for the hot path (inputs 30/s up, snapshots 20/s down), JSON for rare events.
 //
-// Input (11 bytes):  u8 type=1 | u32 seq | i8 pitch | i8 roll | i8 yaw | u8 throttle | u8 buttons | u8 target slot
+// Input (12 bytes):  u8 type=1 | u32 seq | i8 pitch | i8 roll | i8 yaw | u8 throttle | u8 buttons | u8 target slot
+//                    | u8 extra (bit 0 radar dogfight, bits 1–2 radar range, bits 3–7 secondary + 1, 0 = auto)
+//   buttons: fire, missile, flare, WEP, airbrake, flaps, radar lock wanted, radar on (bits 0–7)
 // Ping/pong (11 B):  u8 type=3|4 | u16 id | f64 sender time (echoed back unchanged)
-// Snapshot:          header 17 B + 25 B per plane + 1 B + 17 B per missile + objectives + own weapons trailer
+// Snapshot:          header 17 B + 26 B per plane + 1 B + 17 B per missile + objectives + own weapons trailer
 //   header: u8 type=2 | u8 roster version | u32 tick | u32 ack seq | u16 time left ×10 | u16 red | u16 blue
 //           | u8 state | u8 count   (red/blue: kills, tickets left or points, by mode)
 //   plane:  u8 flags | u8 damage flags | i16 x×2 | u16 (y+2000)×2 | i16 z×2 | u32 quat (smallest three)
-//           | i16 vx×20 | i16 vy×20 | i16 vz×20 | u8 hp | u8 throttle×255 | u8 respawn×10 | u8 g×10
+//           | i16 vx×20 | i16 vy×20 | i16 vz×20 | u8 hp | u8 throttle×254 (255 = WEP lit) | u8 respawn×10 | u8 g×10
 //           | u8 lock target slot | u8 lock (bit 7 radar, bits 0–6 progress×127)
 //           | u8 missiles left (mount 0 in bits 0–3, mount 1 in bits 4–7; drawn on the pylons), or for planes
-//             with ordnance, rockets in bits 0–3 and bombs in bits 4–7
+//             with ordnance, rockets in bits 0–3 and bombs in bits 4–7 | u8 radar lock slot (0 none)
 //   missile: u16 id | u8 type | u8 owner slot | u8 target slot (0 none, 255 a decoy) | i16 x×2 | u16 (y+2000)×2
 //           | i16 z×2 | i16 vx×20 | i16 vy×20 | i16 vz×20
 //   objectives: u8 zones | (i8 progress×127, u8 owner 0/1 red/2 blue) × zones | u8 units | u8 × units
 //            (bit 7 firing, bits 0–6 health %; 0 = destroyed). Unit positions follow from the clock and the layout.
 //   trailer: u8 n | u16 ammo × n | u8 m | u8 missiles × m | u8 flares | u8 chaff | u8 lock mount + 1 | u8 rockets
-//            | u8 bombs (the receiving player's own weapons)
+//            | u8 bombs | u8 engine heat×255 | u8 overheat s×10 | u8 secondary + 1 (the receiving player's own)
 // "Slot" is a plane's index in the roster + 1 (0 = none). 20 planes ≈ 500 bytes per snapshot ≈ 10 KB/s per client
 // at 20 Hz, plus 17 bytes per missile in the air. Flares and chaff are reliable events, simulated locally.
 import type { ControlInput } from '../game/controls';
@@ -36,9 +38,9 @@ export const MSG_PONG = 4;
 
 export const SNAPSHOT_HZ = 20;
 export const INPUT_HZ = 30;
-export const PLANE_BYTES = 25;
+export const PLANE_BYTES = 26;
 export const MISSILE_BYTES = 17;
-const INPUT_BYTES = 11;
+const INPUT_BYTES = 12;
 /** Missile target byte for "chasing a flare or chaff". */
 const DECOY_SLOT = 255;
 const HEADER_BYTES = 17;
@@ -176,8 +178,14 @@ export function encodeInput(seq: number, i: ControlInput, targetSlot = 0): Array
   v.setInt8(6, Math.round(clampNum(i.roll, -1, 1) * 127));
   v.setInt8(7, Math.round(clampNum(i.yaw, -1, 1) * 127));
   v.setUint8(8, Math.round(clampNum(i.throttle, 0, 1) * 255));
-  v.setUint8(9, (i.fire ? 1 : 0) | (i.missile ? 2 : 0) | (i.flare ? 4 : 0));
+  v.setUint8(
+    9,
+    (i.fire ? 1 : 0) | (i.missile ? 2 : 0) | (i.flare ? 4 : 0) | (i.wep ? 8 : 0) | (i.airbrake ? 16 : 0) | (i.flaps ? 32 : 0) | (i.radarLock ? 64 : 0) | (i.radarOn ? 128 : 0),
+  );
   v.setUint8(10, targetSlot >= 0 && targetSlot <= 254 ? targetSlot : 0);
+  const range = Math.round(clampNum(i.radarRange ?? 1, 0, 2));
+  const sec = Math.round(clampNum((i.secondary ?? -1) + 1, 0, 31));
+  v.setUint8(11, (i.radarDogfight ? 1 : 0) | (range << 1) | (sec << 3));
   return b;
 }
 
@@ -199,6 +207,14 @@ export function decodeInput(data: ArrayBuffer): { seq: number; input: ControlInp
       missile: (buttons & 2) !== 0,
       flare: (buttons & 4) !== 0,
       target: null,
+      wep: (buttons & 8) !== 0,
+      airbrake: (buttons & 16) !== 0,
+      flaps: (buttons & 32) !== 0,
+      radarLock: (buttons & 64) !== 0,
+      radarOn: (buttons & 128) !== 0,
+      radarDogfight: (v.getUint8(11) & 1) !== 0,
+      radarRange: Math.min(2, (v.getUint8(11) >> 1) & 3),
+      secondary: (v.getUint8(11) >> 3) - 1,
     },
     targetSlot: v.getUint8(10),
   };
@@ -284,6 +300,9 @@ export interface SnapshotPlane {
   lockRadar: boolean;
   /** Missiles left on the first two mounts (no plane has more than two). */
   missiles: [number, number];
+  wep: boolean;
+  /** Roster slot of the plane this one's radar has locked (0 = none). */
+  radarSlot: number;
 }
 
 export interface SnapshotMissile {
@@ -305,9 +324,12 @@ export interface OwnWeapons {
   lockMount: number;
   rockets: number;
   bombs: number;
+  engineHeat: number;
+  overheatFor: number;
+  secondary: number;
 }
 
-export const NO_WEAPONS: OwnWeapons = { ammo: [], missiles: [], flares: 0, chaff: 0, lockMount: -1, rockets: 0, bombs: 0 };
+export const NO_WEAPONS: OwnWeapons = { ammo: [], missiles: [], flares: 0, chaff: 0, lockMount: -1, rockets: 0, bombs: 0, engineHeat: 0, overheatFor: 0, secondary: -1 };
 
 export interface SnapshotZone {
   progress: number;
@@ -370,7 +392,7 @@ export function encodeSnapshot(
     const i = planes.findIndex((p) => p.id === id);
     return i >= 0 && i < n ? i + 1 : 0;
   };
-  const buf = new ArrayBuffer(HEADER_BYTES + n * PLANE_BYTES + 1 + nm * MISSILE_BYTES + 1 + nz * 2 + 1 + nu + 1 + own.ammo.length * 2 + 1 + own.missiles.length + 5);
+  const buf = new ArrayBuffer(HEADER_BYTES + n * PLANE_BYTES + 1 + nm * MISSILE_BYTES + 1 + nz * 2 + 1 + nu + 1 + own.ammo.length * 2 + 1 + own.missiles.length + 8);
   const v = new DataView(buf);
   v.setUint8(0, MSG_SNAPSHOT);
   v.setUint8(1, s.rosterVersion & 0xff);
@@ -394,7 +416,7 @@ export function encodeSnapshot(
     v.setInt16(o + 14, i16(p.vel[1] * 20));
     v.setInt16(o + 16, i16(p.vel[2] * 20));
     v.setUint8(o + 18, u8(p.hp));
-    v.setUint8(o + 19, u8(p.throttle * 255));
+    v.setUint8(o + 19, p.wep ? 255 : u8(p.throttle * 254));
     v.setUint8(o + 20, u8(p.respawnIn * 10));
     v.setUint8(o + 21, u8(p.g * 10));
     const lockSlot = p.lockProgress > 0 ? slotOf(p.lockTarget) : 0;
@@ -403,6 +425,7 @@ export function encodeSnapshot(
     const loadA = p.missiles.length ? p.missiles[0] ?? 0 : p.rockets;
     const loadB = p.missiles.length ? p.missiles[1] ?? 0 : p.bombs;
     v.setUint8(o + 24, Math.min(15, loadA) | (Math.min(15, loadB) << 4));
+    v.setUint8(o + 25, p.radarOn ? slotOf(p.radarLock) : 0);
     o += PLANE_BYTES;
   }
   v.setUint8(o++, nm);
@@ -444,6 +467,9 @@ export function encodeSnapshot(
   v.setUint8(o++, u8(own.lockMount + 1));
   v.setUint8(o++, u8(own.rockets));
   v.setUint8(o++, u8(own.bombs));
+  v.setUint8(o++, u8(own.engineHeat * 255));
+  v.setUint8(o++, u8(own.overheatFor * 10));
+  v.setUint8(o++, u8(own.secondary + 1));
   return buf;
 }
 
@@ -473,13 +499,15 @@ export function decodeSnapshot(data: ArrayBuffer, missileTypes: readonly string[
       quat: unpackQuat(v.getUint32(o + 8)),
       vel: [v.getInt16(o + 12) / 20, v.getInt16(o + 14) / 20, v.getInt16(o + 16) / 20],
       hp: v.getUint8(o + 18),
-      throttle: v.getUint8(o + 19) / 255,
+      throttle: v.getUint8(o + 19) === 255 ? 1 : v.getUint8(o + 19) / 254,
+      wep: v.getUint8(o + 19) === 255,
       respawnIn: v.getUint8(o + 20) / 10,
       g: v.getUint8(o + 21) / 10,
       lockSlot: v.getUint8(o + 22),
       lockProgress: (v.getUint8(o + 23) & 127) / 127,
       lockRadar: (v.getUint8(o + 23) & 128) !== 0,
       missiles: [v.getUint8(o + 24) & 15, v.getUint8(o + 24) >> 4],
+      radarSlot: v.getUint8(o + 25),
     });
     o += PLANE_BYTES;
   }
@@ -522,6 +550,9 @@ export function decodeSnapshot(data: ArrayBuffer, missileTypes: readonly string[
   const lockMount = byte() - 1;
   const rockets = byte();
   const bombs = byte();
+  const engineHeat = byte() / 255;
+  const overheatFor = byte() / 10;
+  const secondary = byte() - 1;
   return {
     rosterVersion: v.getUint8(1),
     tick: v.getUint32(2),
@@ -533,7 +564,7 @@ export function decodeSnapshot(data: ArrayBuffer, missileTypes: readonly string[
     missiles,
     zones,
     units,
-    own: { ammo, missiles: ownMissiles, flares, chaff, lockMount, rockets, bombs },
+    own: { ammo, missiles: ownMissiles, flares, chaff, lockMount, rockets, bombs, engineHeat, overheatFor, secondary },
   };
 }
 

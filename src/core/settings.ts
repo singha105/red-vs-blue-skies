@@ -23,6 +23,13 @@ export interface Settings {
   hudScale: number;
   /** Mouse, drag, stick and arrow keys move the nose the other way vertically (flight-sim style). */
   invertPitch: boolean;
+  /** Mouse aim (the plane flies to the aim circle) or mouse joystick (the mouse moves the stick directly). */
+  controlMode: 'mouseAim' | 'joystick';
+  /** HUD units: knots and feet, or km/h and metres. */
+  units: 'imperial' | 'metric';
+  /** Touch: show rudder buttons; steer by tilting the phone (asks for motion permission on iPhone). */
+  touchRudder: boolean;
+  tiltSteer: boolean;
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
@@ -37,6 +44,10 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   teamColours: 'classic',
   hudScale: 1,
   invertPitch: false,
+  controlMode: 'mouseAim',
+  units: 'imperial',
+  touchRudder: false,
+  tiltSteer: false,
 };
 
 const KEY = 'rvbs.settings.v1';
@@ -61,6 +72,10 @@ export function sanitizeSettings(raw: unknown): Settings {
     teamColours: o['teamColours'] === 'colourblind' ? 'colourblind' : 'classic',
     hudScale: clamp(o['hudScale'], 1, 1.6, DEFAULT_SETTINGS.hudScale),
     invertPitch: o['invertPitch'] === true,
+    controlMode: o['controlMode'] === 'joystick' ? 'joystick' : 'mouseAim',
+    units: o['units'] === 'metric' ? 'metric' : 'imperial',
+    touchRudder: o['touchRudder'] === true,
+    tiltSteer: o['tiltSteer'] === true,
   };
 }
 

@@ -86,6 +86,21 @@ export interface PlaneState {
   rockets: number;
   bombs: number;
   ordnanceCooldown: number;
+  /** WEP / afterburner lit this tick; engine heat 0–1 (1 = overheated); seconds of reduced power left. */
+  wep: boolean;
+  engineHeat: number;
+  overheatFor: number;
+  airbrake: boolean;
+  flaps: boolean;
+  /** Radar (jets that have one): power, mode, display range index, the radar-locked plane, and how long the
+   *  locked target has been out of the radar's view (the lock drops after RADAR_MEMORY_S). */
+  radarOn: boolean;
+  radarMode: 'search' | 'dogfight';
+  radarRange: number;
+  radarLock: string | null;
+  radarLostFor: number;
+  /** Secondary weapon the pilot picked (a missile mount, or 0 rockets / 1 bombs), −1 = automatic. */
+  secondary: number;
 }
 
 /** Derived flight numbers for one plane type. Computed once from planes.json + eras.json. */
@@ -100,6 +115,7 @@ export interface FlightParams {
   yawRateRad: number;
   maxG: number;
   ceilingM: number;
+  wepTimeS: number;
 }
 
 /**
@@ -128,6 +144,7 @@ export function flightParams(plane: Plane, era: Era): FlightParams {
     yawRateRad: plane.stats.turnRateDegS * 0.35 * deg,
     maxG: plane.era === 'ww1' ? 6 : plane.era.endsWith('ww2') ? 7.5 : 9,
     ceilingM: era.ceilingM,
+    wepTimeS: era.wepTimeS,
   };
 }
 
@@ -144,6 +161,19 @@ const CRASH_CLEARANCE = 1.5;
 const THROTTLE_SPOOL = 0.9; // throttle change per second
 const BLEED_PER_G = 0.22; // fraction of thrust lost per extra G in a turn
 const WING_DAMAGE_MUL = 0.75; // a damaged wing costs 25% roll and turn
+/** Thrust at 100% throttle without WEP: top speed (drag ∝ v²) is √0.85 ≈ 92% of the real figure; WEP gives the rest. */
+export const MIL_THRUST = 0.85;
+/** Seconds to cool from overheated to cold with WEP off. */
+const WEP_COOL_S = 30;
+/** An overheated engine runs at this much thrust for OVERHEAT_S. */
+export const OVERHEAT_S = 10;
+const OVERHEAT_POWER = 0.45;
+/** Airbrake drag on top of normal drag (×), and flaps: lower stall speed, more pitch at low speed, some drag. */
+const AIRBRAKE_DRAG = 1.6;
+const FLAPS_STALL = 0.85;
+const FLAPS_DRAG = 0.35;
+/** Flaps only work below this fraction of top speed (they'd be torn off above it, so they simply don't count). */
+const FLAPS_MAX_SPEED = 0.6;
 
 /**
  * Advance one plane by dt seconds. Mutates and returns `s` (cheap at 60 Hz; the caller owns the object).
@@ -152,22 +182,40 @@ const WING_DAMAGE_MUL = 0.75; // a damaged wing costs 25% roll and turn
 export function stepPlane(s: PlaneState, input: ControlInput, p: FlightParams, env: FlightEnv, dt: number): PlaneState {
   if (!s.alive) return s;
 
-  // Engine.
+  // Engine. WEP (afterburner on jets) only lights at full throttle and heats the engine; at full heat it
+  // overheats and runs at reduced power for OVERHEAT_S while it cools.
   const cmd = clamp(input.throttle, 0, 1);
   s.throttle += clamp(cmd - s.throttle, -THROTTLE_SPOOL * dt, THROTTLE_SPOOL * dt);
+  s.wep = Boolean(input.wep) && cmd >= 0.999 && s.throttle >= 0.97 && s.overheatFor <= 0;
+  if (s.overheatFor > 0) {
+    s.overheatFor = Math.max(0, s.overheatFor - dt);
+    s.engineHeat = Math.max(0, s.engineHeat - dt / WEP_COOL_S);
+  } else if (s.wep) {
+    s.engineHeat = Math.min(1, s.engineHeat + dt / p.wepTimeS);
+    if (s.engineHeat >= 1) {
+      s.overheatFor = OVERHEAT_S;
+      s.wep = false;
+    }
+  } else {
+    s.engineHeat = Math.max(0, s.engineHeat - dt / WEP_COOL_S);
+  }
+  s.airbrake = Boolean(input.airbrake);
+  s.flaps = Boolean(input.flaps);
 
   const forward = rotate(s.quat, FORWARD);
   let speed = len(s.vel);
+  const flapsOn = s.flaps && speed < p.topSpeedMs * FLAPS_MAX_SPEED;
+  const stallSpeed = flapsOn ? p.stallSpeedMs * FLAPS_STALL : p.stallSpeedMs;
 
   // Lift: 0 when far below stall speed, 1 comfortably above it.
-  const lift = smoothstep(0.7 * p.stallSpeedMs, 1.05 * p.stallSpeedMs, speed);
-  if (speed < p.stallSpeedMs) s.stalled = true;
-  else if (speed > p.stallSpeedMs * 1.12) s.stalled = false;
+  const lift = smoothstep(0.7 * stallSpeed, 1.05 * stallSpeed, speed);
+  if (speed < stallSpeed) s.stalled = true;
+  else if (speed > stallSpeed * 1.12) s.stalled = false;
 
   // Controls lose bite in a stall and are also limited near stall speed (not enough air over the surfaces).
   const wingHit = s.damaged.wingL || s.damaged.wingR;
   const authority =
-    (s.stalled ? 0.3 : 0.35 + 0.65 * smoothstep(p.stallSpeedMs, p.cornerSpeedMs, speed)) * (wingHit ? WING_DAMAGE_MUL : 1);
+    (s.stalled ? 0.3 : 0.35 + 0.65 * smoothstep(stallSpeed, p.cornerSpeedMs, speed) + (flapsOn ? 0.12 : 0)) * (wingHit ? WING_DAMAGE_MUL : 1);
 
   // Pitch rate limited by the plane's G limit at this speed: ω = (G − 1)·g / v.
   const gLimitedRate = speed > 1 ? ((p.maxG - 1) * G) / speed : p.pitchRateRad;
@@ -198,8 +246,9 @@ export function stepPlane(s: PlaneState, input: ControlInput, p: FlightParams, e
   // Energy along the flight path.
   const ceilingFade = clamp((p.ceilingM - s.pos[1]) / (0.3 * p.ceilingM), 0, 1);
   // Drag balances thrust at v², so 0.49× thrust is 0.7× top speed: an engine hit costs 30% top speed.
-  const thrust = p.thrustAccel * s.throttle * ceilingFade * (s.damaged.engine ? 0.49 : 1);
-  const drag = p.dragK * speed * speed;
+  const power = s.overheatFor > 0 ? Math.min(OVERHEAT_POWER, s.throttle) : s.throttle * MIL_THRUST + (s.wep ? 1 - MIL_THRUST : 0);
+  const thrust = p.thrustAccel * power * ceilingFade * (s.damaged.engine ? 0.49 : 1);
+  const drag = p.dragK * speed * speed * (1 + (s.airbrake ? AIRBRAKE_DRAG : 0) + (flapsOn ? FLAPS_DRAG : 0));
   const loadG = 1 + (speed * Math.abs(pitchRate)) / G;
   const bleed = p.thrustAccel * BLEED_PER_G * (loadG - 1);
   const overspeed = speed > p.topSpeedMs * 1.2 ? (speed - p.topSpeedMs * 1.2) * 0.8 : 0;

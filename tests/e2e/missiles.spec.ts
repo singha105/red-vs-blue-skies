@@ -60,7 +60,7 @@ test('Modern jets: pick a target, lock, fire, and beat an inbound missile with f
     const near = boxes.sort((a, b) => Math.hypot(a.x - vp.width / 2, a.y - vp.height / 2) - Math.hypot(b.x - vp.width / 2, b.y - vp.height / 2))[0]!;
     await page.touchscreen.tap(near.x, near.y + 6);
   } else {
-    await page.keyboard.press('KeyR');
+    await page.keyboard.press('KeyT');
   }
   await expect.poll(async () => (await info(page)).picked, { timeout: 3000 }).not.toBeNull();
 
@@ -73,7 +73,7 @@ test('Modern jets: pick a target, lock, fire, and beat an inbound missile with f
 
   const before = (await info(page)).me!.missiles.reduce((a, b) => a + b, 0);
   if (isMobile) await page.getByTestId('missile-btn').tap();
-  else await page.keyboard.press('KeyQ');
+  else await page.keyboard.press('Space');
   await expect.poll(async () => (await info(page)).me!.missiles.reduce((a, b) => a + b, 0), { timeout: 3000 }).toBe(before - 1);
   // One missile left its pylon.
   await expect.poll(async () => (await pylons()).mine, { timeout: 2000 }).toBe(5);
@@ -91,9 +91,9 @@ test('Modern jets: pick a target, lock, fire, and beat an inbound missile with f
     await expect(page.getByTestId('launch-warning')).toContainText('flares');
     if (attempt === 0) await page.screenshot({ path: `${SHOTS}/${testInfo.project.name}-missile-warning.png` });
     const flaresBefore = (await info(page)).me!.flares;
-    const flareBtn = page.getByRole('button', { name: /Flare/ });
+    const flareBtn = page.getByTestId('cm-btn');
     if (isMobile) await flareBtn.dispatchEvent('pointerdown');
-    else await page.keyboard.down('KeyF');
+    else await page.keyboard.down('KeyX');
     // Watch the missile while the flares go out: decoyed means it turned onto a flare ("d…").
     for (let t = 0; t < 12 && !decoyed; t++) {
       await page.waitForTimeout(150);
@@ -101,7 +101,7 @@ test('Modern jets: pick a target, lock, fire, and beat an inbound missile with f
       decoyed = target !== null && target.startsWith('d');
     }
     if (isMobile) await flareBtn.dispatchEvent('pointerup');
-    else await page.keyboard.up('KeyF');
+    else await page.keyboard.up('KeyX');
     const after = await info(page);
     expect(after.me!.flares).toBeLessThan(flaresBefore);
     expect(after.me!.chaff).toBeLessThan(24);

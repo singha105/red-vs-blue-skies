@@ -174,6 +174,7 @@ export function validateGameData(raw: RawData): ValidationResult {
     if (from !== null && to !== null && from > to) c.fail(p, `yearFrom ${from} is after yearTo ${to}`);
     c.num(o, 'ceilingM', p, 2000, 25000, true);
     c.num(o, 'stallSpeedRatio', p, 0.05, 0.8);
+    c.num(o, 'wepTimeS', p, 5, 600);
     const classes = c.arr(o['missileClasses'], `${p}.missileClasses`) ?? [];
     classes.forEach((cls, j) => {
       if (typeof cls !== 'string' || !(MISSILE_CLASS_IDS as readonly string[]).includes(cls)) {
@@ -311,6 +312,24 @@ export function validateGameData(raw: RawData): ValidationResult {
     }
     c.bool(o, 'verify', p);
     if (o['radarSignature'] !== undefined) c.num(o, 'radarSignature', p, 0.1, 1);
+    if (o['radar'] !== undefined) {
+      const r = c.obj(o['radar'], `${p}.radar`);
+      if (r) {
+        c.num(r, 'rangeKm', `${p}.radar`, 3, 40);
+        c.num(r, 'coneDeg', `${p}.radar`, 20, 140);
+        const modes = r['modes'];
+        if (!Array.isArray(modes) || !modes.every((m) => m === 'search' || m === 'lock' || m === 'dogfight') || !modes.includes('search') || !modes.includes('lock')) {
+          c.fail(`${p}.radar.modes`, 'must list "search" and "lock", optionally "dogfight"');
+        }
+      }
+      if (era && !['early_jets', 'cold_war', 'modern'].includes(era)) c.fail(`${p}.radar`, 'only jets carry a radar');
+    }
+    // Radar-guided missiles need the launcher's radar lock (semi-active: until impact).
+    const radarMissile = missiles.some((mi) => {
+      const t = typeof mi === 'object' && mi !== null ? (mi as Record<string, unknown>)['type'] : null;
+      return typeof t === 'string' && (missileClassById.get(t) ?? '').startsWith('radar');
+    });
+    if (radarMissile && o['radar'] === undefined) c.fail(`${p}.radar`, 'carries radar-guided missiles, so it needs a radar block');
     if (o['ordnance'] !== undefined) {
       const ord = c.obj(o['ordnance'], `${p}.ordnance`);
       if (ord) {

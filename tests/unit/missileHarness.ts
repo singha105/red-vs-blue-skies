@@ -61,8 +61,10 @@ export function engage(e: Engagement): { hit: boolean; time: number; w: WorldSta
   s.hp = t.hp = t.maxHp = 1e6; // count hits, don't kill
   const m = ctx.missileDefs.get(e.missile)!;
   const events: MissileEvent[] = [];
+  // Radar missiles need the shooter's radar locked on the target (semi-active ones until impact).
+  s.radarLock = 't';
   launch(w, s, 0, m, t, events);
-  const sIn = neutralInput(0.8);
+  const sIn: ControlInput = { ...neutralInput(0.8), target: 't', radarOn: true, radarLock: true };
   let time = 0;
   for (; time < 40 && w.missiles.length > 0; time += DT) {
     const tIn = e.defend ? e.defend(w, t, s, time) : neutralInput(t.throttle);

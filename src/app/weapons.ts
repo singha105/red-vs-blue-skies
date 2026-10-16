@@ -89,9 +89,12 @@ export function cockpitState(w: WorldState, ctx: WorldContext, me: PlaneState, p
   // Threats: radar locks on us (spikes) and missiles guiding on us.
   const rwr: WeaponsFrame['rwr'] = [];
   for (const p of w.planes) {
-    if (!p.alive || p.team === me.team || p.lockTarget !== me.id || p.lockProgress < 0.25) continue;
-    if (lockSeeker(ctx, p) !== 'radar') continue;
-    rwr.push({ angle: wrap(bearing([p.pos[0] - me.pos[0], 0, p.pos[2] - me.pos[2]]) - heading), kind: 'spike' });
+    if (!p.alive || p.team === me.team) continue;
+    // A radar lock (Day 11 radar) is the strong warning; a radar missile seeker building a lock is a spike.
+    const radarLocked = p.radarOn && p.radarLock === me.id;
+    const spiking = p.lockTarget === me.id && p.lockProgress >= 0.25 && lockSeeker(ctx, p) === 'radar';
+    if (!radarLocked && !spiking) continue;
+    rwr.push({ angle: wrap(bearing([p.pos[0] - me.pos[0], 0, p.pos[2] - me.pos[2]]) - heading), kind: radarLocked ? 'lock' : 'spike' });
   }
   const threats = inbound(w, me.id);
   let ir = false;

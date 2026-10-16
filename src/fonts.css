@@ -1,4 +1,4 @@
-/* Self-hosted Google Fonts (SIL Open Font License): Big Shoulders Display, Barlow Semi Condensed. Latin subset. */
+/* Self-hosted Google Fonts (SIL Open Font License): Big Shoulders Display, Barlow Semi Condensed (Latin subset), Share Tech Mono (HUD). */
 @font-face {
   font-family: 'Barlow Semi Condensed';
   font-style: normal;
@@ -24,4 +24,13 @@
   font-display: swap;
   src: url('/fonts/big-shoulders-display-latin.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* HUD font (Day 11): Share Tech Mono, SIL Open Font License, Carrois Type Design. */
+@font-face {
+  font-family: 'Share Tech Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/share-tech-mono-regular.ttf') format('truetype');
 }

@@ -4,7 +4,7 @@ import { loadGameData } from '../../src/data';
 import type { GameData } from '../../src/data/types';
 import { aimControl, createAimPd } from '../../src/game/autopilot';
 import { neutralInput, type ControlInput } from '../../src/game/controls';
-import { stepPlane, type FlightEnv, type PlaneState } from '../../src/game/flight';
+import { stepPlane, type FlightEnv, type FlightParams, type PlaneState } from '../../src/game/flight';
 import { dirFromYawPitch, dot, FORWARD, len, quatFromAxisAngle, quatLookRotation, rotate, type Vec3 } from '../../src/game/math';
 import { createWorld, createWorldContext, spawnPlane, stepWorld, type WorldContext } from '../../src/game/world';
 
@@ -57,12 +57,23 @@ function plane(planeId = 'spitfire_mk5', over: Partial<PlaneState> = {}): PlaneS
     rockets: 0,
     bombs: 0,
     ordnanceCooldown: 0,
+    wep: false,
+    engineHeat: 0,
+    overheatFor: 0,
+    airbrake: false,
+    flaps: false,
+    radarOn: false,
+    radarMode: 'search',
+    radarRange: 1,
+    radarLock: null,
+    radarLostFor: 0,
+    secondary: -1,
     ...over,
   };
 }
 
-function fly(s: PlaneState, seconds: number, input: ControlInput | ((s: PlaneState) => ControlInput), env = sky): PlaneState {
-  const params = ctx.params.get(s.planeId)!;
+function fly(s: PlaneState, seconds: number, input: ControlInput | ((s: PlaneState) => ControlInput), env = sky, over: Partial<FlightParams> = {}): PlaneState {
+  const params = { ...ctx.params.get(s.planeId)!, ...over };
   for (let t = 0; t < seconds; t += DT) stepPlane(s, typeof input === 'function' ? input(s) : input, params, env, DT);
   return s;
 }
@@ -76,12 +87,53 @@ const holdLevel = (s: PlaneState): ControlInput => {
 };
 
 describe('flight model', () => {
-  it('reaches about top speed at full throttle in level flight', () => {
+  it('reaches about top speed with WEP, about 92% of it at 100% without', () => {
     const p = ctx.params.get('spitfire_mk5')!;
-    const s = fly(plane(), 120, holdLevel);
+    // An engine that never overheats, to measure the speed WEP holds.
+    const s = fly(plane(), 120, (st) => ({ ...holdLevel(st), wep: true }), sky, { wepTimeS: 1e6 });
     expect(len(s.vel)).toBeGreaterThan(p.topSpeedMs * 0.93);
     expect(len(s.vel)).toBeLessThan(p.topSpeedMs * 1.05);
     expect(s.stalled).toBe(false);
+    const mil = fly(plane(), 120, holdLevel);
+    expect(len(mil.vel)).toBeGreaterThan(p.topSpeedMs * 0.88);
+    expect(len(mil.vel)).toBeLessThan(p.topSpeedMs * 0.95);
+  });
+
+  it('WEP heats the engine; overheating cuts power for 10 s, then it cools', () => {
+    const p = ctx.params.get('f16c_b50')!;
+    const s = plane('f16c_b50');
+    fly(s, p.wepTimeS * 0.5, (st) => ({ ...holdLevel(st), wep: true }));
+    expect(s.wep).toBe(true);
+    expect(s.engineHeat).toBeGreaterThan(0.45);
+    fly(s, p.wepTimeS * 0.5 + 0.3, (st) => ({ ...holdLevel(st), wep: true }));
+    expect(s.engineHeat).toBeGreaterThan(0.98);
+    expect(s.overheatFor).toBeGreaterThan(9.5);
+    expect(s.wep).toBe(false);
+    const hot = len(s.vel);
+    fly(s, 8, (st) => ({ ...holdLevel(st), wep: true }));
+    expect(len(s.vel)).toBeLessThan(hot);
+    fly(s, 3, (st) => ({ ...holdLevel(st), wep: true }));
+    expect(s.overheatFor).toBe(0);
+    // WEP needs full throttle.
+    const half = plane('f16c_b50');
+    fly(half, 2, (st) => ({ ...holdLevel(st), throttle: 0.9, wep: true }));
+    expect(half.wep).toBe(false);
+  });
+
+  it('the airbrake slows the plane and flaps lower the stall speed', () => {
+    const a = plane('f16c_b50');
+    const b = plane('f16c_b50');
+    fly(a, 10, holdLevel);
+    fly(b, 10, (st) => ({ ...holdLevel(st), airbrake: true }));
+    expect(len(b.vel)).toBeLessThan(len(a.vel) * 0.9);
+    const p = ctx.params.get('spitfire_mk5')!;
+    const slow = (flaps: boolean): PlaneState => {
+      const s = plane('spitfire_mk5', { vel: [0, 0, p.stallSpeedMs * 0.95], throttle: 0.6 });
+      fly(s, 0.2, { ...neutralInput(0.6), flaps });
+      return s;
+    };
+    expect(slow(false).stalled).toBe(true);
+    expect(slow(true).stalled).toBe(false);
   });
 
   it('stalls when slow, the nose drops, and it recovers with speed', () => {
@@ -154,7 +206,7 @@ describe('flight model', () => {
   it('every plane in the roster flies level at its top speed without stalling or diverging', () => {
     for (const def of data.planes) {
       const s = plane(def.id);
-      fly(s, 60, holdLevel);
+      fly(s, 60, (st) => ({ ...holdLevel(st), wep: true }), sky, { wepTimeS: 1e6 });
       const p = ctx.params.get(def.id)!;
       expect(Number.isFinite(s.pos[0]), def.id).toBe(true);
       expect(s.stalled, def.id).toBe(false);

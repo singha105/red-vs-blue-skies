@@ -86,7 +86,7 @@ test('touch: dragging on the right half moves the aim point', async ({ page, isM
   const h = hooks(page);
   const pad = page.getByTestId('aim-pad');
   await expect(pad).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Fire' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'FIRE' })).toBeVisible();
 
   const before = await h.get('aim');
   const box = (await pad.boundingBox())!;
@@ -106,14 +106,15 @@ test('touch: dragging on the right half moves the aim point', async ({ page, isM
   const slider = page.getByRole('slider', { name: 'Throttle' });
   const sb = (await slider.boundingBox())!;
   const tv = { pointerId: 8, pointerType: 'touch', isPrimary: false, bubbles: true };
-  await slider.dispatchEvent('pointerdown', { ...tv, clientX: sb.x + sb.width / 2, clientY: sb.y + sb.height * 0.05 });
-  await slider.dispatchEvent('pointerup', { ...tv, clientX: sb.x + sb.width / 2, clientY: sb.y + sb.height * 0.05 });
+  // (The top 12% is the WEP band, so touch just below it.)
+  await slider.dispatchEvent('pointerdown', { ...tv, clientX: sb.x + sb.width / 2, clientY: sb.y + sb.height * 0.18 });
+  await slider.dispatchEvent('pointerup', { ...tv, clientX: sb.x + sb.width / 2, clientY: sb.y + sb.height * 0.18 });
   await expect(slider).toHaveAttribute('aria-valuenow', /^(9[0-9]|100)$/);
 
   // Touch targets are thumb-sized.
-  for (const name of ['Fire', 'Missile', 'Flare', 'Level', 'Look']) {
-    const b = await page.getByRole('button', { name, exact: true }).boundingBox();
-    expect(b!.height, name).toBeGreaterThanOrEqual(56);
+  for (const sel of ['.tbtn--fire', '[data-testid="missile-btn"]', '[data-testid="cm-btn"]', '[data-tap="level"]', '[data-testid="look-btn"]', '[data-zoom]']) {
+    const b = await page.locator(sel).boundingBox();
+    expect(b!.height, sel).toBeGreaterThanOrEqual(56);
   }
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SHOTS}/${info.project.name}-flight.png` });
