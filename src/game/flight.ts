@@ -101,6 +101,16 @@ export interface PlaneState {
   radarLostFor: number;
   /** Secondary weapon the pilot picked (a missile mount, or 0 rockets / 1 bombs), −1 = automatic. */
   secondary: number;
+  /**
+   * Realistic flight model only (flightSim.ts; absent in Arcade). Body rates in rad/s as [roll, pitch, yaw]
+   * (roll right, nose up and nose right positive), control surface positions [aileron, elevator, rudder] in
+   * −1..1 as they follow the stick, flap position 0..1, angle of attack and sideslip in radians.
+   */
+  rates?: Vec3;
+  surfaces?: Vec3;
+  flapPos?: number;
+  aoa?: number;
+  slip?: number;
 }
 
 /** Derived flight numbers for one plane type. Computed once from planes.json + eras.json. */
@@ -110,6 +120,8 @@ export interface FlightParams {
   cornerSpeedMs: number;
   thrustAccel: number;
   dragK: number;
+  /** The plane's turn rate from planes.json (the Realistic model's sustained turn is calibrated to it). */
+  turnRateRad: number;
   pitchRateRad: number;
   rollRateRad: number;
   yawRateRad: number;
@@ -139,6 +151,7 @@ export function flightParams(plane: Plane, era: Era): FlightParams {
     thrustAccel,
     // Drag balances full thrust exactly at top speed in level flight.
     dragK: thrustAccel / (topSpeedMs * topSpeedMs),
+    turnRateRad: plane.stats.turnRateDegS * deg,
     pitchRateRad: plane.stats.turnRateDegS * 1.6 * deg,
     rollRateRad: plane.stats.rollRateDegS * deg,
     yawRateRad: plane.stats.turnRateDegS * 0.35 * deg,
@@ -176,14 +189,11 @@ const FLAPS_DRAG = 0.35;
 const FLAPS_MAX_SPEED = 0.6;
 
 /**
- * Advance one plane by dt seconds. Mutates and returns `s` (cheap at 60 Hz; the caller owns the object).
- * `input` must already be clamped; the map-edge autopilot may override it.
+ * Engine and switches, shared by both flight models: throttle spool, WEP (afterburner on jets) that only lights
+ * at full throttle and heats the engine, overheating at full heat (reduced power for OVERHEAT_S while it cools),
+ * airbrake and flaps switches. Returns the engine power as a fraction of full (WEP) thrust.
  */
-export function stepPlane(s: PlaneState, input: ControlInput, p: FlightParams, env: FlightEnv, dt: number): PlaneState {
-  if (!s.alive) return s;
-
-  // Engine. WEP (afterburner on jets) only lights at full throttle and heats the engine; at full heat it
-  // overheats and runs at reduced power for OVERHEAT_S while it cools.
+export function stepEngine(s: PlaneState, input: ControlInput, p: FlightParams, dt: number): number {
   const cmd = clamp(input.throttle, 0, 1);
   s.throttle += clamp(cmd - s.throttle, -THROTTLE_SPOOL * dt, THROTTLE_SPOOL * dt);
   s.wep = Boolean(input.wep) && cmd >= 0.999 && s.throttle >= 0.97 && s.overheatFor <= 0;
@@ -201,6 +211,23 @@ export function stepPlane(s: PlaneState, input: ControlInput, p: FlightParams, e
   }
   s.airbrake = Boolean(input.airbrake);
   s.flaps = Boolean(input.flaps);
+  return s.overheatFor > 0 ? Math.min(OVERHEAT_POWER, s.throttle) : s.throttle * MIL_THRUST + (s.wep ? 1 - MIL_THRUST : 0);
+}
+
+/** Thrust acceleration (m/s²) for an engine power fraction: thinner air near the ceiling, a hit engine at 49%. */
+export function thrustFor(s: PlaneState, p: FlightParams, power: number): number {
+  const ceilingFade = clamp((p.ceilingM - s.pos[1]) / (0.3 * p.ceilingM), 0, 1);
+  // Drag balances thrust at v², so 0.49× thrust is 0.7× top speed: an engine hit costs 30% top speed.
+  return p.thrustAccel * power * ceilingFade * (s.damaged.engine ? 0.49 : 1);
+}
+
+/**
+ * Advance one plane by dt seconds. Mutates and returns `s` (cheap at 60 Hz; the caller owns the object).
+ * `input` must already be clamped; the map-edge autopilot may override it.
+ */
+export function stepPlane(s: PlaneState, input: ControlInput, p: FlightParams, env: FlightEnv, dt: number): PlaneState {
+  if (!s.alive) return s;
+  const power = stepEngine(s, input, p, dt);
 
   const forward = rotate(s.quat, FORWARD);
   let speed = len(s.vel);
@@ -244,10 +271,7 @@ export function stepPlane(s: PlaneState, input: ControlInput, p: FlightParams, e
   s.quat = quatNormalize(q);
 
   // Energy along the flight path.
-  const ceilingFade = clamp((p.ceilingM - s.pos[1]) / (0.3 * p.ceilingM), 0, 1);
-  // Drag balances thrust at v², so 0.49× thrust is 0.7× top speed: an engine hit costs 30% top speed.
-  const power = s.overheatFor > 0 ? Math.min(OVERHEAT_POWER, s.throttle) : s.throttle * MIL_THRUST + (s.wep ? 1 - MIL_THRUST : 0);
-  const thrust = p.thrustAccel * power * ceilingFade * (s.damaged.engine ? 0.49 : 1);
+  const thrust = thrustFor(s, p, power);
   const drag = p.dragK * speed * speed * (1 + (s.airbrake ? AIRBRAKE_DRAG : 0) + (flapsOn ? FLAPS_DRAG : 0));
   const loadG = 1 + (speed * Math.abs(pitchRate)) / G;
   const bleed = p.thrustAccel * BLEED_PER_G * (loadG - 1);
@@ -265,14 +289,15 @@ export function stepPlane(s: PlaneState, input: ControlInput, p: FlightParams, e
   s.vel[1] -= G * (1 - lift) * dt;
 
   s.pos = add(s.pos, scale(s.vel, dt));
+  return checkEdgeAndGround(s, env);
+}
 
-  // Map edge.
+/** Map-edge warning and auto-turn, and the crash check against the ground or water (both flight models). */
+export function checkEdgeAndGround(s: PlaneState, env: FlightEnv): PlaneState {
   const edge = Math.max(Math.abs(s.pos[0]), Math.abs(s.pos[2]));
   s.edgeWarning = edge > env.half - EDGE_WARN;
   if (edge > env.half) s.autoTurn = true;
   else if (edge < env.half - TURN_BACK_UNTIL) s.autoTurn = false;
-
-  // Ground or water.
   if (s.pos[1] - CRASH_CLEARANCE <= env.surfaceAt(s.pos[0], s.pos[2])) {
     s.alive = false;
     s.vel = [0, 0, 0];

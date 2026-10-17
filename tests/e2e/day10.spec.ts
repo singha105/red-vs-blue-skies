@@ -129,3 +129,21 @@ test('settings: invert pitch flips a touch drag', async ({ page, isMobile }) => 
   const after = await hook<{ pitch: number }>(page, 'aim');
   expect(after.pitch).toBeLessThan(before.pitch - 0.1); // dragged up → nose down when inverted
 });
+
+// Day 11 phase 1: Settings → Flight model → Realistic flies solo matches with the force-and-moment model.
+test('settings: Realistic flight model in a solo match', async ({ page }) => {
+  await ready(page);
+  await page.getByRole('button', { name: 'Settings' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  await expect(dialog.getByTestId('flight-model')).toHaveValue('arcade');
+  await dialog.getByTestId('flight-model').selectOption('realistic');
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  await page.evaluate(() => (window as unknown as { __rvbs: { startSolo(c: object): Promise<void> } }).__rvbs.startSolo({ era: 'late_ww2', planeId: 'p51d' }));
+  await expect(page.locator('.hud')).toBeVisible();
+  type P = { rates?: number[]; surfaces?: number[]; aoa?: number; alive: boolean } | null;
+  // Realistic state appears on the player's plane: body rates, surface positions, angle of attack.
+  await expect.poll(async () => {
+    const p = await hook<P>(page, 'player');
+    return Boolean(p && p.rates?.length === 3 && p.surfaces?.length === 3 && typeof p.aoa === 'number');
+  }, { timeout: 10_000 }).toBe(true);
+});

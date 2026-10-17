@@ -27,6 +27,8 @@ export interface Settings {
   controlMode: 'mouseAim' | 'joystick';
   /** HUD units: knots and feet, or km/h and metres. */
   units: 'imperial' | 'metric';
+  /** Arcade (the stick sets turn rates) or Realistic (control surfaces, angle of attack, slip; solo matches). */
+  flightModel: 'arcade' | 'realistic';
   /** Touch: show rudder buttons; steer by tilting the phone (asks for motion permission on iPhone). */
   touchRudder: boolean;
   tiltSteer: boolean;
@@ -46,6 +48,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   invertPitch: false,
   controlMode: 'mouseAim',
   units: 'imperial',
+  flightModel: 'arcade',
   touchRudder: false,
   tiltSteer: false,
 };
@@ -74,6 +77,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     invertPitch: o['invertPitch'] === true,
     controlMode: o['controlMode'] === 'joystick' ? 'joystick' : 'mouseAim',
     units: o['units'] === 'metric' ? 'metric' : 'imperial',
+    flightModel: o['flightModel'] === 'realistic' ? 'realistic' : 'arcade',
     touchRudder: o['touchRudder'] === true,
     tiltSteer: o['tiltSteer'] === true,
   };

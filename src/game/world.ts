@@ -4,6 +4,7 @@ import { fireGuns, hitSpheres, stepBullets, type Bullet, type Part } from './bal
 import type { ControlInput } from './controls';
 import { neutralInput } from './controls';
 import { edgeTurnInput, flightParams, stepPlane, stepWreck, type FlightParams, type PlaneState, type Team } from './flight';
+import { simParams, stepPlaneSim, type SimParams } from './flightSim';
 import { normalize, quatLookRotation, scale, type Vec3 } from './math';
 import { stepRadar } from './radar';
 import { sunDirFor } from './sun';
@@ -122,6 +123,8 @@ export interface WorldState {
   respawnPlane: Record<string, string>;
   /** Humans pay spawn points for every spawn after the first. */
   spawnRules: boolean;
+  /** Present and 'realistic' when this match flies the force-and-moment model (flightSim.ts); absent = Arcade. */
+  flightModel?: 'realistic';
   /** Zones, ground targets, rockets and bombs, bomber waves (objectives.ts). */
   objectives: ObjectivesState;
 }
@@ -132,6 +135,8 @@ export interface WorldContext {
   terrain: Terrain;
   planeDefs: Map<string, Plane>;
   params: Map<string, FlightParams>;
+  /** Realistic flight model coefficients per plane, calibrated from `params` on first use. */
+  sim: Map<string, SimParams>;
   guns: Map<string, Gun>;
   missileDefs: Map<string, Missile>;
   missileClasses: Map<string, MissileClass>;
@@ -158,6 +163,7 @@ export function createWorldContext(data: GameData, mapId: string): WorldContext 
     terrain: createTerrain(map),
     planeDefs: new Map(planes.map((p) => [p.id, p])),
     params,
+    sim: new Map(),
     guns: new Map(data.guns.map((g) => [g.id, g])),
     missileDefs: new Map(data.missiles.missiles.map((m) => [m.id, m])),
     missileClasses: new Map(data.missiles.classes.map((c) => [c.id, c])),
@@ -188,6 +194,16 @@ export function createWorld(ctx: WorldContext, seed = 1): WorldState {
     spawnRules: false,
     objectives: emptyObjectives(),
   };
+}
+
+/** The Realistic model's coefficients for one plane type (calibrated once per context). */
+export function simParamsFor(ctx: WorldContext, planeId: string, params: FlightParams): SimParams {
+  let sp = ctx.sim.get(planeId);
+  if (!sp) {
+    sp = simParams(params);
+    ctx.sim.set(planeId, sp);
+  }
+  return sp;
 }
 
 /** mulberry32 on world.rng: deterministic randomness that lives in the (serializable) state. */
@@ -421,7 +437,8 @@ export function stepWorld(world: WorldState, ctx: WorldContext, inputs: Record<s
     if (plane.autoTurn) input = edgeTurnInput(plane, input);
 
     plane.protectedFor = Math.max(0, plane.protectedFor - dt);
-    stepPlane(plane, input, params, env, dt);
+    if (world.flightModel === 'realistic') stepPlaneSim(plane, input, params, simParamsFor(ctx, plane.planeId, params), env, dt);
+    else stepPlane(plane, input, params, env, dt);
     if (!plane.alive) {
       killPlane(world, plane, 'crash', false);
       continue;

@@ -28,6 +28,7 @@ export interface SoloOptions {
   timeLimitS?: number;
   killLimit?: number;
   seed?: number;
+  flightModel?: 'arcade' | 'realistic';
 }
 
 export interface Match {
@@ -65,6 +66,8 @@ export interface MatchOptions {
   bots?: boolean;
   /** Spawn points for humans' respawns (default true). */
   spawnRules?: boolean;
+  /** Flight model for every plane in the match (default Arcade). */
+  flightModel?: 'arcade' | 'realistic';
 }
 
 /** A 10 vs 10 Team Deathmatch: the given humans plus bots in every empty slot. */
@@ -81,6 +84,7 @@ export function createMatch(ctx: WorldContext, opts: MatchOptions): Match {
     winner: null,
   };
   world.spawnRules = opts.spawnRules ?? true;
+  if (opts.flightModel === 'realistic') world.flightModel = 'realistic';
   const match: Match = { world, brains: [], playerId: opts.humans[0]?.id ?? PLAYER_ID, era: opts.era, difficulty: opts.difficulty, nextBot: 0, lineup: null };
   const counts: Record<Team, number> = { blue: 0, red: 0 };
   for (const h of opts.humans) {
@@ -185,6 +189,7 @@ export function createSoloMatch(ctx: WorldContext, opts: SoloOptions): Match {
     ...(opts.timeLimitS !== undefined ? { timeLimitS: opts.timeLimitS } : {}),
     ...(opts.killLimit !== undefined ? { killLimit: opts.killLimit } : {}),
     ...(opts.seed !== undefined ? { seed: opts.seed } : {}),
+    ...(opts.flightModel ? { flightModel: opts.flightModel } : {}),
   });
 }
 

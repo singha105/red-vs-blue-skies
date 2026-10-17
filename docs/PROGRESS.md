@@ -3,6 +3,16 @@
 Live: https://singha105.github.io/red-vs-blue-skies/ (`?debug=1` shows the FPS counter)
 Repo: https://github.com/singha105/red-vs-blue-skies
 
+## Realistic flight model, phase 1 (2026-10-16)
+
+Asked for after Day 11: control surfaces that respond with proper physics. Phase 1 is the physics core behind **Settings → Flight model → Realistic** (solo matches); Arcade stays the default and is unchanged.
+
+- `src/game/flightSim.ts`: the stick moves the ailerons, elevator and rudder (servo rate 5 full travels/s; flaps 2 s). Moments grow with dynamic pressure and rotation is damped ∝ ρv, so controls are soft when slow and quick when fast. Lift comes from angle of attack (linear to 15°, then the wing stalls, loses lift, drops a wing; you can stall at any speed by pulling too hard, above corner speed a pilot G limit stops the elevator at max G). Lift is perpendicular to the flight path, drag is parasitic + induced (turns bleed energy), sideslip makes the tail weathervane, a side force and a roll away from the slip (rudder yaws, then rolls), ailerons yaw the wrong way a little, flaps add 38% lift (stall speed × 0.85), drag and nose-down trim, air thins with altitude, a shot-up wing rolls the plane toward it.
+- Calibrated per plane from planes.json (`simParams`): top speed at full power, stall speed at 1 G, listed roll rate at corner speed (all 60 within 10%), listed turn rate as the best sustained turn (52 of 60 within 3%; 8 are wing-limited by their stall speed and G limit at 70–96%: Spitfire Mk V and XIV, Bf 109 F-4, Me 262, F-8, MiG-19S, Typhoon, F-22A).
+- The mouse-aim autopilot flies it (an integral trim only in Realistic brings the nose within ~1° of the aim); bots fly it (0–2 crashes per 20 bots in 2 minutes, but fewer kills in jets: they need retuning).
+- Tests: `tests/unit/flightSim.test.ts` (16: calibration for every plane, military-power top speed, roll rate vs speed, stall and recovery, G limit, energy bleed, rudder slip and dihedral roll, adverse yaw, flaps −15% stall speed, thin air, damaged wing, mouse aim, determinism and JSON safety, bots, Arcade untouched); a settings case in core.test; `day10.spec` checks the Settings switch gives a Realistic solo match.
+- Not yet (next phases): Realistic in multiplayer (a room setting; clients predict with the same model), bot retune and a balance run in Realistic, control surfaces as separate moving parts in the Blender kit (aileron/elevator/rudder/flap nodes with hinge lines, animated from `surfaces`, and their size feeding the coefficients), engine torque on props.
+
 ## Day 11: Post-launch update: controls, terrain, graphics (2026-10-16)
 
 Commits: Part A `fe0774c` (controls, HUD, radar), Part B `8bc16bc` (terrain, forests, sky, water, effects), Part C `1608f8b` (plane models) plus the finishing commit (bloom fix, on-demand heightmaps, Blender design files, test hardening, this section).

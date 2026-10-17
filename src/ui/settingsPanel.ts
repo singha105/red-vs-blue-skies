@@ -48,6 +48,12 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
           <option value="joystick" ${s.controlMode === 'joystick' ? 'selected' : ''}>Mouse joystick (the mouse moves the stick)</option>
         </select>
       </label>
+      <label class="field"><span>Flight model</span>
+        <select data-k="flightModel" data-testid="flight-model">
+          <option value="arcade" ${s.flightModel === 'arcade' ? 'selected' : ''}>Arcade (the stick turns the plane)</option>
+          <option value="realistic" ${s.flightModel === 'realistic' ? 'selected' : ''}>Realistic (control surfaces, stalls, slip; solo)</option>
+        </select>
+      </label>
       <label class="field"><span>Units</span>
         <select data-k="units">
           <option value="imperial" ${s.units === 'imperial' ? 'selected' : ''}>Knots and feet</option>
@@ -128,6 +134,7 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
     else if (k === 'cap30' || k === 'invertPitch' || k === 'touchRudder') updateSettings({ [k]: t.value === '1' });
     else if (k === 'controlMode') updateSettings({ controlMode: t.value === 'joystick' ? 'joystick' : 'mouseAim' });
     else if (k === 'units') updateSettings({ units: t.value === 'metric' ? 'metric' : 'imperial' });
+    else if (k === 'flightModel') updateSettings({ flightModel: t.value === 'realistic' ? 'realistic' : 'arcade' });
     else if (k === 'tiltSteer') {
       if (t.value !== '1') updateSettings({ tiltSteer: false });
       else {

@@ -61,6 +61,8 @@ Click the game once to capture the mouse (Esc frees it and opens the menu). Ever
 
 **Mouse joystick:** Settings → Mouse → Mouse joystick makes the mouse move the stick directly (pitch and roll), for players who like flying by hand. Mouse aim is the default.
 
+**Flight model:** Settings → Flight model → **Realistic** (solo matches for now) flies on forces instead of set turn rates. The stick moves the ailerons, elevator and rudder, so controls are soft when slow and quick when fast. Pull too hard when slow and the wing stalls and drops; let go and dive to recover. Hard turns bleed speed, rudder slips the nose and rolls the plane, flaps lower the stall speed, and thin air at altitude makes everything mushier. On the jet HUD, AOA is your angle of attack (the wing stalls near 15°). Arcade is the default.
+
 ## Touch (phones and tablets)
 
 Hold the phone sideways.

@@ -24,7 +24,13 @@ describe('settings', () => {
 
   it('clamps numbers into range', () => {
     const s = sanitizeSettings({ graphics: 'low', sensitivity: 9, aimAssist: -1, volume: 0.5, engineVolume: 4, effectsVolume: -2 });
-    expect(s).toEqual({ graphics: 'low', sensitivity: 3, aimAssist: 0, volume: 0.5, engineVolume: 1, effectsVolume: 0, cockpitVolume: DEFAULT_SETTINGS.cockpitVolume, cap30: false, teamColours: 'classic', hudScale: 1, invertPitch: false, controlMode: 'mouseAim', units: 'imperial', touchRudder: false, tiltSteer: false });
+    expect(s).toEqual({ graphics: 'low', sensitivity: 3, aimAssist: 0, volume: 0.5, engineVolume: 1, effectsVolume: 0, cockpitVolume: DEFAULT_SETTINGS.cockpitVolume, cap30: false, teamColours: 'classic', hudScale: 1, invertPitch: false, controlMode: 'mouseAim', units: 'imperial', flightModel: 'arcade', touchRudder: false, tiltSteer: false });
+  });
+
+  it('flight model is Arcade unless Realistic is asked for', () => {
+    expect(sanitizeSettings({ flightModel: 'realistic' }).flightModel).toBe('realistic');
+    expect(sanitizeSettings({ flightModel: 'sim' }).flightModel).toBe('arcade');
+    expect(DEFAULT_SETTINGS.flightModel).toBe('arcade');
   });
 
   it('updates without localStorage (private browsing / Node)', () => {

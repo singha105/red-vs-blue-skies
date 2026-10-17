@@ -836,6 +836,7 @@ function boot(): void {
         difficulty: choice.difficulty,
         mode: data.modes.find((m) => m.id === choice.mode && m.playable)?.id ?? 'tdm',
         assist: env.isTouch ? getSettings().aimAssist : 0,
+        flightModel: getSettings().flightModel,
         ...(matchTime ? { timeLimitS: matchTime } : {}),
       }),
     );
