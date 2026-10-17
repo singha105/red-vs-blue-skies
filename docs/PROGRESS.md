@@ -62,6 +62,11 @@ Not faster anywhere, and the game's terrain, sky, cloud, impostor and effect sha
 - Vitest: 180 (+14 since Day 10: radar search/lock/dogfight and semi-active guidance only while the lock holds, WEP heat and overheat, keybinds and conflicts, HOW_TO_PLAY ↔ README sync, baked heightfields, model budgets). The bot-difficulty test now runs twelve 5-minute duels per difficulty (easy 6, normal 11, hard 17 deaths): three duels flipped hard and normal after the new models moved muzzles by millimetres.
 - Playwright locally: 59 of 59 run pass (31 skipped: device-specific halves, emulator and full-match specs). The last full run had one timeout (the High forest screenshot, software rendered under full load); its limit is now 120 s and it passed on its own. New in Day 11: `day11.spec` (every default key, the HUD view, radar lock on the scope, rebinding with conflicts and reset, mouse joystick, gamepad, touch board, rudder buttons), `terrain-shots.spec`, and the WebGPU probe in `perf.spec`. Two Day 11 specs were hardened against slow software frames (the keyboard spec now starts above the peaks: a crash resets the cockpit switches).
 
+### Deploy
+
+- Pushed and deployed (GitHub Actions green; the live bundle reports `1.0.0+69505e1`).
+- The Playwright suite against the live site with `BASE_URL`: **57 passed**, 33 skipped, none failed: both multiplayer specs over public PeerJS signaling, every mode on every map, the Day 11 controls on keyboard/mouse, touch and gamepad, perf 60 fps on all four profiles (131 / 51 / 112 / 64 draw calls; 404,516 trees on High), WebGPU probe 51.6 vs 60.0 fps (desktop) and 59.8 vs 60.1 (iPhone profile).
+
 ### Known issues
 
 - Mountain Valley as a player's first-ever match on a slow connection takes ~16 s (1.56 MB heightmap); later visits come from the service worker cache.
