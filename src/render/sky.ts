@@ -56,7 +56,11 @@ export function createSky(sunDir: Vector3, haze: Color, opts: { cloudCoverage: n
       '#include <colorspace_fragment>',
       `#include <colorspace_fragment>
       // Same mix as the fog applies to the terrain at its far edge.
-      gl_FragColor.rgb = mix( gl_FragColor.rgb, uHaze, smoothstep( 0.14, -0.02, direction.y ) );`,
+      gl_FragColor.rgb = mix( gl_FragColor.rgb, uHaze, smoothstep( 0.14, -0.02, direction.y ) );
+      // Into the bloom buffer (Medium/High) the sky arrives untonemapped and well past the bloom threshold, which
+      // washed the whole frame white; kept just under it, only real light sources glow. A no-op on Low (already
+      // tone mapped to 0..1).
+      gl_FragColor.rgb = min( gl_FragColor.rgb, vec3( 2.8 ) );`,
     );
   sky.material.fog = false;
   sky.frustumCulled = false;

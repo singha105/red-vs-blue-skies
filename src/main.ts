@@ -203,13 +203,16 @@ function boot(): void {
     mapScene.scene.add(tracers.mesh, effects.mesh, ribbons.mesh, missileFx.root, pylonMissiles.root, ground.root, tutorialProps.root);
     applyQuality(quality);
   };
-  // Every map's baked heightmap downloads in the background from the start (the title's map first); when the
-  // one on screen arrives, its scene is rebuilt on it (not during a match).
-  for (const m of [map, ...data.maps.filter((x) => x !== map)]) {
-    void loadHeightfield(m.id).then((ok) => {
-      if (ok && ctx.map.id === m.id && mode !== 'match') useMap(m.id);
+  // Baked heightmaps download when a map is wanted: the title's map at boot, a solo pick as soon as it's picked
+  // (startSolo waits for it), a room's voted map at the vote (teams and plane select follow, so it's in before
+  // the start). Fetching all of them at boot cost ~2.4 MB that competed with the first match on a slow
+  // connection. When the map on screen arrives its scene is rebuilt on it (not during a match).
+  const wantMap = (mapId: string): void => {
+    void loadHeightfield(mapId).then((ok) => {
+      if (ok && ctx.map.id === mapId && mode !== 'match') useMap(mapId);
     });
-  }
+  };
+  wantMap(map.id);
 
   const controls = createPlayerControls();
   // Display and control settings that apply at once: invert pitch, HUD size, team colours.
@@ -518,7 +521,7 @@ function boot(): void {
       ui,
       data,
       { unlocks: () => profile.unlocks() },
-      { onStart: startSolo, onBack: showTitle, onHangar: showHangar, onResearch: (era) => showResearch(era, showSetup) },
+      { onStart: startSolo, onBack: showTitle, onHangar: showHangar, onResearch: (era) => showResearch(era, showSetup), onMap: wantMap },
     );
   }
 
@@ -546,7 +549,11 @@ function boot(): void {
       if (room.choice) {
         const era = room.choice.era;
         void loadEra(era, data.planes.filter((p) => p.era === era).map((p) => p.id));
+        wantMap(room.choice.mapId);
         if (mode === 'room') useMap(room.choice.mapId);
+      } else {
+        // Waiting in the lobby: nothing else is downloading, so every map's heightmap can come in now.
+        for (const m of data.maps) wantMap(m.id);
       }
       if (mode === 'room' && net) roomView?.update(room, net.client.results);
     },

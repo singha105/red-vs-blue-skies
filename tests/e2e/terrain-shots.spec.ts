@@ -10,7 +10,8 @@ const TAG = process.env['SHOT_TAG'] ?? 'after';
 for (const gfx of (process.env['SHOT_GFX'] ?? 'low,high').split(',') as ('low' | 'medium' | 'high')[]) {
   test(`Mountain Valley on ${gfx}`, async ({ page, isMobile }) => {
     test.skip(isMobile, 'one viewport is enough');
-    test.setTimeout(60_000);
+    // High in software rendering is slow, more so with the rest of the suite running.
+    test.setTimeout(120_000);
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto(`./?debug=1&gfx=${gfx}`);
     await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
@@ -25,7 +26,7 @@ for (const gfx of (process.env['SHOT_GFX'] ?? 'low,high').split(',') as ('low' |
 // Low over the forested canyon wall (near 3D trees, forest floor, rock), High only.
 test('Mountain Valley low over the forest on high', async ({ page, isMobile }) => {
   test.skip(isMobile || process.env['SHOT_TAG'] === 'before', 'new build, desktop');
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('./?debug=1&gfx=high');
   await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');

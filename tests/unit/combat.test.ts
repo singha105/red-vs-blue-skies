@@ -246,17 +246,19 @@ describe('bots', () => {
     return deaths;
   }
 
-  it('normal bots shoot a weaving player down sometimes; easy bots almost never', () => {
-    // Three 5-minute 1 v 1s per difficulty (different seeds, so different bot planes and starts).
-    const total = (d: BotDifficulty): number => [11, 12, 13].reduce((n, seed) => n + deathsAgainst(d, 300, seed), 0);
+  it('normal bots shoot a weaving player down sometimes; easy bots rarely; hard bots most', () => {
+    // Twelve 5-minute 1 v 1s per difficulty (different seeds, so different bot planes and starts). One duel
+    // swings with millimetre changes to the models, so the order is only checked over the whole hour.
+    const seeds = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+    const total = (d: BotDifficulty): number => seeds.reduce((n, seed) => n + deathsAgainst(d, 300, seed), 0);
     const easy = total('easy');
     const normal = total('normal');
     const hard = total('hard');
-    console.log(`player deaths in 15 min against one bot: easy ${easy}, normal ${normal}, hard ${hard}`);
-    expect(easy).toBeLessThanOrEqual(2);
-    expect(normal).toBeGreaterThanOrEqual(2);
+    console.log(`player deaths in 60 min against one bot: easy ${easy}, normal ${normal}, hard ${hard}`);
+    expect(easy).toBeLessThanOrEqual(8);
+    expect(normal).toBeGreaterThanOrEqual(6);
     expect(normal).toBeGreaterThan(easy);
-    expect(hard).toBeGreaterThanOrEqual(normal);
+    expect(hard).toBeGreaterThan(normal);
   }, 60_000);
 });
 

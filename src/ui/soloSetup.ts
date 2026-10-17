@@ -47,9 +47,11 @@ export function createSoloSetup(
   parent: HTMLElement,
   data: GameData,
   opts: { unlocks: () => Unlocks; title?: string; intro?: string; startLabel?: string; hangar?: boolean; matchPickers?: boolean },
-  handlers: { onStart(choice: SoloChoice): void; onBack(): void; onHangar(choice: SoloChoice): void; onResearch?(era: EraId): void },
+  handlers: { onStart(choice: SoloChoice): void; onBack(): void; onHangar(choice: SoloChoice): void; onResearch?(era: EraId): void; onMap?(mapId: string): void },
 ): { dispose(): void } {
   const choice = loadChoice(data);
+  // The picked map's heightmap can start downloading now, before Start is pressed.
+  if (choice.map) handlers.onMap?.(choice.map);
   const unlocked = (p: Plane): boolean => isUnlocked(p, opts.unlocks());
   const el = document.createElement('section');
   el.className = 'setup';
@@ -128,6 +130,7 @@ export function createSoloSetup(
     if (t.dataset['cycle'] === 'map') {
       const i = data.maps.findIndex((m) => m.id === choice.map);
       choice.map = data.maps[(i + 1) % data.maps.length]!.id;
+      if (choice.map) handlers.onMap?.(choice.map);
     }
     if (t.dataset['cycle'] === 'mode') {
       const modes = data.modes.filter((m) => m.playable);

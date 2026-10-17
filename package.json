@@ -16,6 +16,7 @@
     "terrain": "node tools/bake-terrain.mjs",
     "textures": "node tools/fetch-textures.mjs",
     "models": "node tools/build-models.mjs",
+    "designs": "${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender} --background --factory-startup --python tools/blender/collect_designs.py -- designs",
     "balance": "node tools/balance.mjs",
     "test:rules": "firebase emulators:exec --only firestore --project demo-rvbs \"vitest run --config vitest.rules.config.ts\"",
     "rules:deploy": "firebase deploy --only firestore:rules",

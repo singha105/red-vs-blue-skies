@@ -7,7 +7,10 @@ import { chromium } from '@playwright/test';
 const base = process.env.BASE_URL ?? 'http://localhost:4187/red-vs-blue-skies/';
 const [era = 'modern', planeId = 'f15c', map = 'mountain_valley', mode = 'ground_strike'] = process.argv.slice(2);
 const browser = await chromium.launch({ channel: 'chromium', args: ['--enable-gpu', '--ignore-gpu-blocklist', '--use-angle=metal'] });
-const context = await browser.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, isMobile: false, hasTouch: true });
+// Service workers blocked: the game's worker takes over right after the first load, and DevTools network
+// throttling doesn't apply to the worker's own fetches, so everything loaded later (the match's heightmap and
+// models) would arrive at full speed and the 4G numbers would be too good.
+const context = await browser.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, isMobile: false, hasTouch: true, serviceWorkers: 'block' });
 const page = await context.newPage();
 const cdp = await context.newCDPSession(page);
 

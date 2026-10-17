@@ -72,6 +72,9 @@ test.describe('keyboard and mouse', () => {
     await expect(page.getByTestId('flight-hud')).toBeVisible();
     await expect(page.getByTestId('radar-panel')).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/${info.project.name}-day11-jet-hud.png` });
+    // Well above the peaks for the switch checks: a respawn after flying into a mountain resets the cockpit
+    // switches (radar back on), and a slow run under the full suite can get that far.
+    await hook(page, 'placePlayer', 0, -5000, 2400, 90);
 
     // W to 100%, keep holding: WEP / afterburner.
     await page.keyboard.down('KeyW');
@@ -117,8 +120,10 @@ test.describe('keyboard and mouse', () => {
     await tap(page, 'Digit2');
     await expect.poll(async () => (await cockpit(page)).radarDogfight).toBe(true);
     await tap(page, 'Digit2');
+    // One press at a time: under the full suite's load a software-rendered frame can take a quarter second.
+    await expect.poll(async () => (await cockpit(page)).radarDogfight).toBe(false);
     await tap(page, 'Digit1');
-    await expect.poll(async () => (await cockpit(page)).radarOn).toBe(false);
+    await expect.poll(async () => (await cockpit(page)).radarOn, { timeout: 10_000 }).toBe(false);
     await tap(page, 'Digit1');
 
     // An enemy dead ahead: T selects it, R locks it with the radar, and the scope shows the lock. (First put us

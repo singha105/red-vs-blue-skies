@@ -3,21 +3,72 @@
 Live: https://singha105.github.io/red-vs-blue-skies/ (`?debug=1` shows the FPS counter)
 Repo: https://github.com/singha105/red-vs-blue-skies
 
-## Day 11: Post-launch update (2026-10-16) — IN PROGRESS, read this first
+## Day 11: Post-launch update: controls, terrain, graphics (2026-10-16)
 
-**Handoff (usage limit reached mid-Part C).** Commits: Part A `fe0774c` (controls, HUD, radar; pushed, all tests green), Part B `8bc16bc` (baked eroded terrain, terrain shader, geomorph LOD, forests, sky, clouds, water, IBL, tone mapping, plus effects/bloom/ribbons/WebGPU probe; pushed). Part C models are committed locally in the next commit but **not pushed and not yet e2e-tested**.
+Commits: Part A `fe0774c` (controls, HUD, radar), Part B `8bc16bc` (terrain, forests, sky, water, effects), Part C `1608f8b` (plane models) plus the finishing commit (bloom fix, on-demand heightmaps, Blender design files, test hardening, this section).
 
-Done in Part C so far: plane kit detail levels + Blender bake (AO, panel lines, team mask → KTX2) for all 63 planes (`npm run models`: 1,139–1,911 triangles detailed, 291–493 LOD, 6.4 MB total); model unit tests pass. Game loader (`render/models.ts`) uses LODs on Low, detailed + texture on Medium/High.
+### Done
 
-Measured: perf project 60 fps on every profile (draw calls 59–130 incl. bloom passes); High low over Mountain Valley's forest: 404,516 trees, 15,357 in 3D, 60 fps. **WebGPU probe**: GPU Chromium WebGPURenderer 53.5 / 59.9 fps vs WebGL 58.0 / 60.0 (two runs, vsync-capped), Playwright iPhone WebKit 51.7 vs 57.7 → not faster, and the game's GLSL ShaderMaterials / onBeforeCompile shaders don't run on WebGPURenderer, so **WebGL is kept**. Not tried on a real iPhone.
+**Part A: controls, HUD, radar**
+- `docs/HOW_TO_PLAY.md` is the one source for controls: the in-game How to play renders it (`?raw` import) and `npm run docs:readme` copies its sections into the README; a unit test fails if they drift. CLAUDE.md's read-first list points to it and to `docs/ART_DIRECTION.md`.
+- Every action is in `src/data/keybinds.json` (keyboard, mouse buttons, gamepad by Xbox name). The Controls screen (Settings and the in-match menu) rebinds two slots per action, flags conflicts and resets; changes are saved per player (`rvbs.keybinds.v1`).
+- War Thunder-style keyboard and mouse: mouse aim (or a Mouse joystick mode in Settings), W/S throttle with WEP when W is held at 100%, A/D roll, Q/E rudder ramped over 0.3 s, H airbrake, F flaps, L level, guns / secondary / switch secondary, middle mouse or T to select a target (again within 1.5 s: next), X countermeasures, radar 1/2/3/R, C free look, right mouse zoom, V chase/HUD view, Tab, M, Enter, J, Esc menu, P pause (solo).
+- WEP: 100% throttle without WEP is military power (0.85 thrust); WEP heats the engine over the era's `wepTimeS`; at full heat the engine runs at 45% for 10 s. Heat bar on the radar card. Bots use WEP until 85% hot.
+- Era HUDs on one canvas (`flightHud.ts`, Share Tech Mono, OFL): reflector sight and gauges for props, gyro sight for early jets, full green HUD for Cold War and Modern.
+- Radar (`src/game/radar.ts`, `radar` blocks in planes.json): Search (R locks the picked or nearest target), Dogfight (auto-lock inside 10° and 10 km), ranges 5/10/20 km, cone, notching and ground clutter, 1 s memory. Radar missiles need the radar lock; semi-active ones guide only while the lock holds and sees the target that tick. Scope with sweep, RWR (radar locks in orange), THR/HEAT/HULL bars; tap a contact on touch to select it.
+- Touch: right-half drag steering, throttle slider with a WEP band, FIRE, MSL with lock ring and switch arrow, CM, RDR (tap lock, long-press mode), LEVEL, draggable eye, ZOOM, tap the scores; Settings: rudder buttons, tilt steering; aim assist on by default.
+- Gamepad: the spec's Xbox/PlayStation layout, every button rebindable.
+- Protocol: input 12 bytes, planes 26 bytes (WEP lit, radar lock slot), own-weapons trailer with engine heat, overheat time and secondary.
 
-Still to do (in order):
-1. Look at the new models in game (hangar + flight on Medium/High) and the previews in `tools/blender/previews/`; fix anything odd in the kit.
-2. Run all tests (`npm test`, `npx playwright test` ~21 min; tests are slower now in software rendering), fix, commit.
-3. `npx vite preview --port 4187` + `node tools/perf/profile.mjs island_chain` (it now prints "first match playable" on Slow 4G; target < 8 s); check `du -sh dist` < 25 MB (was 10 MB before models).
-4. Re-run `npx playwright test terrain-shots --project desktop-chrome` for the final after shots (before shots are in tests/screenshots/mountain-valley-before-*.png).
-5. Write the full Day 11 section here, push, confirm the deploy (`gh run list`), run the suite against the live site with `BASE_URL`.
-Owed by the user from earlier days: the 6-player game night, sound on a real iPhone. TURN key still pending.
+**Part B: terrain, forests, sky, water**
+- Baked heightmaps (`npm run terrain`): the procedural base (ridged multifractal on rotated, domain-warped gradient noise; Mountain Valley is now an alpine valley with snow-capped peaks) is eroded with droplet hydraulic erosion plus talus and saved as 16-bit PNGs; the sim samples them (bilinear) plus seeded micro-relief.
+- Terrain shader: per-pixel sand / grass / forest floor / triplanar rock / snow above each map's `snowLineM`, every edge broken by noise; Medium/High add Poly Haven CC0 textures (KTX2) as detail on the palette colour, High adds detail normals.
+- 2 km chunks with four LOD levels that geomorph (no popping), skirts against cracks; distant mountain ranges and a coarse copy of the whole map in a 60 km backdrop pass.
+- Instanced forests: ~410k trees on High over Mountain Valley, 3D pines and broadleaf near the camera, runtime-rendered impostors further out, dithered crossfades, fading into the haze; counts and distances per tier.
+- Sky: three's physically based Sky with each map's sun (also used by IR seekers), a cirrus layer and a horizon haze band; fly-through cumulus; reflective animated water on High, the cheap shader on Low/Medium. ACES tone mapping, HDRI image-based light (Medium/High), shadows on High.
+
+**Part C: models, effects, tiers**
+- All 63 planes rebuilt by the Blender kit at a finer detail level: smooth shading with sharp edges kept, rounded airfoils, 1,139–1,911 triangles (budgets 3,000 props / 4,000 jets / 6,000 AI bombers), plus a low-poly LOD (291–493). Each plane has a baked detail texture (Cycles: AO, panel lines, team mask) as KTX2. Low loads only the LODs (~12 KB a plane); Medium/High load the detailed model and switch to the LOD beyond ~380 m. Previews in `tools/blender/previews/` checked; hangar and flight checked on High and Low.
+- `npm run designs` writes every plane as Blender files you can open: `designs/all_planes.blend` (all 63, a collection and row per era, labelled) and `designs/<era>/<id>.blend`, wearing the baked texture with blue team paint (gitignored).
+- Effects: bloom (Medium/High) on real light sources only, textured smoke and fire sprites, afterburner glow and a dull heat glow out of afterburner, wingtip vapour ribbons above 6 G (5 for props).
+- **Bloom fix**: the sky reached the bloom buffer untonemapped and far above the threshold, so on Medium/High the whole frame was washed white and planes in front of the sky were barely visible (the first Part B "after High" shots show it). The sky is now kept just under the threshold; the High screenshots are clear.
+- Quality tiers (`core/quality.ts`): every visual above has a switch (textures, detail normals, forest tier, IBL, reflective water, bloom, shadows, horizon ranges, clouds, draw distance, model detail).
+- **Heightmaps on demand**: every map's heightmap used to download at boot (2.4 MB). Now the title's map loads at boot, a solo pick loads as soon as it's picked (startSolo waits for it), and rooms fetch all of them in the lobby and the voted map at the vote.
+
+### WebGPU test
+
+`?debug=1&webgpuprobe=1` (`src/dev/webgpuProbe.ts`) draws one benchmark scene (terrain grid, 60,000 instanced PBR trees) five seconds with three's WebGPURenderer and five with the WebGLRenderer.
+
+| | WebGPURenderer | WebGLRenderer |
+| --- | --- | --- |
+| GPU Chromium on this Mac, run 1 | 53.5 fps (WebGPU backend) | 58.0 fps |
+| GPU Chromium, run 2 and today's perf run | 59.9 fps | 60.0 fps (vsync cap) |
+| Playwright iPhone 13 profile (WebKit) | 51.7 fps | 57.7 fps |
+
+Not faster anywhere, and the game's terrain, sky, cloud, impostor and effect shaders are GLSL (ShaderMaterial, onBeforeCompile), which WebGPURenderer doesn't run; moving would mean rewriting them in TSL. **The game stays on WebGL.** Not tried on a real iPhone.
+
+### Performance and size
+
+- Perf project (GPU Chromium): 60 fps on every profile: low at phone size with 4× CPU throttling 60 fps (74 draw calls), Ground Strike over Mountain Valley on low 60 fps (124), high low over the forest 60 fps (59; 404,516 trees, 15,373 in 3D), Bomber Escort on high 60 fps (64).
+- First match on Slow 4G (1.6 Mbps, 150 ms) with 4× CPU, cold cache (`tools/perf/profile.mjs`, service workers now blocked there because DevTools throttling skips the worker's fetches): title ready 4.6 s (3.1 s on Day 10: the main bundle grew to 344 KB gzip); **first match on Island Chain, the default map, playable at 7.4 s** (896 KB). Mountain Valley as the very first match: 16.4 s, because its 1,025² heightmap is 1.56 MB (coarser height steps only got it to 0.87 MB at 0.5 m, not worth the detail).
+- Download: **whole site 18 MB** (budget 25 MB): models 8.2 MB, textures 3.5 MB, heightmaps 2.4 MB, code 2.6 MB (WebGPU probe and Basis transcoder load only when used).
+
+### Screenshots
+
+- `tests/screenshots/mountain-valley-before-{low,high}.png` (the live v1.0 site) and `mountain-valley-after-{low,high,high-low-level}.png`: the old flat-shaded blocky slopes against the eroded, textured, forested valley. No blocky patches in the after shots.
+
+### Tests
+
+- Vitest: 180 (+14 since Day 10: radar search/lock/dogfight and semi-active guidance only while the lock holds, WEP heat and overheat, keybinds and conflicts, HOW_TO_PLAY ↔ README sync, baked heightfields, model budgets). The bot-difficulty test now runs twelve 5-minute duels per difficulty (easy 6, normal 11, hard 17 deaths): three duels flipped hard and normal after the new models moved muzzles by millimetres.
+- Playwright locally: 59 of 59 run pass (31 skipped: device-specific halves, emulator and full-match specs). The last full run had one timeout (the High forest screenshot, software rendered under full load); its limit is now 120 s and it passed on its own. New in Day 11: `day11.spec` (every default key, the HUD view, radar lock on the scope, rebinding with conflicts and reset, mouse joystick, gamepad, touch board, rudder buttons), `terrain-shots.spec`, and the WebGPU probe in `perf.spec`. Two Day 11 specs were hardened against slow software frames (the keyboard spec now starts above the peaks: a crash resets the cockpit switches).
+
+### Known issues
+
+- Mountain Valley as a player's first-ever match on a slow connection takes ~16 s (1.56 MB heightmap); later visits come from the service worker cache.
+- A network match whose voted map's heightmap hasn't arrived by the start (very slow phone, voted in the last seconds) would build that player's sim on the procedural fallback; the lobby prefetch makes this unlikely, but it isn't guarded.
+- Browser tests are slower in software rendering (~21 min for the suite); automated browsers start on Low.
+- WebGPU: see above; WebGL kept.
+- Still owed by the user: the 6-player game night and sound on a real iPhone. TURN key still pending.
 
 ## Day 10: Performance, mobile QA, balance, launch (2026-10-15)
 
