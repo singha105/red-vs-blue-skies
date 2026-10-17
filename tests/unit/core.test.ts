@@ -19,12 +19,13 @@ describe('settings', () => {
 
   it('falls back to defaults for missing or broken values', () => {
     expect(sanitizeSettings(null)).toEqual(DEFAULT_SETTINGS);
-    expect(sanitizeSettings({ graphics: 'ultra', sensitivity: 'fast', volume: Number.NaN })).toEqual(DEFAULT_SETTINGS);
+    expect(sanitizeSettings({ graphics: 'extreme', sensitivity: 'fast', volume: Number.NaN, lookBack: 'sometimes' })).toEqual(DEFAULT_SETTINGS);
+    expect(sanitizeSettings({ graphics: 'ultra' }).graphics).toBe('ultra');
   });
 
   it('clamps numbers into range', () => {
     const s = sanitizeSettings({ graphics: 'low', sensitivity: 9, aimAssist: -1, volume: 0.5, engineVolume: 4, effectsVolume: -2 });
-    expect(s).toEqual({ graphics: 'low', sensitivity: 3, aimAssist: 0, volume: 0.5, engineVolume: 1, effectsVolume: 0, cockpitVolume: DEFAULT_SETTINGS.cockpitVolume, cap30: false, teamColours: 'classic', hudScale: 1, invertPitch: false, controlMode: 'mouseAim', units: 'imperial', flightModel: 'arcade', touchRudder: false, tiltSteer: false });
+    expect(s).toEqual({ graphics: 'low', sensitivity: 3, aimAssist: 0, volume: 0.5, engineVolume: 1, effectsVolume: 0, cockpitVolume: DEFAULT_SETTINGS.cockpitVolume, cap30: false, teamColours: 'classic', hudScale: 1, invertPitch: false, controlMode: 'mouseAim', units: 'imperial', flightModel: 'arcade', touchRudder: false, tiltSteer: false, lookBack: 'hold' });
   });
 
   it('flight model is Arcade unless Realistic is asked for', () => {

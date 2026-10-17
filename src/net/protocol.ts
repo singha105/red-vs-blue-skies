@@ -1,7 +1,8 @@
 // Wire protocol. Binary for the hot path (inputs 30/s up, snapshots 20/s down), JSON for rare events.
 //
-// Input (12 bytes):  u8 type=1 | u32 seq | i8 pitch | i8 roll | i8 yaw | u8 throttle | u8 buttons | u8 target slot
+// Input (13 bytes):  u8 type=1 | u32 seq | i8 pitch | i8 roll | i8 yaw | u8 throttle | u8 buttons | u8 target slot
 //                    | u8 extra (bit 0 radar dogfight, bits 1–2 radar range, bits 3–7 secondary + 1, 0 = auto)
+//                    | u8 config (Day 12: bits 0–1 flap step, bit 2 gear down)
 //   buttons: fire, missile, flare, WEP, airbrake, flaps, radar lock wanted, radar on (bits 0–7)
 // Ping/pong (11 B):  u8 type=3|4 | u16 id | f64 sender time (echoed back unchanged)
 // Snapshot:          header 17 B + 26 B per plane + 1 B + 17 B per missile + objectives + own weapons trailer
@@ -20,7 +21,7 @@
 //            | u8 bombs | u8 engine heat×255 | u8 overheat s×10 | u8 secondary + 1 (the receiving player's own)
 // "Slot" is a plane's index in the roster + 1 (0 = none). 20 planes ≈ 500 bytes per snapshot ≈ 10 KB/s per client
 // at 20 Hz, plus 17 bytes per missile in the air. Flares and chaff are reliable events, simulated locally.
-import type { ControlInput } from '../game/controls';
+import { flapStepOf, type ControlInput } from '../game/controls';
 import type { PlaneState, Team } from '../game/flight';
 import type { MissileState } from '../game/missiles';
 import type { GroundLayout } from '../game/groundLayout';
@@ -40,7 +41,7 @@ export const SNAPSHOT_HZ = 20;
 export const INPUT_HZ = 30;
 export const PLANE_BYTES = 26;
 export const MISSILE_BYTES = 17;
-const INPUT_BYTES = 12;
+const INPUT_BYTES = 13;
 /** Missile target byte for "chasing a flare or chaff". */
 const DECOY_SLOT = 255;
 const HEADER_BYTES = 17;
@@ -186,6 +187,7 @@ export function encodeInput(seq: number, i: ControlInput, targetSlot = 0): Array
   const range = Math.round(clampNum(i.radarRange ?? 1, 0, 2));
   const sec = Math.round(clampNum((i.secondary ?? -1) + 1, 0, 31));
   v.setUint8(11, (i.radarDogfight ? 1 : 0) | (range << 1) | (sec << 3));
+  v.setUint8(12, flapStepOf(i) | (i.gear ? 4 : 0));
   return b;
 }
 
@@ -215,6 +217,8 @@ export function decodeInput(data: ArrayBuffer): { seq: number; input: ControlInp
       radarDogfight: (v.getUint8(11) & 1) !== 0,
       radarRange: Math.min(2, (v.getUint8(11) >> 1) & 3),
       secondary: (v.getUint8(11) >> 3) - 1,
+      flapStep: v.getUint8(12) & 3,
+      gear: (v.getUint8(12) & 4) !== 0,
     },
     targetSlot: v.getUint8(10),
   };

@@ -20,7 +20,7 @@
 // (it sets the induced drag). So the Realistic model keeps each plane's character and the Arcade balancing.
 // Plain data in, plain data out (the extra state lives in optional PlaneState fields), deterministic.
 import type { ControlInput } from './controls';
-import { checkEdgeAndGround, G, stepEngine, thrustFor, type FlightEnv, type FlightParams, type PlaneState } from './flight';
+import { checkEdgeAndGround, FLAP_EFFECT, flapStepOfState, G, GEAR_DRAG, stepEngine, thrustFor, type FlightEnv, type FlightParams, type PlaneState } from './flight';
 import { add, clamp, dot, FORWARD, len, normalize, quatConj, quatFromAxisAngle, quatMul, quatNormalize, RIGHT, rotate, scale, smoothstep, UP, type Vec3 } from './math';
 
 /** Per-plane coefficients, derived once from the plane's FlightParams. */
@@ -191,7 +191,7 @@ function substep(s: PlaneState, input: ControlInput, sp: SimParams, thrust: numb
 
   // Flaps run out and in at their own pace (and only deploy below their limit speed).
   const flapsWanted = s.flaps && v < sp.vTop * FLAPS_MAX_SPEED;
-  s.flapPos = approach(s.flapPos!, flapsWanted ? 1 : 0, FLAP_RATE * h);
+  s.flapPos = approach(s.flapPos!, flapsWanted ? FLAP_EFFECT[flapStepOfState(s)]! : 0, FLAP_RATE * h);
   const flap = s.flapPos;
   const alphaCrit = ALPHA_CRIT - FLAP_ALPHA * flap;
   const alphaFull = ALPHA_FULL * alphaCrit;
@@ -249,7 +249,7 @@ function substep(s: PlaneState, input: ControlInput, sp: SimParams, thrust: numb
   const liftDir = perpendicular(up, vHat, up);
   const sideDir = perpendicular(right, vHat, right);
   const side = (-SIDE_K * G * dyn * beta) / (sp.vs * sp.vs);
-  const parasitic = sp.cd0 * dyn * (1 + (s.airbrake ? AIRBRAKE_DRAG : 0) + FLAP_DRAG * flap + 8 * beta * beta);
+  const parasitic = sp.cd0 * dyn * (1 + (s.airbrake ? AIRBRAKE_DRAG : 0) + FLAP_DRAG * flap * flap + (s.gear ? GEAR_DRAG : 0) + 8 * beta * beta);
   const induced = dyn > 1 ? (sp.ki * lift * lift) / dyn : 0;
   // A stalled wing is mostly a flat plate: drag climbs past the critical angle.
   const stallDrag = (1.2 * G * dyn * Math.sin(Math.max(0, Math.abs(alpha) - alphaCrit)) ** 2) / (sp.vs * sp.vs);

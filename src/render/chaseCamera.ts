@@ -19,8 +19,9 @@ export interface ChaseCamera {
   reset(): void;
   /** Scale the follow distance to the plane (1 = a 9 m fighter). */
   setScale(scale: number): void;
-  /** HUD view: the camera sits at the nose and turns with the plane; look yaw/pitch turn the head. */
-  updateCockpit(dt: number, planePos: Vector3, planeQuat: Quaternion, noseOffsetM: number, look: { yaw: number; pitch: number }, speedMs: number): void;
+  /** Cockpit and HUD views: the camera sits at `eye` (plane-local metres) and turns with the plane; look yaw/pitch
+   *  turn the head. */
+  updateCockpit(dt: number, planePos: Vector3, planeQuat: Quaternion, eye: Vector3, look: { yaw: number; pitch: number }, speedMs: number): void;
   /** Hold zoom (narrow field of view, eased in and out). */
   setZoom(on: boolean): void;
 }
@@ -77,9 +78,9 @@ export function createChaseCamera(camera: PerspectiveCamera): ChaseCamera {
 
       applyFov(dt, speedMs);
     },
-    updateCockpit(dt, planePos, planeQuat, noseOffsetM, look, speedMs) {
+    updateCockpit(dt, planePos, planeQuat, eye, look, speedMs) {
       // Models face +Z and cameras look down −Z, so turn the plane's orientation half a turn.
-      nose.set(0, 0.35 * size, noseOffsetM).applyQuaternion(planeQuat);
+      nose.copy(eye).applyQuaternion(planeQuat);
       camera.position.copy(planePos).add(nose);
       euler.set(look.pitch, -look.yaw, 0);
       head.setFromEuler(euler);

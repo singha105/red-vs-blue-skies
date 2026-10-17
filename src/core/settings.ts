@@ -1,7 +1,7 @@
 // Player settings, persisted to localStorage. Unknown or broken saved values fall back to defaults.
 import { readStorage, writeStorage } from './storage';
 
-export type GraphicsLevel = 'auto' | 'low' | 'medium' | 'high';
+export type GraphicsLevel = 'auto' | 'low' | 'medium' | 'high' | 'ultra';
 
 export interface Settings {
   graphics: GraphicsLevel;
@@ -32,6 +32,8 @@ export interface Settings {
   /** Touch: show rudder buttons; steer by tilting the phone (asks for motion permission on iPhone). */
   touchRudder: boolean;
   tiltSteer: boolean;
+  /** Look back (V): hold to look behind, or press once to look and again to return. */
+  lookBack: 'hold' | 'toggle';
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
@@ -51,6 +53,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   flightModel: 'arcade',
   touchRudder: false,
   tiltSteer: false,
+  lookBack: 'hold',
 };
 
 const KEY = 'rvbs.settings.v1';
@@ -64,7 +67,7 @@ export function sanitizeSettings(raw: unknown): Settings {
   const o = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
   const graphics = o['graphics'];
   return {
-    graphics: graphics === 'low' || graphics === 'medium' || graphics === 'high' || graphics === 'auto' ? graphics : DEFAULT_SETTINGS.graphics,
+    graphics: graphics === 'low' || graphics === 'medium' || graphics === 'high' || graphics === 'ultra' || graphics === 'auto' ? graphics : DEFAULT_SETTINGS.graphics,
     sensitivity: clamp(o['sensitivity'], 0.2, 3, DEFAULT_SETTINGS.sensitivity),
     aimAssist: clamp(o['aimAssist'], 0, 1, DEFAULT_SETTINGS.aimAssist),
     volume: clamp(o['volume'], 0, 1, DEFAULT_SETTINGS.volume),
@@ -80,6 +83,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     flightModel: o['flightModel'] === 'realistic' ? 'realistic' : 'arcade',
     touchRudder: o['touchRudder'] === true,
     tiltSteer: o['tiltSteer'] === true,
+    lookBack: o['lookBack'] === 'toggle' ? 'toggle' : 'hold',
   };
 }
 

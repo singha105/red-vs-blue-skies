@@ -19,7 +19,7 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
   el.setAttribute('role', 'dialog');
   el.setAttribute('aria-modal', 'true');
   el.setAttribute('aria-label', 'Settings');
-  const levels: [GraphicsLevel, string][] = [['auto', 'Auto'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']];
+  const levels: [GraphicsLevel, string][] = [['auto', 'Auto'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['ultra', 'Ultra']];
   el.innerHTML = `
     <div class="modal__card">
       <h2>Settings</h2>
@@ -29,7 +29,7 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
       <label class="field"><span>Frame rate</span>
         <select data-k="cap30">
           <option value="0" ${s.cap30 ? '' : 'selected'}>As fast as the screen allows</option>
-          <option value="1" ${s.cap30 ? 'selected' : ''}>30 fps (saves battery)</option>
+          <option value="1" ${s.cap30 ? 'selected' : ''}>30 fps (saves battery on laptops)</option>
         </select>
       </label>
       <label class="field"><span>Aim sensitivity <output data-o="sensitivity">${s.sensitivity.toFixed(1)}×</output></span>
@@ -48,6 +48,12 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
           <option value="joystick" ${s.controlMode === 'joystick' ? 'selected' : ''}>Mouse joystick (the mouse moves the stick)</option>
         </select>
       </label>
+      <label class="field"><span>Look back</span>
+        <select data-k="lookBack" data-testid="look-back">
+          <option value="hold" ${s.lookBack === 'hold' ? 'selected' : ''}>Hold to look back</option>
+          <option value="toggle" ${s.lookBack === 'toggle' ? 'selected' : ''}>Press to look back, press again to look ahead</option>
+        </select>
+      </label>
       <label class="field"><span>Flight model</span>
         <select data-k="flightModel" data-testid="flight-model">
           <option value="arcade" ${s.flightModel === 'arcade' ? 'selected' : ''}>Arcade (the stick turns the plane)</option>
@@ -59,21 +65,6 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
           <option value="imperial" ${s.units === 'imperial' ? 'selected' : ''}>Knots and feet</option>
           <option value="metric" ${s.units === 'metric' ? 'selected' : ''}>km/h and metres</option>
         </select>
-      </label>
-      <label class="field"><span>Touch extras</span>
-        <select data-k="touchRudder">
-          <option value="0" ${s.touchRudder ? '' : 'selected'}>No rudder buttons</option>
-          <option value="1" ${s.touchRudder ? 'selected' : ''}>Rudder buttons</option>
-        </select>
-        <select data-k="tiltSteer" data-testid="tilt-select">
-          <option value="0" ${s.tiltSteer ? '' : 'selected'}>Steer by dragging</option>
-          <option value="1" ${s.tiltSteer ? 'selected' : ''}>Steer by tilting the phone too</option>
-        </select>
-        <small class="tilt__msg" role="status" aria-live="polite">${opts.isTouch ? 'Tilt steering asks for motion access on iPhone.' : 'Rudder buttons and tilt steering are for touch screens.'}</small>
-      </label>
-      <label class="field"><span>Touch aim assist <output data-o="aimAssist">${Math.round(s.aimAssist * 100)}%</output></span>
-        <input type="range" data-k="aimAssist" min="0" max="1" step="0.05" value="${s.aimAssist}" />
-        <small>${opts.isTouch ? 'Bends your bullets slightly toward enemies within 2° of your aim. 0% turns it off.' : 'Only applies when playing on a touch screen.'}</small>
       </label>
       <label class="field"><span>HUD size <output data-o="hudScale">${Math.round(s.hudScale * 100)}%</output></span>
         <input type="range" data-k="hudScale" min="1" max="1.6" step="0.05" value="${s.hudScale}" />
@@ -101,7 +92,7 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
           )
           .join('')}
       </div>
-      <small class="field__note">Sound starts on your first tap or key press. On iPhone it plays even with the silent switch on; use these sliders instead. Every warning sound also shows on screen.</small>
+      <small class="field__note">Sound starts on your first tap or key press. Every warning sound also shows on screen.</small>
       ${opts.onTutorial ? '<button type="button" class="btn btn--secondary btn--small" data-act="tutorial">Play the tutorial again</button>' : ''}
       ${
         opts.account
@@ -133,6 +124,7 @@ export function openSettings(parent: HTMLElement, opts: { isTouch: boolean; acco
     if (k === 'graphics') updateSettings({ graphics: t.value as GraphicsLevel });
     else if (k === 'cap30' || k === 'invertPitch' || k === 'touchRudder') updateSettings({ [k]: t.value === '1' });
     else if (k === 'controlMode') updateSettings({ controlMode: t.value === 'joystick' ? 'joystick' : 'mouseAim' });
+    else if (k === 'lookBack') updateSettings({ lookBack: t.value === 'toggle' ? 'toggle' : 'hold' });
     else if (k === 'units') updateSettings({ units: t.value === 'metric' ? 'metric' : 'imperial' });
     else if (k === 'flightModel') updateSettings({ flightModel: t.value === 'realistic' ? 'realistic' : 'arcade' });
     else if (k === 'tiltSteer') {

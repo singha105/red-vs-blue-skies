@@ -136,6 +136,24 @@ describe('flight model', () => {
     expect(slow(true).stalled).toBe(false);
   });
 
+  it('Day 12: flap steps lower the stall speed in order, and lowered gear adds drag', () => {
+    const p = ctx.params.get('spitfire_mk5')!;
+    const stalls = (flapStep: number): boolean => {
+      const s = plane('spitfire_mk5', { vel: [0, 0, p.stallSpeedMs * 0.9], throttle: 0.6 });
+      fly(s, 0.2, { ...neutralInput(0.6), flaps: flapStep > 0, flapStep });
+      return s.stalled;
+    };
+    expect(stalls(0)).toBe(true);
+    expect(stalls(1)).toBe(true); // Combat flaps: a little lift, not enough at 0.9× stall speed
+    expect(stalls(3)).toBe(false);
+    const up = plane('f16c_b50');
+    const down = plane('f16c_b50');
+    fly(up, 10, holdLevel);
+    fly(down, 10, (st) => ({ ...holdLevel(st), gear: true }));
+    expect(down.gear).toBe(true);
+    expect(len(down.vel)).toBeLessThan(len(up.vel) * 0.97);
+  });
+
   it('stalls when slow, the nose drops, and it recovers with speed', () => {
     const p = ctx.params.get('spitfire_mk5')!;
     // Nose high, idle, slow.

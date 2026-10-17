@@ -1,6 +1,6 @@
 # How to play Red vs Blue Skies
 
-Red vs blue air combat in your browser, from WW1 biplanes to modern jets, on phones, tablets and laptops. This file is the source of the in-game **How to play** screen and of the controls in the README, so the three always say the same thing.
+Red vs blue air combat in your browser, from WW1 biplanes to modern jets, on laptops and desktops: Chrome, Edge, Firefox, or Safari on a Mac, with a mouse and keyboard or a gamepad. This file is the source of the in-game **How to play** screen and of the controls in the README, so the three always say the same thing.
 
 ## Joining a match
 
@@ -22,7 +22,9 @@ Click the game once to capture the mouse (Esc frees it and opens the menu). Ever
 | A / D | Roll left / right |
 | Q / E | Rudder left / right (ramps in over 0.3 s; fine aim and flat turns) |
 | H | Airbrake on / off |
-| F | Flaps on / off (slower stall, tighter low-speed turns) |
+| F | Flaps down one step: Up → Combat → Takeoff → Landing (slower stall, tighter low-speed turns, more drag) |
+| Shift+F | Flaps up one step |
+| G | Landing gear up / down (you start in the air with it up; down adds drag) |
 | L | Auto-level: wings level, nose on the horizon |
 | Arrow keys | Fly directly without the mouse |
 
@@ -32,7 +34,7 @@ Click the game once to capture the mouse (Esc frees it and opens the menu). Ever
 | --- | --- |
 | Left mouse | Guns |
 | Space | Fire a missile, rocket or bomb |
-| Left Shift | Switch secondary weapon (Auto, then each missile type; rockets / bombs) |
+| N | Switch secondary weapon (Auto, then each missile type; rockets / bombs) |
 | Middle mouse / T | Select the target nearest the crosshair; press again quickly for the next one |
 | X | Flares and chaff together |
 
@@ -50,8 +52,9 @@ Click the game once to capture the mouse (Esc frees it and opens the menu). Ever
 | Key | Action |
 | --- | --- |
 | C (hold) | Free look |
+| V (hold) | Look back at your six: the camera swings round over the tail (in the cockpit, over your shoulder) and back when you let go. The plane holds its course meanwhile. Settings → Look back makes it a toggle |
 | Right mouse (hold) | Zoom |
-| V | Chase view / HUD view (camera at the nose) |
+| B | Change view: chase → cockpit → HUD (jets only; the camera at the nose) |
 | Tab (hold) | Scoreboard |
 | M | Bigger map |
 | Enter | Chat (multiplayer) |
@@ -63,34 +66,19 @@ Click the game once to capture the mouse (Esc frees it and opens the menu). Ever
 
 **Flight model:** Settings → Flight model → **Realistic** (solo matches for now) flies on forces instead of set turn rates. The stick moves the ailerons, elevator and rudder, so controls are soft when slow and quick when fast. Pull too hard when slow and the wing stalls and drops; let go and dive to recover. Hard turns bleed speed, rudder slips the nose and rolls the plane, flaps lower the stall speed, and thin air at altitude makes everything mushier. On the jet HUD, AOA is your angle of attack (the wing stalls near 15°). Arcade is the default.
 
-## Touch (phones and tablets)
+## Phones and tablets
 
-Hold the phone sideways.
-
-| Control | Action |
-| --- | --- |
-| Drag on the right half | Steer (like a trackpad) |
-| Left slider | Throttle. The striped band at the top is WEP / afterburner |
-| FIRE (hold) | Guns |
-| MSL | Fire the secondary weapon. The ring fills as the lock builds; the small › button next to it switches weapon |
-| CM | Flares and chaff |
-| Tap an enemy plane or a radar contact | Select it as your target |
-| RDR | Tap: lock / unlock. Long-press: Search / Dogfight |
-| LEVEL | Auto-level |
-| Eye button (drag it) | Look around; let go to look ahead again |
-| ZOOM (hold) | Zoom |
-| Tap the team scores | Scoreboard |
-
-Settings has optional **rudder buttons** and **tilt steering** (tilt the phone to steer; iPhone asks for motion access the first time). Touch aim assist is on by default (Settings → Touch aim assist; 0% turns it off).
+Red vs Blue Skies is made for laptops and desktops, so phones and tablets show a "Please play on a laptop or desktop" screen. **Continue anyway** starts the game regardless, but touch controls are no longer updated or tested.
 
 ## Gamepad
 
-Any standard pad works once you press a button. Xbox names, PlayStation in brackets. Buttons can be rebound in Settings → Controls → Gamepad.
+Any standard pad works once you press a button. Xbox names, PlayStation in brackets. Buttons can be rebound in Settings → Controls → Gamepad, where landing gear and flaps start unbound.
 
 | Button | Action |
 | --- | --- |
 | Left stick | Steer |
-| Right stick | Look around; click [R3] switches view |
+| Right stick | Look around |
+| Right stick click [R3] (hold) | Look back |
 | Left stick click [L3] | Zoom (hold) |
 | RT [R2] | Throttle up; hold at 100% for WEP |
 | LT [L2] | Throttle down; at idle it's the airbrake |
@@ -103,7 +91,7 @@ Any standard pad works once you press a button. Xbox names, PlayStation in brack
 | D-pad up | Radar lock / unlock |
 | D-pad left | Radar mode |
 | D-pad right | Radar range |
-| View [Touchpad] (hold) | Scoreboard |
+| View [Touchpad] | Tap: scoreboard on / off. Hold: change view |
 | Menu [Options] | Menu |
 
 ## Reading the HUD
@@ -118,21 +106,21 @@ Any standard pad works once you press a button. Xbox names, PlayStation in brack
 - **Heading tape** at the bottom (N, 03, 06…), heading boxed.
 - **Pitch ladder:** solid rungs above the horizon, dashed below, every 5°.
 - **Flight-path marker** (circle with wings): where the plane is actually going. The small circle is the nose, the big circle is your aim.
-- Bottom left: **M** Mach number, **G** load factor and **MAX** this life (red near the plane's limit), **AOA** angle of attack, **THR** throttle, or **AB / WEP 42 s** (seconds of afterburner left before the engine overheats), **ENG HOT** while it cools. **BRK** airbrake, **FLP** flaps.
+- Bottom left: **M** Mach number, **G** load factor and **MAX** this life (red near the plane's limit), **AOA** angle of attack, **THR** throttle, or **AB / WEP 42 s** (seconds of afterburner left before the engine overheats), **ENG HOT** while it cools. **BRK** airbrake, **FLP CBT / TKOF / LDG** flaps (Combat, Takeoff, Landing), **GEAR** gear down.
 - Bottom right: missiles (**MSL 4/6** and the picked type), **GUN** rounds, **FLR** flares, **R 310 FT** radar altitude below 1,500 ft.
 - Red **PULL UP / TERRAIN** when you'd hit the ground in under 4 s.
 
 Settings → Units switches between knots and feet (default) and km/h and metres.
 
-**The panel (bottom right):** the radar scope (jets with radar), the **RWR** (radar warning: yellow squares are radars looking at you, orange a radar lock, flashing red a missile on its way), and bars for **THR** throttle, **HEAT** engine heat and **HULL** health. Hold W (or the slider's top band) at 100% for WEP; when HEAT reaches the top the engine overheats and gives about half power for 10 s.
+**The panel (bottom right):** the radar scope (jets with radar), the **RWR** (radar warning: yellow squares are radars looking at you, orange a radar lock, flashing red a missile on its way), and bars for **THR** throttle, **HEAT** engine heat and **HULL** health. Hold W (or RT) at 100% for WEP; when HEAT reaches the top the engine overheats and gives about half power for 10 s.
 
 ## Radar step by step
 
 1. Fly a jet that has a radar (most Cold War and all Modern jets, and the F-8 Crusader). The scope is the cone at the bottom right: you are the triangle at the bottom point; the rings mark quarters of the range shown top right.
 2. **Search** (default, "SRCH"): the sweep line goes back and forth and paints contacts as it passes them; enemies are red squares, friends blue. Press **3** (d-pad right) to change the range: 5, 10 or 20 km.
-3. Select a target (T, middle mouse, Y, or tap it on the screen or on the scope), then press **R** (d-pad up, or tap RDR) to **lock** it. With nothing selected, R locks the contact nearest the nose. The scope says "LOCK", circles the target, and shows its range, altitude and closing speed (VC). The enemy's warning tells them they're locked.
+3. Select a target (T, middle mouse, or Y), then press **R** (d-pad up) to **lock** it. With nothing selected, R locks the contact nearest the nose. The scope says "LOCK", circles the target, and shows its range, altitude and closing speed (VC). The enemy's warning tells them they're locked.
 4. Fire a **radar missile** (Space) once the lock box on screen goes solid. **Semi-active** missiles (AIM-7, R-27R) only guide while your lock holds: keep the target inside your radar cone until the hit. **Active** missiles (AIM-120, R-77, MICA) can be fired and forgotten once they're close enough to see the target themselves.
-5. **Dogfight mode** (press **2**, long-press RDR): the radar locks by itself on the first enemy inside a narrow cone straight ahead, up to 10 km. Point your nose at an enemy and it locks.
+5. **Dogfight mode** (press **2**, d-pad left): the radar locks by itself on the first enemy inside a narrow cone straight ahead, up to 10 km. Point your nose at an enemy and it locks.
 6. Locks break when the target leaves the cone or the range, dives into ground clutter (below 300 m the radar sees half as far), or **notches** (flies at right angles to your radar). Press R again to unlock; **1** turns the radar off (quiet: enemies' warners don't see a lock).
 
 ## Missiles: firing and dodging
@@ -179,8 +167,7 @@ Settings → Units switches between knots and feet (default) and km/h and metres
 
 - One player's browser runs the match. Host from a **laptop on Wi-Fi or Ethernet, plugged in**, with the game tab in front.
 - Host / Join → Host, then share the link or QR code. Bots fill the empty seats.
-- A phone can host, but locking it or switching apps ends the match for everyone.
-- Phone players: landscape, Low Power Mode off, headphones on. A phone that drops out rejoins the room by itself.
+- Closing the lid or letting the host's laptop sleep ends the match for everyone. A player who drops out rejoins the room by itself.
 
 ## Credits
 

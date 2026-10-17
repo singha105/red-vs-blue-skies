@@ -3326,3 +3326,83 @@ body.is-flying .fps {
 .help__body ul {
   padding-left: 1.2em;
 }
+
+/* Day 12: phones and tablets see this instead of the game. */
+
+.is-desktop-only #rotate,
+.is-desktop-only #game {
+  display: none !important;
+}
+
+.desktop-only {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(24px, env(safe-area-inset-top)) 24px;
+  background: var(--ink);
+  overflow-y: auto;
+}
+
+.desktop-only__card {
+  max-width: 34rem;
+  text-align: center;
+}
+
+.desktop-only h1 {
+  margin: 20px 0 12px;
+  font-family: 'Big Shoulders Display', sans-serif;
+  font-size: clamp(30px, 7vw, 44px);
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.desktop-only p {
+  margin: 0 0 12px;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.desktop-only__url {
+  font-family: 'Share Tech Mono', monospace;
+  word-break: break-all;
+  color: var(--paper);
+  opacity: 0.85;
+}
+
+.desktop-only__laptop {
+  width: 120px;
+  height: 74px;
+  margin: 0 auto;
+  border: 5px solid var(--paper);
+  border-radius: 8px 8px 2px 2px;
+  position: relative;
+}
+
+.desktop-only__laptop::after {
+  content: '';
+  position: absolute;
+  left: -22px;
+  right: -22px;
+  bottom: -16px;
+  height: 8px;
+  border-radius: 0 0 8px 8px;
+  background: var(--paper);
+}
+
+.desktop-only__anyway {
+  margin-top: 18px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--paper);
+  font: inherit;
+  font-size: 15px;
+  opacity: 0.8;
+  cursor: pointer;
+}

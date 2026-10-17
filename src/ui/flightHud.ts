@@ -39,7 +39,9 @@ export interface FlightHudFrame {
   wepLeftS: number;
   overheatS: number;
   airbrake: boolean;
-  flaps: boolean;
+  /** Flap setting name ("CBT", "TKOF", "LDG") or '' when up. */
+  flaps: string;
+  gear: boolean;
   /** Ammo per gun type, secondary weapons, countermeasures. */
   guns: number;
   secondary: string;
@@ -309,7 +311,7 @@ export function createFlightHud(parent: HTMLElement): FlightHud {
     }
     const eng = engineLine(f);
     text(eng.s, lx, ly, size, 'left', eng.color);
-    const extras = [f.airbrake ? 'BRK' : '', f.flaps ? 'FLP' : ''].filter(Boolean).join(' ');
+    const extras = [f.airbrake ? 'BRK' : '', f.flaps ? `FLP ${f.flaps}` : '', f.gear ? 'GEAR' : ''].filter(Boolean).join(' ');
     if (extras) text(extras, lx + size * 6.2, ly, size * 0.85, 'left', AMBER);
 
     // Right: weapons beside the field; radar altitude below it when low.

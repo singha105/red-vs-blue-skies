@@ -2,7 +2,7 @@
 // the other two flying. Uses a local PeerJS signaling server (tests/e2e/peer-server.mjs) unless testing the
 // live site.
 import { expect, test } from '@playwright/test';
-import { flags, hostRoom, humans, joinByLink, netInfo, openPage, PHONE, relevantErrors, voteAndPick } from './netHelpers';
+import { flags, hostRoom, humans, joinByLink, netInfo, openPage, SMALL_LAPTOP, relevantErrors, voteAndPick } from './netHelpers';
 
 const SHOTS = 'tests/screenshots';
 
@@ -16,17 +16,17 @@ test('1 host + 2 clients: everyone sees each other move', async ({ browser }, in
   await expect(host.locator('.lobby__qr svg')).toBeVisible();
   await expect(host.locator('.lobby__link input')).toHaveValue(new RegExp(`\\?room=${code}$`));
 
-  // Two friends open the share link (plus the test flags), type a callsign and join; Bravo is on a phone.
+  // Two friends open the share link (plus the test flags), type a callsign and join; Bravo is on a small laptop.
   const alpha = await openPage(browser, `./?room=${code}&${flags()}`, 'Alpha', errors);
   await joinByLink(alpha, code, 'Alpha');
-  const bravo = await openPage(browser, `./?room=${code}&${flags()}`, 'Bravo', errors, PHONE);
+  const bravo = await openPage(browser, `./?room=${code}&${flags()}`, 'Bravo', errors, SMALL_LAPTOP);
   await joinByLink(bravo, code, 'Bravo');
   const all = [host, alpha, bravo];
 
   for (const page of all) await expect(page.locator('.rlist li')).toHaveCount(3, { timeout: 10_000 });
-  await expect(host.locator('.rlist li', { hasText: 'Bravo' })).toContainText('phone');
+  await expect(host.locator('.rlist li', { hasText: 'Bravo' })).toContainText('computer');
   await host.screenshot({ path: `${SHOTS}/multiplayer-lobby-host.png` });
-  await bravo.screenshot({ path: `${SHOTS}/multiplayer-lobby-phone.png` });
+  await bravo.screenshot({ path: `${SHOTS}/multiplayer-lobby-small.png` });
 
   await voteAndPick(host, all, 'Early WW2', ['Gloster Gladiator', 'Fiat CR.42', 'Boeing P-26']);
 
@@ -55,9 +55,9 @@ test('1 host + 2 clients: everyone sees each other move', async ({ browser }, in
   }
   await expect(alpha.getByTestId('netstats')).toContainText('snapshots');
   await alpha.screenshot({ path: `${SHOTS}/multiplayer-client.png` });
-  await bravo.screenshot({ path: `${SHOTS}/multiplayer-phone.png` });
+  await bravo.screenshot({ path: `${SHOTS}/multiplayer-small.png` });
 
-  // Bravo's phone is locked and loses the connection: when it comes back it rejoins the running match by itself.
+  // Bravo's laptop sleeps and loses the connection: when it comes back it rejoins the running match by itself.
   const bravoBefore = (await netInfo(bravo))!.playerId;
   await bravo.evaluate(() => (window as unknown as { __rvbs: { lockAndDrop(): void } }).__rvbs.lockAndDrop());
   await expect(bravo.locator('.hud')).toBeVisible({ timeout: 20_000 });

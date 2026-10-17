@@ -19,8 +19,8 @@ export const TIER1: Record<string, string> = {
 export const flags = (extra = ''): string => `debug=1&gfx=low&renderscale=0.5${PUBLIC ? '' : '&signal=localhost:9187'}${extra}`;
 
 export const LAPTOP = { viewport: { width: 960, height: 540 } };
-// A small phone in landscape (Chromium with touch): 667 × 375 like an iPhone SE.
-export const PHONE = { viewport: { width: 667, height: 375 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
+// Day 12: phones and tablets get the "play on a laptop" screen, so the third browser is a small laptop screen.
+export const SMALL_LAPTOP = { viewport: { width: 1024, height: 600 } };
 
 export interface RoomInfo {
   phase: string;

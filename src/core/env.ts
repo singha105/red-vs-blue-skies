@@ -1,4 +1,5 @@
 // Facts about the page and device, read once at startup.
+import { isPhoneOrTablet } from './device';
 
 const params = new URLSearchParams(window.location.search);
 const debug = params.get('debug') === '1';
@@ -19,5 +20,7 @@ export const env = {
     (debug && params.get('offline') === '1') || (navigator.webdriver && params.get('emu') !== '1' && params.get('fb') !== '1'),
   room: params.get('room'),
   isTouch: window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0,
+  /** Phones and tablets aren't supported since Day 12 (see core/device.ts). */
+  phoneOrTablet: isPhoneOrTablet(navigator, (q) => window.matchMedia(q).matches),
   version: __APP_VERSION__,
 } as const;

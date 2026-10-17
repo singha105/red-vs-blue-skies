@@ -3,6 +3,21 @@
 Live: https://singha105.github.io/red-vs-blue-skies/ (`?debug=1` shows the FPS counter)
 Repo: https://github.com/singha105/red-vs-blue-skies
 
+## Day 12: desktop focus, plane design standard, detailed flagship planes (2026-10-17)
+
+The full prompt is `docs/DAY_12.md`. Work in three parts, a commit after each.
+
+### Part A: desktop focus, look back, views, the standard (done)
+
+- **Desktop only.** Phones and tablets (UA, iPadOS asking for the desktop site, or a coarse pointer with no fine one) get a "Please play on a laptop or desktop" screen (`src/core/device.ts`) instead of the game; "Continue anyway" (remembered) or `?anydevice=1` skips it. Touch-screen laptops stay supported. The touch code stays in place but is no longer maintained: the `iphone-13` Playwright project and `mobile.spec.ts` are gone, touch-only tests skip, the multiplayer specs' third browser is a small laptop screen, and `desktop-only.spec.ts` checks the gate. A `desktop-safari` project (WebKit) runs the smoke and gate specs; Firefox isn't installed for Playwright here, so it isn't run automatically.
+- **Quality tiers** Low (older laptops with integrated graphics), Medium, High and **Ultra** (LOD0 planes drawn further, `planeLodScale`; 4K hangar textures, `hangar4k`; 4096² shadows); auto never picks Ultra.
+- **Look back** (hold V; Settings → Look back → toggle): the camera swings round in 0.15 s (eased) over the tail in chase view and over the shoulder in cockpit and HUD views, and back on release; the aim holds the flight path meanwhile, like free look. Gamepad: hold the right-stick click.
+- **Views:** B cycles chase → cockpit → HUD (jets only). The cockpit view puts the camera at each model's `eye` point (planeModels.json; derived from the classic specs' canopies by `tools/eye-from-spec.mjs`) and draws the own plane in a near pass (`mapScene.setNear`, 3 cm near plane), so the inside of the cockpit neither clips nor costs the map depth precision. Gamepad: hold View (a tap toggles the scoreboard).
+- **Gear and flaps:** G landing gear, F flaps down one step, Shift+F up one step (Up, Combat, Takeoff, Landing). Left Shift (switch secondary) moved to **N** because Shift is now a modifier. Gamepad gear and flaps start unbound. Both flight models use the flap step (Arcade: share of the full flap effect 0 / 35 / 65 / 100%; Realistic: target flap position) and lowered gear adds 30% parasitic drag. The input packet grew to 13 bytes (flap step and gear). HUD: `FLP CBT/TKOF/LDG`, `GEAR`.
+- Keybinds gained two code forms: `Shift+KeyF` and gamepad `View:hold` (0.5 s, measured between frames that see the button down; a shorter press is a tap and toggles held actions bound to that button).
+- `docs/PLANE_DESIGN_STANDARD.md` and `docs/PLANE_QUEUE.md` (all 60 planes, flagships first, then tiers 1, 5 and 10 per era) written; CLAUDE.md has the desktop rule, the Day 12 budgets and both docs in the read-first list.
+- Tests: Vitest 204 (+7: device detection, tiers, view cycle, look-back easing, flap steps and gear drag, the wire format, default bindings). Playwright locally 46 passed, 11 skipped (touch-only) on desktop-chrome, desktop-safari and perf.
+
 ## Realistic flight model, phase 1 (2026-10-16)
 
 Asked for after Day 11: control surfaces that respond with proper physics. Phase 1 is the physics core behind **Settings → Flight model → Realistic** (solo matches); Arcade stays the default and is unchanged.

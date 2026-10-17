@@ -1,7 +1,9 @@
 // Key and gamepad bindings. Defaults live in src/data/keybinds.json; each player's changes are saved in
 // localStorage (only the actions they changed), so a new default reaches everyone who didn't touch it.
 // Codes: KeyboardEvent.code ("KeyW", "ShiftLeft"), "MouseLeft" / "MouseMiddle" / "MouseRight" / "Mouse4" /
-// "Mouse5", and gamepad buttons by Xbox name ("A", "LB", "DpadUp"…, standard mapping).
+// "Mouse5", and gamepad buttons by Xbox name ("A", "LB", "DpadUp"…, standard mapping). Day 12 added two forms:
+// "Shift+KeyF" (the key with Shift held) and, on gamepads, "View:hold" (the button held for half a second; a
+// short press of that button then counts as a tap, so held actions on it toggle).
 import defaults from '../data/keybinds.json';
 import { readStorage, writeStorage } from './storage';
 
@@ -30,7 +32,9 @@ export const ACTION_LABELS: Record<Action, string> = {
   rudderLeft: 'Rudder left',
   rudderRight: 'Rudder right',
   airbrake: 'Airbrake',
-  flaps: 'Flaps',
+  flapsDown: 'Flaps down one step',
+  flapsUp: 'Flaps up one step',
+  gear: 'Landing gear up / down',
   autoLevel: 'Auto-level',
   fireGuns: 'Guns',
   fireSecondary: 'Fire missile, rocket or bomb',
@@ -43,7 +47,8 @@ export const ACTION_LABELS: Record<Action, string> = {
   radarLock: 'Radar lock / unlock',
   freeLook: 'Free look (hold)',
   zoom: 'Zoom (hold)',
-  switchView: 'Chase view / HUD view',
+  switchView: 'Change view (chase, cockpit, HUD)',
+  lookBack: 'Look back (hold)',
   scoreboard: 'Scoreboard (hold)',
   map: 'Map',
   chat: 'Chat',
@@ -53,7 +58,7 @@ export const ACTION_LABELS: Record<Action, string> = {
 };
 
 const KEY = 'rvbs.keybinds.v1';
-const isCodeList = (v: unknown): v is string[] => Array.isArray(v) && v.length <= 3 && v.every((x) => typeof x === 'string' && x.length > 0 && x.length < 24);
+const isCodeList = (v: unknown): v is string[] => Array.isArray(v) && v.length <= 3 && v.every((x) => typeof x === 'string' && x.length > 0 && x.length < 32);
 
 const defaultsFor = (device: Device): Partial<Record<Action, string[]>> => defaults[device] as Partial<Record<Action, string[]>>;
 
@@ -129,6 +134,8 @@ export function findConflicts(b: Record<Action, readonly string[]>): Map<string,
 
 /** "KeyW" → "W", "ShiftLeft" → "Left Shift", "MouseRight" → "Right mouse", "Digit1" → "1", "DpadUp" → "D-pad up". */
 export function codeLabel(code: string, ps = false): string {
+  if (code.startsWith('Shift+')) return `Shift+${codeLabel(code.slice(6), ps)}`;
+  if (code.endsWith(':hold')) return `${codeLabel(code.slice(0, -5), ps)} (hold)`;
   if (code.startsWith('Key')) return code.slice(3);
   if (code.startsWith('Digit')) return code.slice(5);
   if (code.startsWith('Numpad')) return `Num ${code.slice(6)}`;

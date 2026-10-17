@@ -17,8 +17,9 @@ export default defineConfig({
   },
   projects: [
     { name: 'desktop-chrome', testIgnore: /perf\.spec/, use: { ...devices['Desktop Chrome'] } },
-    // Landscape is how the game is played; the portrait rotate prompt is covered by its own test.
-    { name: 'iphone-13', testIgnore: /perf\.spec/, use: { ...devices['iPhone 13 landscape'] } },
+    // Day 12: desktop only. The phone/touch project (iPhone 13) is dropped; Safari on a Mac is covered by WebKit
+    // running the smoke and device checks. (Firefox isn't installed for Playwright on this machine.)
+    { name: 'desktop-safari', testMatch: /(smoke|desktop-only)\.spec/, use: { ...devices['Desktop Safari'] } },
     // Frame-rate budget needs the real GPU: full Chromium (not the software-rendered headless shell).
     {
       name: 'perf',

@@ -1,7 +1,7 @@
 // The local player's control state. Every device (mouse, touch, gamepad, keys) writes here; once per
 // simulation tick sample() turns it into a ControlInput: through the mouse-aim autopilot, or straight from the
-// stick in mouse-joystick mode. Also holds the cockpit switches (WEP, airbrake, flaps, radar, secondary
-// weapon) and the camera state (chase / HUD view, zoom, free look).
+// stick in mouse-joystick mode. Also holds the cockpit switches (WEP, airbrake, flaps, gear, radar, secondary
+// weapon) and the camera state (chase / cockpit / HUD view, zoom, free look, look back).
 import { aimControl, createAimPd } from '../game/autopilot';
 import type { ControlInput } from '../game/controls';
 import type { PlaneState } from '../game/flight';
@@ -23,7 +23,19 @@ const STICK_RETURN = 1.2;
 const LOCK_GIVE_UP_S = 1.5;
 
 export type ControlMode = 'mouseAim' | 'joystick';
-export type ViewMode = 'chase' | 'hud';
+/** B cycles chase → cockpit → HUD (jets only) → chase. */
+export type ViewMode = 'chase' | 'cockpit' | 'hud';
+/** Flap settings: Up, Combat, Takeoff, Landing (each plane maps them to its real deflections). */
+export const FLAP_STEPS = 4;
+export const FLAP_NAMES = ['UP', 'CBT', 'TKOF', 'LDG'] as const;
+/** The look-back camera swings round in this long (and back on release). */
+export const LOOK_BACK_S = 0.15;
+
+export function nextView(view: ViewMode, isJet: boolean): ViewMode {
+  if (view === 'chase') return 'cockpit';
+  if (view === 'cockpit') return isJet ? 'hud' : 'chase';
+  return 'chase';
+}
 
 export interface PlayerControls {
   /** World aim direction as yaw/pitch (radians). */
@@ -51,7 +63,10 @@ export interface PlayerControls {
   airbrake: boolean;
   /** Airbrake held through the throttle-down trigger (gamepad LT at idle). */
   airbrakeHeld: boolean;
-  flaps: boolean;
+  /** 0 Up … 3 Landing (F down a step, Shift+F up a step). */
+  flapStep: number;
+  /** Landing gear down (G). Planes spawn in the air with it up. */
+  gear: boolean;
   radarOn: boolean;
   radarDogfight: boolean;
   radarRange: number;
@@ -61,6 +76,13 @@ export interface PlayerControls {
   secondary: number;
   view: ViewMode;
   zoom: boolean;
+  /** Look back wanted this frame (V held, or toggled on), and how far round the camera has swung (0–1, eased). */
+  lookBack: boolean;
+  readonly lookBackT: number;
+  /** Looking back or still swinging back: the aim holds the flight path, like free look. */
+  readonly lookingBack: boolean;
+  /** Advance the look-back swing (called every rendered frame). */
+  stepLookBack(dt: number): void;
   /** Held on the touch screen (combined with keys and pad each frame): zoom, rudder buttons, the look eye. */
   readonly touch: { zoom: boolean; rudder: number; look: boolean };
   /** Move the aim (or the free-look camera, or the joystick) by angles in radians. Positive dx = right, dy = up. */
@@ -92,6 +114,7 @@ export function createPlayerControls(): PlayerControls {
   let stickMoved = false;
   let lockAskedFor = 0;
   let hadLock = false;
+  let lookBackRaw = 0;
 
   const followNose = (plane: PlaneState): void => {
     const nose = yawPitchFromDir(rotate(plane.quat, FORWARD));
@@ -118,7 +141,8 @@ export function createPlayerControls(): PlayerControls {
     },
     airbrake: false,
     airbrakeHeld: false,
-    flaps: false,
+    flapStep: 0,
+    gear: false,
     radarOn: true,
     radarDogfight: false,
     radarRange: 1,
@@ -126,6 +150,18 @@ export function createPlayerControls(): PlayerControls {
     secondary: -1,
     view: 'chase',
     zoom: false,
+    lookBack: false,
+    get lookBackT() {
+      // Ease in and out so the swing starts and stops softly.
+      return lookBackRaw * lookBackRaw * (3 - 2 * lookBackRaw);
+    },
+    get lookingBack() {
+      return c.lookBack || lookBackRaw > 0;
+    },
+    stepLookBack(dt) {
+      const step = dt / LOOK_BACK_S;
+      lookBackRaw = clamp(lookBackRaw + (c.lookBack ? step : -step), 0, 1);
+    },
     touch: { zoom: false, rudder: 0, look: false },
     moveAim(dx, dy) {
       if (c.freeLook) {
@@ -175,7 +211,10 @@ export function createPlayerControls(): PlayerControls {
       rudder = 0;
       c.throttle = plane.throttle;
       c.airbrake = false;
-      c.flaps = false;
+      c.flapStep = 0;
+      c.gear = false;
+      c.lookBack = false;
+      lookBackRaw = 0;
       c.secondary = -1;
       c.radarLockWanted = c.radarDogfight;
       if (hasRadar !== undefined) c.radarOn = hasRadar || c.radarOn;
@@ -264,7 +303,9 @@ export function createPlayerControls(): PlayerControls {
         flare: c.flare,
         target: c.target,
         airbrake: c.airbrake || c.airbrakeHeld,
-        flaps: c.flaps,
+        flaps: c.flapStep > 0,
+        flapStep: c.flapStep,
+        gear: c.gear,
         radarOn: c.radarOn,
         radarDogfight: c.radarDogfight,
         radarRange: c.radarRange,

@@ -4,7 +4,7 @@
 // with altitude (dives gain speed, climbs lose it). Below stall speed the wings stop holding the plane up:
 // the controls go soft, the flight path sags and the nose falls toward the ground until speed returns.
 import type { Era, Plane } from '../data/types';
-import type { ControlInput } from './controls';
+import { flapStepOf, type ControlInput } from './controls';
 import {
   add,
   clamp,
@@ -92,6 +92,10 @@ export interface PlaneState {
   overheatFor: number;
   airbrake: boolean;
   flaps: boolean;
+  /** Day 12: flap setting (0 Up, 1 Combat, 2 Takeoff, 3 Landing) and landing gear down. Optional: older states
+   *  and scripted planes leave them out (flaps then means Landing). */
+  flapStep?: number;
+  gear?: boolean;
   /** Radar (jets that have one): power, mode, display range index, the radar-locked plane, and how long the
    *  locked target has been out of the radar's view (the lock drops after RADAR_MEMORY_S). */
   radarOn: boolean;
@@ -187,6 +191,14 @@ const FLAPS_STALL = 0.85;
 const FLAPS_DRAG = 0.35;
 /** Flaps only work below this fraction of top speed (they'd be torn off above it, so they simply don't count). */
 const FLAPS_MAX_SPEED = 0.6;
+/** How much of the full (Landing) flap effect each setting gives: Up, Combat, Takeoff, Landing. Combat flaps
+ *  cost little drag; Landing flaps the most. */
+export const FLAP_EFFECT = [0, 0.35, 0.65, 1] as const;
+const FLAP_DRAG_SHARE = [0, 0.15, 0.4, 1] as const;
+/** Lowered landing gear adds this much to the plane's parasitic drag (×). */
+export const GEAR_DRAG = 0.3;
+/** The flap setting a state is in (states from before Day 12 only had the on/off switch). */
+export const flapStepOfState = (s: PlaneState): number => (s.flapStep !== undefined ? s.flapStep : s.flaps ? 3 : 0);
 
 /**
  * Engine and switches, shared by both flight models: throttle spool, WEP (afterburner on jets) that only lights
@@ -210,7 +222,10 @@ export function stepEngine(s: PlaneState, input: ControlInput, p: FlightParams, 
     s.engineHeat = Math.max(0, s.engineHeat - dt / WEP_COOL_S);
   }
   s.airbrake = Boolean(input.airbrake);
-  s.flaps = Boolean(input.flaps);
+  const step = flapStepOf(input);
+  s.flaps = step > 0;
+  if (input.flapStep !== undefined || s.flapStep !== undefined) s.flapStep = step;
+  if (input.gear !== undefined || s.gear !== undefined) s.gear = Boolean(input.gear);
   return s.overheatFor > 0 ? Math.min(OVERHEAT_POWER, s.throttle) : s.throttle * MIL_THRUST + (s.wep ? 1 - MIL_THRUST : 0);
 }
 
@@ -232,7 +247,9 @@ export function stepPlane(s: PlaneState, input: ControlInput, p: FlightParams, e
   const forward = rotate(s.quat, FORWARD);
   let speed = len(s.vel);
   const flapsOn = s.flaps && speed < p.topSpeedMs * FLAPS_MAX_SPEED;
-  const stallSpeed = flapsOn ? p.stallSpeedMs * FLAPS_STALL : p.stallSpeedMs;
+  const flapStep = flapStepOfState(s);
+  const flapF = flapsOn ? FLAP_EFFECT[flapStep]! : 0;
+  const stallSpeed = p.stallSpeedMs * (1 - (1 - FLAPS_STALL) * flapF);
 
   // Lift: 0 when far below stall speed, 1 comfortably above it.
   const lift = smoothstep(0.7 * stallSpeed, 1.05 * stallSpeed, speed);
@@ -242,7 +259,7 @@ export function stepPlane(s: PlaneState, input: ControlInput, p: FlightParams, e
   // Controls lose bite in a stall and are also limited near stall speed (not enough air over the surfaces).
   const wingHit = s.damaged.wingL || s.damaged.wingR;
   const authority =
-    (s.stalled ? 0.3 : 0.35 + 0.65 * smoothstep(stallSpeed, p.cornerSpeedMs, speed) + (flapsOn ? 0.12 : 0)) * (wingHit ? WING_DAMAGE_MUL : 1);
+    (s.stalled ? 0.3 : 0.35 + 0.65 * smoothstep(stallSpeed, p.cornerSpeedMs, speed) + 0.12 * flapF) * (wingHit ? WING_DAMAGE_MUL : 1);
 
   // Pitch rate limited by the plane's G limit at this speed: ω = (G − 1)·g / v.
   const gLimitedRate = speed > 1 ? ((p.maxG - 1) * G) / speed : p.pitchRateRad;
@@ -272,7 +289,8 @@ export function stepPlane(s: PlaneState, input: ControlInput, p: FlightParams, e
 
   // Energy along the flight path.
   const thrust = thrustFor(s, p, power);
-  const drag = p.dragK * speed * speed * (1 + (s.airbrake ? AIRBRAKE_DRAG : 0) + (flapsOn ? FLAPS_DRAG : 0));
+  const drag =
+    p.dragK * speed * speed * (1 + (s.airbrake ? AIRBRAKE_DRAG : 0) + (flapsOn ? FLAPS_DRAG * FLAP_DRAG_SHARE[flapStep]! : 0) + (s.gear ? GEAR_DRAG : 0));
   const loadG = 1 + (speed * Math.abs(pitchRate)) / G;
   const bleed = p.thrustAccel * BLEED_PER_G * (loadG - 1);
   const overspeed = speed > p.topSpeedMs * 1.2 ? (speed - p.topSpeedMs * 1.2) * 0.8 : 0;

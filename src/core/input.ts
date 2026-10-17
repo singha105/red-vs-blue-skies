@@ -5,9 +5,13 @@
 // throttle-down trigger) are applied here every frame. One-shot actions (radar, views, target select, menu,
 // map, chat…) are queued and read by main with takePress(), because they need the match and the plane.
 // Sticks are fixed: left stick steers, right stick looks around.
+//
+// Day 12: "Shift+KeyF" codes (the key with Shift held: such a press doesn't also fire the plain key's action), and
+// gamepad "Name:hold" codes, which fire once the button has been held HOLD_S; a shorter press of that button
+// counts as a tap on release, and held actions bound to it (the scoreboard on View) toggle with each tap.
 import type { PlaneState } from '../game/flight';
 import { ACTIONS, codesFor, mouseCode, PAD_BUTTONS, type Action } from './keybinds';
-import type { PlayerControls } from './playerControls';
+import { FLAP_STEPS, type PlayerControls } from './playerControls';
 
 const MOUSE_RAD_PER_PX = 0.0022;
 const PAD_RAD_PER_S = 1.9;
@@ -16,17 +20,21 @@ const THROTTLE_PER_S = 0.6;
 const DEADZONE = 0.15;
 /** An analog trigger counts as pressed past this. */
 const TRIGGER_ON = 0.3;
+/** A gamepad "Name:hold" binding fires after the button is held this long. */
+export const HOLD_S = 0.5;
 
 /** Actions main reads once per press. */
 export type PressAction = Extract<
   Action,
-  | 'autoLevel' | 'airbrake' | 'flaps' | 'cycleSecondary' | 'selectTarget' | 'radarPower' | 'radarMode' | 'radarRange' | 'radarLock'
-  | 'switchView' | 'scoreboard' | 'map' | 'chat' | 'quickChat' | 'menu' | 'pause' | 'fireSecondary'
+  | 'autoLevel' | 'airbrake' | 'flapsDown' | 'flapsUp' | 'gear' | 'cycleSecondary' | 'selectTarget' | 'radarPower' | 'radarMode' | 'radarRange'
+  | 'radarLock' | 'switchView' | 'lookBack' | 'scoreboard' | 'map' | 'chat' | 'quickChat' | 'menu' | 'pause' | 'fireSecondary'
 >;
 const PRESS_ACTIONS: readonly PressAction[] = [
-  'autoLevel', 'airbrake', 'flaps', 'cycleSecondary', 'selectTarget', 'radarPower', 'radarMode', 'radarRange', 'radarLock',
-  'switchView', 'scoreboard', 'map', 'chat', 'quickChat', 'menu', 'pause', 'fireSecondary',
+  'autoLevel', 'airbrake', 'flapsDown', 'flapsUp', 'gear', 'cycleSecondary', 'selectTarget', 'radarPower', 'radarMode', 'radarRange', 'radarLock',
+  'switchView', 'lookBack', 'scoreboard', 'map', 'chat', 'quickChat', 'menu', 'pause', 'fireSecondary',
 ];
+const SHIFT = ['ShiftLeft', 'ShiftRight'];
+const isShift = (code: string): boolean => SHIFT.includes(code);
 
 export interface DesktopInput {
   /** Call every rendered frame. */
@@ -37,6 +45,8 @@ export interface DesktopInput {
   readonly gamepadConnected: boolean;
   /** Weapon buttons held on desktop devices this frame; main combines them with touch. */
   readonly buttons: Readonly<{ fire: boolean; missile: boolean; flare: boolean }>;
+  /** Look-back setting: hold the key, or press once to look back and again to look ahead. */
+  lookBackToggle: boolean;
   /** Is a bound key or button for this action held right now? */
   held(action: Action): boolean;
   /** True once per press of a one-shot action since the last call. */
@@ -73,20 +83,34 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
   const buttons = { fire: false, missile: false, flare: false };
 
   const actionsFor = (code: string, device: 'keyboard' | 'gamepad'): PressAction[] => PRESS_ACTIONS.filter((a) => codesFor(device, a).includes(code));
-  const bound = (code: string): boolean => ACTIONS.some((a) => codesFor('keyboard', a).includes(code));
+  const bound = (code: string): boolean => ACTIONS.some((a) => codesFor('keyboard', a).some((c) => c === code || c === `Shift+${code}`));
+  const shiftHeld = (): boolean => SHIFT.some((c) => held.has(c));
+  /** Keys pressed with Shift held whose Shift+ binding exists: they act as that combo, not as the plain key. */
+  const comboHeld = new Set<string>();
+  let lookBackOn = false;
+  let lookBackToggle = false;
 
   const down = (code: string, repeat: boolean): void => {
     held.add(code);
     if (repeat) return;
+    if (!isShift(code) && shiftHeld()) {
+      const combo = actionsFor(`Shift+${code}`, 'keyboard');
+      if (combo.length > 0 || ACTIONS.some((a) => codesFor('keyboard', a).includes(`Shift+${code}`))) {
+        comboHeld.add(code);
+        for (const a of combo) pressed.add(a);
+        return;
+      }
+    }
     for (const a of actionsFor(code, 'keyboard')) pressed.add(a);
   };
 
   const onKeyDown = (e: KeyboardEvent): void => {
     if (capture) {
       e.preventDefault();
+      if (isShift(e.code)) return; // wait for the key that goes with Shift
       const fn = capture;
       capture = null;
-      fn(e.code === 'Escape' ? '' : e.code);
+      fn(e.code === 'Escape' ? '' : e.shiftKey ? `Shift+${e.code}` : e.code);
       return;
     }
     if (!enabled || typing) return;
@@ -96,9 +120,11 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
   };
   const onKeyUp = (e: KeyboardEvent): void => {
     held.delete(e.code);
+    comboHeld.delete(e.code);
   };
   const onBlur = (): void => {
     held.clear();
+    comboHeld.clear();
   };
   const onMouseMove = (e: MouseEvent): void => {
     if (!enabled || !locked || typing) return;
@@ -184,6 +210,11 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
   /** Gamepad buttons held this frame (by name) and their analog values. */
   const padHeld = new Set<string>();
   const padValue = new Map<string, number>();
+  /** When each button was first seen down, whether its ":hold" binding already fired, and the tap-toggled ones. */
+  const padHoldFor = new Map<string, number>();
+  const padHoldFired = new Set<string>();
+  const padToggled = new Set<string>();
+  const hasHoldBinding = (name: string): boolean => ACTIONS.some((a) => codesFor('gamepad', a).includes(`${name}:hold`));
   const readPad = (pad: Gamepad | null): void => {
     padHeld.clear();
     padValue.clear();
@@ -203,19 +234,52 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
       }
     } else if (enabled) {
       for (const name of padHeld) {
+        if (hasHoldBinding(name)) {
+          // Held time from the first frame that saw the button down to this one (not summed frame times: a slow
+          // frame before the press shouldn't count toward the hold).
+          const now = performance.now() / 1000;
+          if (!padHoldFor.has(name)) padHoldFor.set(name, now);
+          if (now - padHoldFor.get(name)! >= HOLD_S && !padHoldFired.has(name)) {
+            padHoldFired.add(name);
+            for (const a of actionsFor(`${name}:hold`, 'gamepad')) pressed.add(a);
+          }
+          continue;
+        }
         if (padPrev.has(name)) continue;
         for (const a of actionsFor(name, 'gamepad')) pressed.add(a);
+      }
+      // Released: a short press of a button with a hold binding is a tap.
+      for (const name of padPrev) {
+        if (padHeld.has(name) || !hasHoldBinding(name)) continue;
+        if (!padHoldFired.has(name)) {
+          for (const a of actionsFor(name, 'gamepad')) pressed.add(a);
+          if (padToggled.has(name)) padToggled.delete(name);
+          else padToggled.add(name);
+        }
+        padHoldFor.delete(name);
+        padHoldFired.delete(name);
       }
     }
     padPrev = new Set(padHeld);
   };
+  /** A button counts as held for held actions; buttons with a hold binding count while tap-toggled on. */
+  const padIsHeld = (name: string): boolean => (hasHoldBinding(name) ? padToggled.has(name) : padHeld.has(name));
 
-  const isHeld = (action: Action): boolean => codesFor('keyboard', action).some((c) => held.has(c)) || codesFor('gamepad', action).some((c) => padHeld.has(c));
+  const keyHeld = (c: string): boolean =>
+    c.startsWith('Shift+') ? comboHeld.has(c.slice(6)) && held.has(c.slice(6)) : held.has(c) && !comboHeld.has(c);
+  const isHeld = (action: Action): boolean => codesFor('keyboard', action).some(keyHeld) || codesFor('gamepad', action).some(padIsHeld);
   /** Strongest analog value of the gamepad buttons bound to an action (triggers are analog, the rest 0/1). */
   const padAmount = (action: Action): number => Math.max(0, ...codesFor('gamepad', action).map((c) => padValue.get(c) ?? 0).filter((v) => v > 0.05));
 
   return {
     buttons,
+    get lookBackToggle() {
+      return lookBackToggle;
+    },
+    set lookBackToggle(v: boolean) {
+      lookBackToggle = v;
+      lookBackOn = false;
+    },
     get pointerLocked() {
       return locked;
     },
@@ -246,6 +310,8 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
     releaseAll() {
       onBlur();
       pressed.clear();
+      padToggled.clear();
+      lookBackOn = false;
       buttons.fire = buttons.missile = buttons.flare = false;
     },
     exitLock() {
@@ -258,6 +324,8 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
       if (!next) {
         held.clear();
         pressed.clear();
+        padToggled.clear();
+        lookBackOn = false;
         if (locked) {
           ownExit = true;
           document.exitPointerLock?.();
@@ -270,7 +338,7 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
       readPad(pad);
       if (!enabled) return;
 
-      const kb = (a: Action): boolean => codesFor('keyboard', a).some((c) => held.has(c));
+      const kb = (a: Action): boolean => codesFor('keyboard', a).some(keyHeld);
       // Throttle: keys at a fixed rate, triggers by how far they're pulled.
       const up = Math.max(kb('throttleUp') ? 1 : 0, padAmount('throttleUp'));
       const downAmt = Math.max(kb('throttleDown') ? 1 : 0, padAmount('throttleDown'));
@@ -301,7 +369,12 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
         controls.moveAim(dz(ox) * k, -dz(oy) * k * 0.8);
       }
       const padLooking = padLook[0] !== 0 || padLook[1] !== 0;
-      controls.freeLook = isHeld('freeLook') || padLooking || controls.touch.look;
+      // Look back (V, right stick click): hold, or press to toggle (Settings). The camera swing is eased in
+      // PlayerControls; while looking back the aim holds the flight path, like free look.
+      if (pressed.delete('lookBack') && lookBackToggle) lookBackOn = !lookBackOn;
+      controls.lookBack = lookBackToggle ? lookBackOn : isHeld('lookBack');
+      controls.stepLookBack(dt);
+      controls.freeLook = isHeld('freeLook') || padLooking || controls.touch.look || controls.lookingBack;
       const k = PAD_RAD_PER_S * sensitivity() * dt;
       if (padLooking) controls.moveAim(padLook[0] * k * 1.4, padLook[1] * k * 1.4);
       else if (padAim[0] !== 0 || padAim[1] !== 0) controls.moveAim(padAim[0] * k, padAim[1] * k);
@@ -319,7 +392,9 @@ export function createDesktopInput(canvas: HTMLCanvasElement, controls: PlayerCo
         controls.autoLevel(plane);
       }
       if (pressed.delete('airbrake')) controls.airbrake = !controls.airbrake;
-      if (pressed.delete('flaps')) controls.flaps = !controls.flaps;
+      if (pressed.delete('flapsDown')) controls.flapStep = Math.min(FLAP_STEPS - 1, controls.flapStep + 1);
+      if (pressed.delete('flapsUp')) controls.flapStep = Math.max(0, controls.flapStep - 1);
+      if (pressed.delete('gear')) controls.gear = !controls.gear;
     },
     dispose() {
       window.removeEventListener('keydown', onKeyDown);

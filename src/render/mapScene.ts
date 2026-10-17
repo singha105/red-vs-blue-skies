@@ -1,7 +1,8 @@
 // Everything static about a map: sky, sun, haze, water, terrain, forests, clouds and the distant ranges.
 // Drawn in two passes (render()): a backdrop (sky and the distant ranges, with a far plane at 60 km) and then,
 // after clearing depth, the map itself with the quality tier's draw distance. Quality changes apply here;
-// every Day 11 visual has a switch in core/quality.ts.
+// every Day 11 visual has a switch in core/quality.ts. Day 12: a third pass for the cockpit view draws the own
+// plane with a 3 cm near plane (setNear), so the cockpit interior neither clips nor costs the map depth precision.
 import {
   Color,
   DirectionalLight,
@@ -35,8 +36,10 @@ export interface MapScene {
   shadowTarget: Object3D | null;
   setQuality(level: QualityLevel, renderer: WebGLRenderer, camera: PerspectiveCamera): void;
   update(timeS: number, camera: PerspectiveCamera): void;
-  /** Draw the backdrop, then the map. */
+  /** Draw the backdrop, then the map (then the near object, if any). */
   render(renderer: WebGLRenderer, camera: PerspectiveCamera): void;
+  /** Cockpit view: draw this object (the own plane) in its own pass with a near camera; null puts it back. */
+  setNear(obj: Object3D | null): void;
   stats: { terrainChunks: number; trees: () => number; nearTrees: () => number; terrainTriangles: () => number };
   /** Debug: the scene's parts by name, to switch them off one at a time when profiling. */
   parts: Record<string, Object3D>;
@@ -124,6 +127,13 @@ export function createMapScene(map: GameMap, terrain: Terrain, renderer: WebGLRe
   const backSun = new DirectionalLight(0xfff1d6, 2.2);
   backSun.position.copy(sunDir);
   backdrop.add(backSun);
+  // Cockpit pass: its own lights (a light belongs to one scene), the same sun direction.
+  const nearScene = new Scene();
+  const nearCam = new PerspectiveCamera(60, 1, 0.03, 300);
+  const nearHemi = new HemisphereLight(0xdaf0ff, 0x3d5a66, 1.2);
+  const nearSun = new DirectionalLight(0xfff1d6, 2.6);
+  nearScene.add(nearHemi, nearSun, nearSun.target);
+  let nearObj: Object3D | null = null;
 
   let level: QualityLevel | null = null;
   let disposed = false;
@@ -149,6 +159,11 @@ export function createMapScene(map: GameMap, terrain: Terrain, renderer: WebGLRe
       level = next;
       r.shadowMap.enabled = q.shadows;
       sun.castShadow = q.shadows;
+      if (sun.shadow.mapSize.x !== q.shadowMapSize) {
+        sun.shadow.mapSize.set(q.shadowMapSize, q.shadowMapSize);
+        sun.shadow.map?.dispose();
+        sun.shadow.map = null;
+      }
       clouds.setCount(q.clouds);
       sky.setDetail(next !== 'low');
       terrainMesh.setLodScale(q.lodScale);
@@ -184,12 +199,17 @@ export function createMapScene(map: GameMap, terrain: Terrain, renderer: WebGLRe
           backdrop.environmentIntensity = 0.35;
           hemi.intensity = 0.55;
           backHemi.intensity = 0.55;
+          nearScene.environment = env;
+          nearScene.environmentIntensity = 0.35;
+          nearHemi.intensity = 0.55;
         });
       } else {
         scene.environment = null;
         backdrop.environment = null;
+        nearScene.environment = null;
         hemi.intensity = 1.2;
         backHemi.intensity = 1.2;
+        nearHemi.intensity = 1.2;
       }
       // Materials must recompile when shadows toggle.
       scene.traverse((o) => {
@@ -223,7 +243,29 @@ export function createMapScene(map: GameMap, terrain: Terrain, renderer: WebGLRe
       r.render(backdrop, backCam);
       r.clearDepth();
       r.render(scene, camera);
+      if (nearObj) {
+        nearCam.position.copy(camera.position);
+        nearCam.quaternion.copy(camera.quaternion);
+        if (nearCam.fov !== camera.fov || nearCam.aspect !== camera.aspect) {
+          nearCam.fov = camera.fov;
+          nearCam.aspect = camera.aspect;
+          nearCam.updateProjectionMatrix();
+        }
+        nearCam.updateMatrixWorld();
+        nearSun.position.copy(nearObj.position).addScaledVector(sunDir, 100);
+        nearSun.target.position.copy(nearObj.position);
+        nearSun.target.updateMatrixWorld();
+        r.clearDepth();
+        r.render(nearScene, nearCam);
+      }
       r.autoClear = auto;
+    },
+    setNear(obj) {
+      if (obj === nearObj) return;
+      // Put the old one back in the map, unless it has been taken out of the scene meanwhile (rebuilt).
+      if (nearObj && nearObj.parent === nearScene) scene.add(nearObj);
+      nearObj = obj;
+      if (obj) nearScene.add(obj);
     },
     dispose() {
       disposed = true;

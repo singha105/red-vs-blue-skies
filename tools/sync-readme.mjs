@@ -4,7 +4,7 @@
 // `npm run docs:readme` writes README.md; tests/unit/docs.test.ts fails if they've drifted.
 import { readFileSync, writeFileSync } from 'node:fs';
 
-export const README_SECTIONS = ['Keyboard and mouse', 'Touch (phones and tablets)', 'Gamepad', 'Reading the HUD', 'Radar step by step', 'Missiles: firing and dodging'];
+export const README_SECTIONS = ['Keyboard and mouse', 'Gamepad', 'Reading the HUD', 'Radar step by step', 'Missiles: firing and dodging'];
 
 export function readmeBlock(howToPlay) {
   const parts = howToPlay.split(/^## /m).slice(1);

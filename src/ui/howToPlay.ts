@@ -15,7 +15,7 @@ interface Section {
 const TAB_NAMES: Record<string, string> = {
   'Joining a match': 'Join',
   'Keyboard and mouse': 'Keyboard + mouse',
-  'Touch (phones and tablets)': 'Phone',
+  'Phones and tablets': 'Phones',
   Gamepad: 'Gamepad',
   'Reading the HUD': 'HUD',
   'Radar step by step': 'Radar',
@@ -25,7 +25,7 @@ const TAB_NAMES: Record<string, string> = {
   Hosting: 'Hosting',
   Credits: 'Credits',
 };
-const START: Record<HelpTab, string> = { touch: 'Touch (phones and tablets)', desktop: 'Keyboard and mouse', gamepad: 'Gamepad' };
+const START: Record<HelpTab, string> = { touch: 'Phones and tablets', desktop: 'Keyboard and mouse', gamepad: 'Gamepad' };
 
 const esc = (s: string): string => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] ?? ch);
 /** **bold** and `code`, after escaping. */

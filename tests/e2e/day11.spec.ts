@@ -12,13 +12,17 @@ interface Cockpit {
   rudder: number;
   airbrake: boolean;
   flaps: boolean;
+  flapStep: number;
+  gear: boolean;
+  lookBack: boolean;
+  lookBackT: number;
   radarOn: boolean;
   radarDogfight: boolean;
   radarRange: number;
   radarLockWanted: boolean;
   secondary: number;
   target: string | null;
-  view: 'chase' | 'hud';
+  view: 'chase' | 'cockpit' | 'hud';
   zoom: boolean;
   freeLook: boolean;
   mode: string;
@@ -97,23 +101,30 @@ test.describe('keyboard and mouse', () => {
     await expect.poll(async () => (await cockpit(page)).rudder).toBeLessThan(-0.05);
     await page.keyboard.up('KeyQ');
 
-    // H airbrake, F flaps, V view, C free look (held), Shift secondary, 1/2/3 radar.
+    // H airbrake, F flaps (Day 12: one step down; Shift+F one up), B views (chase → cockpit → HUD on jets),
+    // C free look (held), N secondary, 1/2/3 radar.
     await tap(page, 'KeyH');
     await tap(page, 'KeyF');
-    await tap(page, 'KeyV');
+    await tap(page, 'KeyB');
     await expect.poll(async () => (await cockpit(page)).airbrake).toBe(true);
     await expect.poll(async () => (await cockpit(page)).flaps).toBe(true);
+    await expect.poll(async () => (await cockpit(page)).view).toBe('cockpit');
+    await tap(page, 'KeyB');
     await expect.poll(async () => (await cockpit(page)).view).toBe('hud');
     await page.waitForTimeout(400);
     await page.screenshot({ path: `${SHOTS}/${info.project.name}-day11-hud-view.png` });
-    await tap(page, 'KeyV');
+    await tap(page, 'KeyB');
+    await expect.poll(async () => (await cockpit(page)).view).toBe('chase');
     await tap(page, 'KeyH');
+    await page.keyboard.down('ShiftLeft');
     await tap(page, 'KeyF');
+    await page.keyboard.up('ShiftLeft');
+    await expect.poll(async () => (await cockpit(page)).flapStep).toBe(0);
     await page.keyboard.down('KeyC');
     await page.waitForTimeout(100);
     await expect.poll(async () => (await cockpit(page)).freeLook).toBe(true);
     await page.keyboard.up('KeyC');
-    await tap(page, 'ShiftLeft');
+    await tap(page, 'KeyN');
     await expect.poll(async () => (await cockpit(page)).secondary).toBe(0);
     await tap(page, 'Digit3');
     await expect.poll(async () => (await cockpit(page)).radarRange).toBe(2);
@@ -253,12 +264,29 @@ test.describe('gamepad', () => {
     const flares = (await me(page)).flares;
     await press(13);
     await expect.poll(async () => (await me(page)).flares).toBeLessThan(flares);
-    // RS [R3] switches view; View [Touchpad] holds the scoreboard.
-    await press(11);
-    await expect.poll(async () => (await cockpit(page)).view).toBe('hud');
+    // Day 12: holding RS [R3] looks back; holding View [Touchpad] changes view, a tap shows / hides the scoreboard.
+    await pad(11, 1);
+    await expect.poll(async () => (await cockpit(page)).lookBackT).toBeGreaterThan(0.99);
+    await pad(11, 0);
+    await expect.poll(async () => (await cockpit(page)).lookBackT).toBe(0);
     await pad(8, 1);
-    await expect(page.locator('.hud__board')).toBeVisible();
+    await page.waitForTimeout(800);
     await pad(8, 0);
+    await expect.poll(async () => (await cockpit(page)).view).toBe('cockpit');
+    await expect(page.locator('.hud__board')).toBeHidden();
+    // A tap released by a timer inside the page: under software rendering the test's own release can arrive
+    // late enough to count as a hold.
+    const tapView = async (): Promise<void> => {
+      await page.evaluate(() => {
+        const b = (window as unknown as { __pad: { buttons: number[] } }).__pad.buttons;
+        b[8] = 1;
+        setTimeout(() => (b[8] = 0), 200);
+      });
+      await page.waitForTimeout(600);
+    };
+    await tapView();
+    await expect(page.locator('.hud__board')).toBeVisible();
+    await tapView();
     await expect(page.locator('.hud__board')).toBeHidden();
 
     // Rebind airbrake to the Y button through the Controls screen's gamepad tab.

@@ -8,8 +8,8 @@ import { env } from './core/env';
 import { createDesktopInput } from './core/input';
 import { createLoop } from './core/loop';
 import { createWakeLock } from './core/wakeLock';
-import { createPlayerControls } from './core/playerControls';
-import { createAutoQuality, initialLevel, QUALITY, type QualityLevel } from './core/quality';
+import { createPlayerControls, FLAP_NAMES, nextView } from './core/playerControls';
+import { createAutoQuality, initialLevel, isQualityLevel, QUALITY, type QualityLevel } from './core/quality';
 import { getSettings, onSettingsChange } from './core/settings';
 import { loadGameData } from './data';
 import type { GameData } from './data/types';
@@ -49,7 +49,7 @@ import { createGroundRenderer } from './render/groundUnits';
 import { bomberFor, isBomber, unitDef } from './game/objectives';
 import type { ObjectiveFrame, ObjectiveMarker } from './ui/hud';
 import { createPlaneVisual, isModelReady, loadEra, loadPlane, setModelDetail, visualOutdated, type PlaneVisual } from './render/models';
-import { isProp, PLANE_MODELS, planeSize } from './game/planeModels';
+import { eyeFor, isProp, PLANE_MODELS, planeSize } from './game/planeModels';
 import { createView } from './render/renderer';
 import { createTitleShot } from './render/titleShot';
 import { createTracers } from './render/tracers';
@@ -77,6 +77,7 @@ import { createTutorialSession, TUTORIAL_MAP, type TutorialSession } from './app
 import { createTutorialProps } from './render/tutorialProps';
 import { createTutorialPanel, type TutorialPanel } from './ui/tutorialPanel';
 import { readStorage, writeStorage } from './core/storage';
+import { DEVICE_OVERRIDE_KEY, showDesktopOnly } from './core/device';
 import type { AccountControls } from './ui/settingsPanel';
 import type { EraId } from './data/types';
 import type { MatchResults } from './game/results';
@@ -104,7 +105,7 @@ function boot(): void {
   const settings = getSettings();
   const params = new URLSearchParams(window.location.search);
   const gfxParam = params.get('gfx');
-  const forced: QualityLevel | null = gfxParam === 'low' || gfxParam === 'medium' || gfxParam === 'high' ? gfxParam : null;
+  const forced: QualityLevel | null = isQualityLevel(gfxParam) ? gfxParam : null;
   // Debug-only knobs for testing: run the clock faster, or shorten the match.
   const timeScale = env.debug ? Math.max(1, Math.min(20, Math.round(Number(params.get('timescale')) || 1))) : 1;
   const matchTime = env.debug ? Number(params.get('matchtime')) || undefined : undefined;
@@ -226,6 +227,10 @@ function boot(): void {
   onSettingsChange(applyDisplay);
   const sensitivity = (): number => getSettings().sensitivity;
   const desktop = createDesktopInput(canvas, controls, sensitivity);
+  desktop.lookBackToggle = settings.lookBack === 'toggle';
+  onSettingsChange((st) => {
+    if (desktop.lookBackToggle !== (st.lookBack === 'toggle')) desktop.lookBackToggle = st.lookBack === 'toggle';
+  });
   const chase = createChaseCamera(view.camera);
 
   // --- App state ---
@@ -404,7 +409,8 @@ function boot(): void {
     tutorialPanel = null;
     tutorialProps.update(null, 0);
     document.body.classList.remove('is-tutorial');
-    for (const v of visuals.values()) mapScene.scene.remove(v.root);
+    mapScene.setNear(null);
+    for (const v of visuals.values()) v.root.removeFromParent();
     visuals.clear();
     visualPlane.clear();
     if (session?.kind === 'solo') session.dispose();
@@ -1042,7 +1048,7 @@ function boot(): void {
       hud?.setScoreboard(scores ? scoreRows() : null);
     }
     desktop.takePress('scoreboard');
-    if (desktop.takePress('switchView')) controls.view = controls.view === 'chase' ? 'hud' : 'chase';
+    if (desktop.takePress('switchView')) controls.view = nextView(controls.view, def ? isJet(def) : false);
     if (!me || !me.alive || !def) {
       for (const a of ['selectTarget', 'cycleSecondary', 'radarPower', 'radarMode', 'radarRange', 'radarLock'] as const) desktop.takePress(a);
       return;
@@ -1104,7 +1110,7 @@ function boot(): void {
     let v = visuals.get(p.id);
     // Rebuilt when the model finishes loading, or when the pilot respawns in a different plane.
     if (!v || visualOutdated(v, p.planeId) || visualPlane.get(p.id) !== p.planeId) {
-      if (v) mapScene.scene.remove(v.root);
+      v?.root.removeFromParent();
       v = createPlaneVisual(p.planeId, p.team);
       visuals.set(p.id, v);
       visualPlane.set(p.id, p.planeId);
@@ -1121,6 +1127,11 @@ function boot(): void {
   const aimVec = new Vector3();
   const lookVec = new Vector3();
   const NO_LOOK = { yaw: 0, pitch: 0 };
+  const headLook = { yaw: 0, pitch: 0 };
+  const HUD_EYE = new Vector3();
+  /** Over the shoulder in the cockpit: 158° round and a little up. */
+  const LOOK_BACK_HEAD_YAW = (158 * Math.PI) / 180;
+  const LOOK_BACK_HEAD_PITCH = 0.22;
   const def0 = (p: PlaneState) => ctx.planeDefs.get(p.planeId)!;
   const projVec = new Vector3();
   const proj = new Vector3();
@@ -1620,7 +1631,8 @@ function boot(): void {
       wepLeftS: (1 - me.engineHeat) * params.wepTimeS,
       overheatS: me.overheatFor,
       airbrake: controls.airbrake || controls.airbrakeHeld,
-      flaps: controls.flaps,
+      flaps: controls.flapStep > 0 ? FLAP_NAMES[controls.flapStep]! : '',
+      gear: controls.gear,
       guns: me.ammo.reduce((a, b) => a + b, 0),
       secondary,
       flares: me.flares,
@@ -1794,16 +1806,30 @@ function boot(): void {
     let deathView: { phase: 'killcam' | 'respawn'; killer: string | null; respawnIn: number } | null = null;
 
     chase.setZoom(controls.zoom && me.alive);
+    // Jets only have the HUD view; a prop plane that was left in it (respawned in another plane) goes to cockpit.
+    if (controls.view === 'hud' && !isJet(def0(me))) controls.view = 'cockpit';
     const hudView = controls.view === 'hud' && me.alive;
-    // HUD view: no plane in the way (the camera sits at its nose).
+    const cockpitView = controls.view === 'cockpit' && me.alive;
+    // HUD view: no plane in the way (the camera sits at its nose). Cockpit view: the plane draws in the near pass.
     meMesh.visible = (me.alive || me.wreck) && !hudView;
-    if (me.alive && hudView) {
-      chase.updateCockpit(frameDt, meMesh.position, meMesh.quaternion, planeSize(def0(me)).lengthM * 0.5, controls.freeLook ? controls.look : NO_LOOK, speedKmh(me) / 3.6);
+    mapScene.setNear(cockpitView ? meMesh : null);
+    // Look back (V): the camera swings round in 0.15 s; lookBackT is the eased 0–1 swing.
+    const lb = controls.lookBackT;
+    if (me.alive && (hudView || cockpitView)) {
+      const look = controls.freeLook ? controls.look : NO_LOOK;
+      headLook.yaw = look.yaw + lb * LOOK_BACK_HEAD_YAW;
+      headLook.pitch = look.pitch + lb * LOOK_BACK_HEAD_PITCH;
+      const size = planeSize(def0(me));
+      const eye = hudView ? HUD_EYE.set(0, 0.35 * Math.min(2, Math.max(0.75, size.lengthM / 9)), size.lengthM * 0.5) : HUD_EYE.fromArray(eyeFor(def0(me)));
+      chase.updateCockpit(frameDt, meMesh.position, meMesh.quaternion, eye, headLook, speedKmh(me) / 3.6);
     } else if (me.alive) {
       aimVec.fromArray(controls.aimDir());
       let freeDir: Vector3 | null = null;
-      if (controls.freeLook) {
-        lookVec.fromArray(dirFromYawPitch(controls.aim.yaw + controls.look.yaw, controls.aim.pitch + controls.look.pitch));
+      if (controls.freeLook || lb > 0) {
+        // Looking back over the tail mirrors the aim's pitch (climbing, you look back down your climb).
+        const yaw = controls.aim.yaw + controls.look.yaw + lb * Math.PI;
+        const pitch = controls.aim.pitch * (1 - 2 * lb) + controls.look.pitch;
+        lookVec.fromArray(dirFromYawPitch(yaw, pitch));
         freeDir = lookVec;
       }
       chase.update(frameDt, meMesh.position, aimVec, speedKmh(me) / 3.6, freeDir);
@@ -2019,7 +2045,11 @@ function boot(): void {
         throttle: controls.throttle,
         rudder: controls.rudder,
         airbrake: controls.airbrake,
-        flaps: controls.flaps,
+        flaps: controls.flapStep > 0,
+        flapStep: controls.flapStep,
+        gear: controls.gear,
+        lookBack: controls.lookBack,
+        lookBackT: controls.lookBackT,
         radarOn: controls.radarOn,
         radarDogfight: controls.radarDogfight,
         radarRange: controls.radarRange,
@@ -2151,6 +2181,12 @@ function boot(): void {
       terrainChunks: () => mapScene.stats.terrainChunks,
       heightAt: (x: number, z: number) => ctx.terrain.heightAt(x, z),
       camera: () => view.camera.position.toArray(),
+      /** Day 12: where the camera is and looks, and where the own plane's nose points (look-back tests). */
+      viewInfo: () => {
+        const me = player();
+        const fwd = new Vector3(0, 0, -1).applyQuaternion(view.camera.quaternion);
+        return { camera: view.camera.position.toArray(), look: fwd.toArray(), plane: me ? [...me.pos] : null, nose: me ? rotate(me.quat, FORWARD) : null, view: controls.view };
+      },
     };
   }
 }
@@ -2167,10 +2203,23 @@ function registerServiceWorker(): void {
 // Uncaught errors show a friendly card with "Copy error" (the screen name goes into the report).
 const uiRoot = document.querySelector<HTMLElement>('#ui');
 if (uiRoot) installErrorOverlay(uiRoot, env.version, () => document.body.dataset['screen'] ?? 'boot');
-try {
-  boot();
-} catch (err) {
-  console.error(err);
-  reportError(err);
-}
+const start = (): void => {
+  try {
+    boot();
+  } catch (err) {
+    console.error(err);
+    reportError(err);
+  }
+};
+// Phones and tablets get the "please play on a laptop or desktop" screen (Day 12); ?anydevice=1 or "Continue
+// anyway" (remembered) runs the game regardless.
+const anyDevice = new URLSearchParams(window.location.search).get('anydevice') === '1' || readStorage(DEVICE_OVERRIDE_KEY) === '1';
+if (env.phoneOrTablet && !anyDevice && uiRoot) {
+  document.body.classList.add('is-desktop-only');
+  showDesktopOnly(uiRoot, () => {
+    writeStorage(DEVICE_OVERRIDE_KEY, '1');
+    document.body.classList.remove('is-desktop-only');
+    start();
+  });
+} else start();
 registerServiceWorker();

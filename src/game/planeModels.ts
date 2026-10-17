@@ -21,6 +21,16 @@ export interface PlaneModelInfo {
   prop: Vec3 | null;
   /** Which engine sound it gets. */
   engine?: 'rotary' | 'radial' | 'inline' | 'jet';
+  /** Pilot eye point (plane-local metres) for the cockpit view. */
+  eye?: Vec3;
+}
+
+/** Pilot eye point: from the model, or a guess from the plane's size (cockpit a bit aft on props). */
+export function eyeFor(plane: Plane): Vec3 {
+  const m = PLANE_MODELS[plane.id];
+  if (m?.eye) return m.eye;
+  const { lengthM } = planeSize(plane);
+  return [0, 0.6, lengthM * (isProp(plane.era) ? -0.05 : 0.25)];
 }
 
 export const PLANE_MODELS = raw as unknown as Record<string, PlaneModelInfo>;

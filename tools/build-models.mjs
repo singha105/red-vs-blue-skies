@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { encodeToKTX2 } from 'ktx2-encoder';
+import { eyeFromSpec } from './eye-from-spec.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
 const BLENDER = process.env.BLENDER ?? '/Applications/Blender.app/Contents/MacOS/Blender';
@@ -96,6 +97,7 @@ for (const f of readdirSync(raw).filter((x) => x.endsWith('.glb') && !x.endsWith
     exhausts: info.exhausts,
     prop: info.prop,
     engine: info.engine,
+    eye: info.eye ?? eyeFromSpec(JSON.parse(readFileSync(join(root, 'tools/blender/specs', `${id}.json`), 'utf8'))),
   };
   rows.push([id, info.era, `${info.tris}/${info.lodTris}`, bytes + lodBytes + detailBytes]);
 }

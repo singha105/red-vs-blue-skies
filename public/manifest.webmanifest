@@ -1,7 +1,7 @@
 {
   "name": "Red vs Blue Skies",
   "short_name": "RvB Skies",
-  "description": "Low-poly air combat for up to 20 friends, on phones and laptops.",
+  "description": "Air combat for up to 20 friends, on laptops and desktops.",
   "id": "/red-vs-blue-skies/",
   "start_url": "./",
   "scope": "./",

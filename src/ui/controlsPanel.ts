@@ -25,10 +25,10 @@ export interface ControlsPanelOptions {
 }
 
 const GROUPS: { title: string; actions: Action[] }[] = [
-  { title: 'Flying', actions: ['throttleUp', 'throttleDown', 'rollLeft', 'rollRight', 'pitchUp', 'pitchDown', 'rudderLeft', 'rudderRight', 'airbrake', 'flaps', 'autoLevel'] },
+  { title: 'Flying', actions: ['throttleUp', 'throttleDown', 'rollLeft', 'rollRight', 'pitchUp', 'pitchDown', 'rudderLeft', 'rudderRight', 'airbrake', 'flapsDown', 'flapsUp', 'gear', 'autoLevel'] },
   { title: 'Weapons', actions: ['fireGuns', 'fireSecondary', 'cycleSecondary', 'selectTarget', 'countermeasures'] },
   { title: 'Radar', actions: ['radarPower', 'radarMode', 'radarRange', 'radarLock'] },
-  { title: 'View', actions: ['freeLook', 'zoom', 'switchView'] },
+  { title: 'View', actions: ['freeLook', 'lookBack', 'zoom', 'switchView'] },
   { title: 'Game', actions: ['scoreboard', 'map', 'chat', 'quickChat', 'menu', 'pause'] },
 ];
 
